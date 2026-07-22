@@ -55,8 +55,9 @@
         </div>
       </div>
 
-      <!-- Online Leaderboard & Audio Controls -->
+      <!-- Online Leaderboard, Fullscreen & Audio Controls -->
       <div id="top-right-bar">
+        <button id="fullscreen-btn" class="icon-btn" title="Tam Ekran Yap">⛶</button>
         <button id="sound-btn" class="icon-btn" title="Ses Aç/Kapat">🔊</button>
         <div id="leaderboard">
           <div class="lb-header">👑 LİDERLİK TABLOSU</div>
@@ -90,6 +91,21 @@
 
       <div id="controls-hint">
         <span>🎮 Dokun / Fare: Yönlendir</span> • <span>⚡ Sol Tık / Buton: Hızlan</span> • <span>🔍 Çift Parmak: Zoom</span>
+      </div>
+    </div>
+
+    <!-- Dedicated Mobile Chat Modal Drawer -->
+    <div id="mobile-chat-modal" class="hidden">
+      <div class="mobile-chat-card">
+        <div class="mobile-chat-header">
+          <span>💬 MOBİL SOHBET</span>
+          <button id="close-mobile-chat-btn">✕</button>
+        </div>
+        <div id="mobile-chat-messages"></div>
+        <div class="mobile-chat-input-row">
+          <input type="text" id="mobile-chat-input" placeholder="Sohbet mesajınızı buraya yazın..." maxlength="50" autocomplete="off">
+          <button id="mobile-send-chat-btn">Gönder</button>
+        </div>
       </div>
     </div>
 

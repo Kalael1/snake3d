@@ -26,7 +26,6 @@ const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerH
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
 renderer.setSize(window.innerWidth, window.innerHeight);
 
-// Optimized Ceiling Pixel Ratio & Direct WebGL Renderer (Bloom / Post-Processing Removed for Ultra FPS)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = false;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -82,6 +81,7 @@ const overlayDesc = document.getElementById('overlay-desc');
 const playerNameInput = document.getElementById('player-name');
 const lbList = document.getElementById('lb-list');
 const soundBtn = document.getElementById('sound-btn');
+const fullscreenBtn = document.getElementById('fullscreen-btn');
 const skinCardsGrid = document.getElementById('skin-cards-grid');
 const skinProgressText = document.getElementById('skin-progress-text');
 const skinProgressFill = document.getElementById('skin-progress-bar-fill');
@@ -92,12 +92,35 @@ const mobileBoostBtn = document.getElementById('mobile-boost-btn');
 const virtualJoystick = document.getElementById('virtual-joystick');
 const joystickKnob = document.getElementById('joystick-knob');
 
+// Mobile Chat Drawer Elements
+const mobileChatModal = document.getElementById('mobile-chat-modal');
+const mobileChatMessages = document.getElementById('mobile-chat-messages');
+const mobileChatInput = document.getElementById('mobile-chat-input');
+const mobileSendChatBtn = document.getElementById('mobile-send-chat-btn');
+const closeMobileChatBtn = document.getElementById('close-mobile-chat-btn');
+
 highScoreElement.innerText = progressionManager.highScore;
 
 soundBtn.addEventListener('click', () => {
     const muted = audioManager.toggleMute();
     soundBtn.innerText = muted ? '🔇' : '🔊';
 });
+
+// FULLSCREEN TOGGLE
+function toggleFullscreen() {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        requestLandscapeAndFullscreen();
+        fullscreenBtn.innerText = '🗗';
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen().catch(() => {});
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen().catch(() => {});
+        }
+        fullscreenBtn.innerText = '⛶';
+    }
+}
+fullscreenBtn.addEventListener('click', toggleFullscreen);
 
 // Render Gamified Skin Gallery Grid
 function renderSkinGallery() {
@@ -171,6 +194,34 @@ chatInput.addEventListener('keydown', (e) => {
     }
 });
 
+// Mobile Chat Drawer Open / Close Logic
+chatInput.addEventListener('focus', () => {
+    if (window.innerWidth <= 768 || 'ontouchstart' in window) {
+        chatInput.blur();
+        mobileChatModal.classList.remove('hidden');
+        setTimeout(() => mobileChatInput.focus(), 100);
+    }
+});
+
+closeMobileChatBtn.addEventListener('click', () => {
+    mobileChatModal.classList.add('hidden');
+});
+
+mobileSendChatBtn.addEventListener('click', () => {
+    sendChatMessage(mobileChatInput.value, false);
+    mobileChatInput.value = '';
+    mobileChatModal.classList.add('hidden');
+});
+
+mobileChatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        sendChatMessage(mobileChatInput.value, false);
+        mobileChatInput.value = '';
+        mobileChatInput.blur();
+        mobileChatModal.classList.add('hidden');
+    }
+});
+
 // Quick Emoji Reactions
 document.querySelectorAll('.emoji-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -184,11 +235,19 @@ document.querySelectorAll('.emoji-btn').forEach(btn => {
 socket.on('chatReceived', (data) => {
     if (!data) return;
 
+    // Desktop Chat Log
     const msgDiv = document.createElement('div');
     msgDiv.className = 'chat-msg';
     msgDiv.innerHTML = `<span class="sender">${data.name}:</span> ${data.text}`;
     chatMessages.appendChild(msgDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    // Mobile Drawer Chat Log
+    const mMsgDiv = document.createElement('div');
+    mMsgDiv.className = 'chat-msg';
+    mMsgDiv.innerHTML = `<span class="sender">${data.name}:</span> ${data.text}`;
+    mobileChatMessages.appendChild(mMsgDiv);
+    mobileChatMessages.scrollTop = mobileChatMessages.scrollHeight;
 
     nameTagManager.showBubble(data.id, data.text, data.isEmoji);
 });
@@ -213,7 +272,7 @@ window.addEventListener('touchstart', (e) => {
 
     if (e.touches.length === 1) {
         const touch = e.touches[0];
-        if (e.target.closest('#chat-container') || e.target.closest('#mobile-boost-btn') || e.target.closest('#sound-btn')) return;
+        if (e.target.closest('#chat-container') || e.target.closest('#mobile-boost-btn') || e.target.closest('#sound-btn') || e.target.closest('#fullscreen-btn') || e.target.closest('#mobile-chat-modal')) return;
 
         touchStartOrigin = { x: touch.clientX, y: touch.clientY };
         virtualJoystick.style.left = `${touch.clientX}px`;
@@ -299,14 +358,14 @@ function setBoostState(state) {
 }
 
 window.addEventListener('mousedown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.closest('#mobile-boost-btn')) return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.closest('#mobile-boost-btn') || e.target.closest('#mobile-chat-modal')) return;
     if (e.button === 0 && isGameRunning) setBoostState(true);
 });
 window.addEventListener('mouseup', (e) => {
     if (e.button === 0) setBoostState(false);
 });
 window.addEventListener('keydown', (e) => {
-    if (document.activeElement === chatInput) return;
+    if (document.activeElement === chatInput || document.activeElement === mobileChatInput) return;
 
     if (e.code === 'Space' && isGameRunning) {
         setBoostState(true);
@@ -316,7 +375,7 @@ window.addEventListener('keydown', (e) => {
     }
 });
 window.addEventListener('keyup', (e) => {
-    if (document.activeElement === chatInput) return;
+    if (document.activeElement === chatInput || document.activeElement === mobileChatInput) return;
     if (e.code === 'Space') setBoostState(false);
 });
 
@@ -327,7 +386,7 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Food materials (Emissive disabled for clean crisp look)
+// Food materials
 const foodColors = [0xff0055, 0x00ffcc, 0xffff00, 0xaa00ff, 0xff8800, 0x00ffaa];
 const smallFoodGeo = new THREE.DodecahedronGeometry(0.55, 0);
 const bigFoodGeo = new THREE.DodecahedronGeometry(1.2, 0);
@@ -634,7 +693,6 @@ function animate() {
     // 7. Update Overhead 3D projected Player Name Tags & Speech/Emoji Bubbles
     nameTagManager.updatePositions();
 
-    // Direct Pure WebGL Render (0 Post-Processing Overhead!)
     renderer.render(scene, camera);
 }
 
