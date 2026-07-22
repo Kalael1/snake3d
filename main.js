@@ -67,6 +67,7 @@ let localSocketId = null;
 let currentScore = 0;
 let gameStartTime = 0;
 let currentPlayersList = [];
+let lastNetworkEmitTime = 0;
 
 // Camera Zoom
 let targetZoom = 1.0;
@@ -639,7 +640,7 @@ const clock = new THREE.Clock();
 
 function animate() {
     requestAnimationFrame(animate);
-    const delta = Math.min(clock.getDelta(), 0.1);
+    const delta = Math.min(clock.getDelta(), 0.033); // Clamp delta to max 30 FPS step to prevent lag spikes
 
     if (isGameRunning) {
         // 1. Raycast to 3D Ground Plane for Smooth & Natural Pointer Follow Controls
@@ -659,7 +660,6 @@ function animate() {
         }
 
         // 4. SNAKE VS SNAKE COLLISION CHECK
-        // When local snake's head touches another remote snake's body segment -> WE DIE!
         Object.keys(otherSnakes).forEach(otherId => {
             const remoteSnake = otherSnakes[otherId];
             if (!remoteSnake || !remoteSnake.segments) return;
@@ -719,21 +719,20 @@ function animate() {
             }
         }
 
-        // 7. Send Local Head & Body Segment positions to server so remote players die when touching OUR body!
-        const bodyPositions = localSnake.segments.slice(1).map(seg => ({
-            x: Math.round(seg.position.x * 10) / 10,
-            z: Math.round(seg.position.z * 10) / 10,
-            angle: Math.round(seg.rotation.y * 10) / 10
-        }));
+        // 7. THROTTLED NETWORK EMIT (20 Ticks/sec = every 50ms)
+        // Completely eliminates Garbage Collection stutter!
+        const now = Date.now();
+        if (now - lastNetworkEmitTime > 50) {
+            lastNetworkEmitTime = now;
 
-        socket.volatile.emit('playerInput', {
-            x: Math.round(headPos.x * 10) / 10,
-            z: Math.round(headPos.z * 10) / 10,
-            angle: Math.round(localSnake.currentAngle * 10) / 10,
-            isBoosting: isBoosting,
-            skinId: progressionManager.selectedSkinId,
-            body: bodyPositions
-        });
+            socket.volatile.emit('playerInput', {
+                x: Math.round(headPos.x * 10) / 10,
+                z: Math.round(headPos.z * 10) / 10,
+                angle: Math.round(localSnake.currentAngle * 10) / 10,
+                isBoosting: isBoosting,
+                skinId: progressionManager.selectedSkinId
+            });
+        }
     } else {
         const time = Date.now() * 0.004;
         targetPoint.set(Math.cos(time) * 20, 0, Math.sin(time) * 20);
