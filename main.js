@@ -1,9 +1,5 @@
 import * as THREE from 'three';
 import { io } from 'socket.io-client';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 
 import { Arena } from './src/Arena.js';
 import { Snake } from './src/Snake.js';
@@ -30,9 +26,9 @@ const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerH
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
 renderer.setSize(window.innerWidth, window.innerHeight);
 
-// Optimized Ceiling Pixel Ratio
+// Optimized Ceiling Pixel Ratio & Direct WebGL Renderer (Bloom / Post-Processing Removed for Ultra FPS)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-renderer.shadowMap.enabled = false; // Shadows disabled for maximum performance
+renderer.shadowMap.enabled = false;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 document.getElementById('app').appendChild(renderer.domElement);
@@ -40,29 +36,13 @@ document.getElementById('app').appendChild(renderer.domElement);
 // NameTag & Floating Bubble Manager
 const nameTagManager = new NameTagManager(camera, document.getElementById('nametag-container'));
 
-// Post-Processing Pipeline
-const composer = new EffectComposer(renderer);
-const renderPass = new RenderPass(scene, camera);
-composer.addPass(renderPass);
-
-const bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.20,
-    0.2,
-    0.92
-);
-composer.addPass(bloomPass);
-
-const outputPass = new OutputPass();
-composer.addPass(outputPass);
-
 // Balanced Soft Lighting
-const hemiLight = new THREE.HemisphereLight(0xffffff, 0x475569, 0.9);
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x475569, 1.0);
 scene.add(hemiLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
 dirLight.position.set(120, 200, 100);
-dirLight.castShadow = false; // Shadows disabled
+dirLight.castShadow = false;
 scene.add(dirLight);
 
 const particleSystem = new ParticleSystem(scene);
@@ -345,20 +325,17 @@ window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    composer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Food materials
+// Food materials (Emissive disabled for clean crisp look)
 const foodColors = [0xff0055, 0x00ffcc, 0xffff00, 0xaa00ff, 0xff8800, 0x00ffaa];
 const smallFoodGeo = new THREE.DodecahedronGeometry(0.55, 0);
 const bigFoodGeo = new THREE.DodecahedronGeometry(1.2, 0);
 
 const foodMaterials = foodColors.map(color => new THREE.MeshStandardMaterial({
     color: color,
-    emissive: color,
-    emissiveIntensity: 0.5,
-    roughness: 0.2,
-    metalness: 0.8
+    roughness: 0.3,
+    metalness: 0.5
 }));
 
 // SOCKET EVENTS
@@ -636,7 +613,7 @@ function animate() {
             body: bodyPositions
         });
     } else {
-        const time = Date.now() * 0.0003;
+        const time = Date.now() * 0.004;
         targetPoint.set(Math.cos(time) * 20, 0, Math.sin(time) * 20);
         localSnake.update(delta, targetPoint, false);
     }
@@ -657,7 +634,8 @@ function animate() {
     // 7. Update Overhead 3D projected Player Name Tags & Speech/Emoji Bubbles
     nameTagManager.updatePositions();
 
-    composer.render();
+    // Direct Pure WebGL Render (0 Post-Processing Overhead!)
+    renderer.render(scene, camera);
 }
 
 animate();
