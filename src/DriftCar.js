@@ -20,8 +20,9 @@ export class DriftCar {
         this.currentSpeed = 32;   // Dynamic speed (coasts down to 0 when engine is OFF)
         
         // PURE, SMOOTH & ULTRA-RESPONSIVE MOUSE & A/D KEYBOARD CONTROLS
-        this.steerSpeed = 6.0;    // Smooth mouse steering responsiveness
-        this.gripFactor = 3.6;    // Balanced grip for natural drift sliding
+        this.steerSpeed = 6.0;        // Smooth mouse steering responsiveness
+        this.keySteerVelocity = 0.0;  // Damped keyboard steering velocity for buttery smooth turning
+        this.gripFactor = 3.6;        // Balanced grip for natural drift sliding
 
         // Q & E TWO-WHEEL STUNT DRIVING MECHANIC + JUICY SPRING ANIMATION
         this.isTwoWheelLeft = false;  // Q Key
@@ -145,7 +146,7 @@ export class DriftCar {
 
         // POP & BOUNCE IMPULSE TRIGGER WHEN PRESSING OR RELEASING Q / E!
         if (this.isTwoWheeling && !this.wasTwoWheeling) {
-            this.rollVelocity += this.isTwoWheelLeft ? -3.5 : 3.5;
+            this.rollVelocity += this.isTwoWheelLeft ? 3.5 : -3.5;
             this.pitchVelocity -= 0.8;
         } else if (!this.isTwoWheeling && this.wasTwoWheeling) {
             this.rollVelocity += this.currentRoll * 2.0;
@@ -157,12 +158,14 @@ export class DriftCar {
         const targetSpeed = isEngineOn ? this.baseSpeed : 0.0;
         this.currentSpeed += (targetSpeed - this.currentSpeed) * Math.min(1.0, 4.0 * delta);
 
-        // 2. A & D KEYBOARD STEERING + SMOOTH MOUSE STEERING
-        if (steerDir !== 0) {
-            // Keyboard A / D steering input
-            this.heading += steerDir * 3.6 * delta;
+        // 2. BUTTERY SMOOTH A & D KEYBOARD STEERING (With Damped Steering Velocity)
+        const targetSteerVel = steerDir * 2.2; // Smooth 2.2 rad/sec turning speed limit
+        this.keySteerVelocity += (targetSteerVel - this.keySteerVelocity) * Math.min(1.0, 7.5 * delta);
+
+        if (Math.abs(this.keySteerVelocity) > 0.05) {
+            this.heading += this.keySteerVelocity * delta;
         } else if (targetPoint && this.currentSpeed > 0.5) {
-            // Mouse target steering
+            // Mouse target steering when keyboard is not active
             const dx = targetPoint.x - this.position.x;
             const dz = targetPoint.z - this.position.z;
             const targetAngle = Math.atan2(dx, dz);
@@ -215,7 +218,7 @@ export class DriftCar {
         this.group.position.set(this.position.x, 0, this.position.z);
         this.group.rotation.y = this.heading;
 
-        // 9. DAMPED SPRING TILT PHYSICS (JUICY ANIMATED POP & LANDING BOUNCE)
+        // 9. DAMPED SPRING TILT PHYSICS
         let targetRoll = Math.max(-0.35, Math.min(0.35, velDiff * 0.45));
         let targetPitch = Math.min(0.12, Math.abs(velDiff) * 0.15);
 
@@ -305,6 +308,7 @@ export class DriftCar {
         this.isTwoWheeling = false;
         this.wasTwoWheeling = false;
         this.currentSpeed = this.baseSpeed;
+        this.keySteerVelocity = 0.0;
         this.currentDriftScore = 0;
         this.totalDriftScore = 0;
         this.driftCombo = 1;
