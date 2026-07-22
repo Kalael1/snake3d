@@ -8,13 +8,12 @@ export class Snake {
         this.skinId = 'classic';
         this.activeSkin = getSkinById(this.skinId);
 
-        // Instant & Butter Smooth Speed & Turning (Slither.io Physics)
-        this.speed = 22;
-        this.boostSpeed = 38;
-        this.turnSpeed = 8.5; // High responsiveness for 0 lag turning
+        // Smooth & Responsive Speed Parameters
+        this.speed = 20;
+        this.boostSpeed = 34;
+        this.turnSpeed = 6.0; // Smooth natural turn speed
 
         this.currentAngle = 0;
-        this.targetAngle = 0;
 
         // Dimensions
         this.headRadius = 1.2;
@@ -167,9 +166,13 @@ export class Snake {
         }
     }
 
-    // Direct Instant Angle Rotation (0 Lag Slither.io Physics)
-    update(delta, targetAngle, isBoosting) {
+    // Smooth & Natural World Target Point Mouse Follow Controls
+    update(delta, targetPoint, isBoosting) {
         const head = this.segments[0];
+
+        const dx = targetPoint.x - head.position.x;
+        const dz = targetPoint.z - head.position.z;
+        const targetAngle = Math.atan2(dx, dz);
 
         let diff = targetAngle - this.currentAngle;
         while (diff < -Math.PI) diff += Math.PI * 2;
@@ -219,7 +222,6 @@ export class Snake {
         }
         this.segments[0].position.set(0, this.headRadius, 0);
         this.currentAngle = 0;
-        this.targetAngle = 0;
 
         for (let i = 1; i <= 8; i++) {
             this.addSegment(0, -i * this.segmentSpacing);
