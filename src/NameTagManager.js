@@ -4,7 +4,8 @@ export class NameTagManager {
     constructor(camera, containerElement) {
         this.camera = camera;
         this.container = containerElement;
-        this.tags = {}; // { socketId: { element, bubbleElement, bubbleTimeout } }
+        this.tags = {}; // { socketId: { tagEl, bubbleEl, headPos, curX, curY, bubbleTimer } }
+        this.tempV = new THREE.Vector3();
     }
 
     createOrUpdateTag(id, name, skinIcon, headPos, isLocal = false) {
@@ -25,6 +26,8 @@ export class NameTagManager {
                 tagEl: tagDiv,
                 bubbleEl: bubbleDiv,
                 headPos: headPos.clone(),
+                curX: null,
+                curY: null,
                 bubbleTimer: null
             };
         } else {
@@ -48,32 +51,45 @@ export class NameTagManager {
     }
 
     updatePositions() {
-        const tempV = new THREE.Vector3();
+        const width = window.innerWidth;
+        const height = window.innerHeight;
 
         Object.keys(this.tags).forEach(id => {
             const item = this.tags[id];
             if (!item) return;
 
             // Project 3D head position (+ height offset) to 2D screen space
-            tempV.copy(item.headPos);
-            tempV.y += 2.8; // Position above snake head
-            tempV.project(this.camera);
+            this.tempV.copy(item.headPos);
+            this.tempV.y += 2.6;
+            this.tempV.project(this.camera);
 
-            // Check if behind camera
-            if (tempV.z > 1) {
+            // Hide if behind camera frustum
+            if (this.tempV.z > 1) {
                 item.tagEl.style.display = 'none';
                 item.bubbleEl.style.display = 'none';
                 return;
             }
 
-            const x = (tempV.x * 0.5 + 0.5) * window.innerWidth;
-            const y = (-(tempV.y * 0.5) + 0.5) * window.innerHeight;
+            const targetX = (this.tempV.x * 0.5 + 0.5) * width;
+            const targetY = (-(this.tempV.y * 0.5) + 0.5) * height;
 
-            item.tagEl.style.display = 'block';
-            item.tagEl.style.transform = `translate(-50%, -100%) translate(${x}px, ${y}px)`;
+            // Smooth Lerp Interpolation & Sub-Pixel Rounding to eliminate jittering
+            if (item.curX === null || item.curY === null) {
+                item.curX = targetX;
+                item.curY = targetY;
+            } else {
+                item.curX += (targetX - item.curX) * 0.5;
+                item.curY += (targetY - item.curY) * 0.5;
+            }
+
+            const roundedX = Math.round(item.curX);
+            const roundedY = Math.round(item.curY);
+
+            item.tagEl.style.display = 'flex';
+            item.tagEl.style.transform = `translate3d(${roundedX}px, ${roundedY}px, 0) translate(-50%, -100%)`;
 
             item.bubbleEl.style.display = 'block';
-            item.bubbleEl.style.transform = `translate(-50%, -100%) translate(${x}px, ${y - 32}px)`;
+            item.bubbleEl.style.transform = `translate3d(${roundedX}px, ${roundedY - 28}px, 0) translate(-50%, -100%)`;
         });
     }
 
