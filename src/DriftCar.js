@@ -15,9 +15,15 @@ export class DriftCar {
         this.position = new THREE.Vector3(0, 0, 0);
         this.heading = 0;         // Heading angle (radians)
         this.velocityAngle = 0;   // Velocity direction angle (radians)
-        this.speed = 30;          // Constant forward movement speed
-        this.steerSpeed = 5.5;    // Smooth steering responsiveness
-        this.gripFactor = 4.2;    // Grip level (lower = more drift slide)
+        this.baseSpeed = 28;      // Normal cruising speed
+        this.boostSpeed = 44;     // Nitro boost speed
+        this.currentSpeed = 28;
+        this.steerSpeed = 4.2;    // Smooth steering responsiveness
+        this.gripFactor = 3.8;    // Grip level (lower = more drift slide)
+
+        // Keyboard & Mouse steering state
+        this.keySteerInput = 0;   // -1 (Left), 0 (None), +1 (Right)
+        this.isBoosting = false;
 
         // Suspension & Handling Lean Physics
         this.currentRoll = 0;     // Side-to-side body roll (Z-axis)
@@ -143,52 +149,63 @@ export class DriftCar {
         this.loadCarModel(this.activeSkin.modelUrl);
     }
 
-    update(delta, targetPoint) {
-        // 1. Steering target angle from mouse
-        const dx = targetPoint.x - this.position.x;
-        const dz = targetPoint.z - this.position.z;
-        const targetAngle = Math.atan2(dx, dz);
+    update(delta, targetPoint, isBoosting = false, keySteerInput = 0) {
+        this.isBoosting = isBoosting;
+        const targetSpeed = this.isBoosting ? this.boostSpeed : this.baseSpeed;
+        this.currentSpeed += (targetSpeed - this.currentSpeed) * Math.min(1.0, 5.0 * delta);
 
-        // 2. Smooth heading rotation
-        let steerDiff = targetAngle - this.heading;
-        while (steerDiff < -Math.PI) steerDiff += Math.PI * 2;
-        while (steerDiff > Math.PI) steerDiff -= Math.PI * 2;
-        this.heading += steerDiff * Math.min(1.0, this.steerSpeed * delta);
+        // 1. DUAL STEERING ENGINE (KEYBOARD PRIORITY + MOUSE DEADZONE)
+        if (keySteerInput !== 0) {
+            // Keyboard A/D or Left/Right Arrow steering (Zero spinning!)
+            this.heading += keySteerInput * this.steerSpeed * 0.7 * delta;
+        } else if (targetPoint) {
+            // Mouse steering with 14.0 unit Deadzone threshold to stop infinite spinning!
+            const dx = targetPoint.x - this.position.x;
+            const dz = targetPoint.z - this.position.z;
+            const dist = Math.sqrt(dx * dx + dz * dz);
 
-        // 3. Velocity direction with drift lag
+            if (dist > 14.0) { // Only steer if cursor is further than 14 units from car!
+                const targetAngle = Math.atan2(dx, dz);
+                let steerDiff = targetAngle - this.heading;
+                while (steerDiff < -Math.PI) steerDiff += Math.PI * 2;
+                while (steerDiff > Math.PI) steerDiff -= Math.PI * 2;
+
+                this.heading += steerDiff * Math.min(1.0, this.steerSpeed * delta);
+            }
+        }
+
+        // 2. Velocity direction with realistic drift lag
         let velDiff = this.heading - this.velocityAngle;
         while (velDiff < -Math.PI) velDiff += Math.PI * 2;
         while (velDiff > Math.PI) velDiff -= Math.PI * 2;
         this.velocityAngle += velDiff * this.gripFactor * delta;
 
-        // 4. Slip angle (drift magnitude)
+        // 3. Slip angle (drift magnitude)
         this.slipAngle = Math.abs(velDiff) * (180 / Math.PI);
         this.currentAngle = this.heading;
 
-        // 5. Position update
-        this.position.x += Math.sin(this.velocityAngle) * this.speed * delta;
-        this.position.z += Math.cos(this.velocityAngle) * this.speed * delta;
+        // 4. Position update
+        this.position.x += Math.sin(this.velocityAngle) * this.currentSpeed * delta;
+        this.position.z += Math.cos(this.velocityAngle) * this.currentSpeed * delta;
 
-        // 6. Drift score update
+        // 5. Drift score update
         this.updateDriftScore(delta);
 
-        // 7. Group position & heading rotation
+        // 6. Group position & heading rotation
         this.group.position.set(this.position.x, 0, this.position.z);
         this.group.rotation.y = this.heading;
 
-        // 8. REALISTIC HANDLING & SUSPENSION TILT MECHANIC (Roll & Pitch)
-        // Target Body Roll (leaning outwards/inwards based on centrifugal drift force)
+        // 7. REALISTIC HANDLING & SUSPENSION TILT MECHANIC (Roll & Pitch)
         const targetRoll = Math.max(-0.35, Math.min(0.35, velDiff * 0.45));
-        const targetPitch = Math.min(0.12, Math.abs(velDiff) * 0.15); // Nose dips slightly during sharp turns
+        const targetPitch = Math.min(0.12, Math.abs(velDiff) * 0.15);
 
-        // Smooth spring lerp for suspension feel
         this.currentRoll += (targetRoll - this.currentRoll) * Math.min(1.0, 12.0 * delta);
         this.currentPitch += (targetPitch - this.currentPitch) * Math.min(1.0, 10.0 * delta);
 
         this.group.rotation.z = -this.currentRoll;
         this.group.rotation.x = this.currentPitch;
 
-        // 9. Tire marks during drift
+        // 8. Tire marks during drift
         this.markTimer += delta;
         if (this.isDrifting && this.markTimer > 0.03) {
             this.markTimer = 0;
@@ -264,6 +281,7 @@ export class DriftCar {
         this.driftTimer = 0;
         this.currentRoll = 0;
         this.currentPitch = 0;
+        this.currentSpeed = this.baseSpeed;
         this.group.position.set(this.position.x, 0, this.position.z);
         this.group.rotation.set(0, this.heading, 0);
     }

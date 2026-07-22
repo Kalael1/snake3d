@@ -247,14 +247,18 @@ window.addEventListener('touchend', (e) => {
         joystickKnob.style.transform = 'translate(-50%, -50%)';
         initialPinchDist = null;
     }
-}, { passive: true });
-
-// Hide mobile boost button (no boost in drift game)
-if (mobileBoostBtn) mobileBoostBtn.style.display = 'none';
+// Keyboard Steering & Nitro Boost State
+const keysPressed = {};
 
 window.addEventListener('keydown', (e) => {
     if (document.activeElement === chatInput || document.activeElement === mobileChatInput) return;
+    keysPressed[e.code] = true;
     if (e.code === 'Escape' && isGameRunning) openMenu('Oyun Duraklatıldı');
+});
+
+window.addEventListener('keyup', (e) => {
+    if (document.activeElement === chatInput || document.activeElement === mobileChatInput) return;
+    keysPressed[e.code] = false;
 });
 
 window.addEventListener('resize', () => {
@@ -373,10 +377,15 @@ function animate() {
     if (isGameRunning) {
         // 1. Raycast for mouse target
         raycaster.setFromCamera(mouse, camera);
-        raycaster.ray.intersectPlane(groundPlane, targetPoint);
+        // Compute keyboard steering & nitro boost
+        let keySteerInput = 0;
+        if (keysPressed['KeyA'] || keysPressed['ArrowLeft']) keySteerInput -= 1;
+        if (keysPressed['KeyD'] || keysPressed['ArrowRight']) keySteerInput += 1;
+
+        const isBoosting = !!(keysPressed['Space'] || keysPressed['ShiftLeft'] || keysPressed['ShiftRight'] || keysPressed['KeyW'] || keysPressed['ArrowUp']);
 
         // 2. Update local car physics
-        localCar.update(delta, targetPoint);
+        localCar.update(delta, targetPoint, isBoosting, keySteerInput);
         const headPos = localCar.getHeadPosition();
         const driftScore = localCar.getScore();
 
