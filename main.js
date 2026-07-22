@@ -269,8 +269,6 @@ window.addEventListener('touchend', (e) => {
 }, { passive: true });
 
 let isTPSMode = false;
-let currentZoom = 1.0;
-let targetZoom = 1.0;
 const keysPressed = {};
 
 window.addEventListener('wheel', (e) => {
