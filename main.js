@@ -1,8 +1,15 @@
 import * as THREE from 'three';
 import { io } from 'socket.io-client';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+
 import { Arena } from './src/Arena.js';
 import { Snake } from './src/Snake.js';
 import { OtherSnake } from './src/OtherSnake.js';
+import { AudioManager } from './src/AudioManager.js';
+import { ParticleSystem } from './src/ParticleSystem.js';
 
 // Setup Socket.io Client
 const socket = io();
@@ -18,10 +25,28 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
 document.getElementById('app').appendChild(renderer.domElement);
 
+// Post-Processing Pipeline (Unreal Bloom Glow)
+const composer = new EffectComposer(renderer);
+const renderPass = new RenderPass(scene, camera);
+composer.addPass(renderPass);
+
+const bloomPass = new UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    0.55, // Strength of glow
+    0.4,  // Radius
+    0.82  // Threshold
+);
+composer.addPass(bloomPass);
+
+const outputPass = new OutputPass();
+composer.addPass(outputPass);
+
 // Lighting
-const hemiLight = new THREE.HemisphereLight(0xffffff, 0x94a3b8, 0.8);
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x94a3b8, 0.85);
 scene.add(hemiLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.4);
@@ -36,6 +61,10 @@ dirLight.shadow.camera.right = 400;
 dirLight.shadow.camera.top = 400;
 dirLight.shadow.camera.bottom = -400;
 scene.add(dirLight);
+
+// Audio & Particles
+const audioManager = new AudioManager();
+const particleSystem = new ParticleSystem(scene);
 
 // Game Entities
 const arenaSize = 500;
@@ -68,19 +97,12 @@ const startBtn = document.getElementById('start-btn');
 const overlayDesc = document.getElementById('overlay-desc');
 const playerNameInput = document.getElementById('player-name');
 const lbList = document.getElementById('lb-list');
+const soundBtn = document.getElementById('sound-btn');
 
-// Food rendering materials & geometries
-const foodColors = [0xff0055, 0x00ffcc, 0xffff00, 0xaa00ff, 0xff8800, 0x00ffaa];
-const smallFoodGeo = new THREE.DodecahedronGeometry(0.55, 0); // Small ground pellet
-const bigFoodGeo = new THREE.DodecahedronGeometry(1.2, 0); // Big dead player drop
-
-const foodMaterials = foodColors.map(color => new THREE.MeshStandardMaterial({
-    color: color,
-    emissive: color,
-    emissiveIntensity: 1.0,
-    roughness: 0.1,
-    metalness: 0.9
-}));
+soundBtn.addEventListener('click', () => {
+    const muted = audioManager.toggleMute();
+    soundBtn.innerText = muted ? '🔇' : '🔊';
+});
 
 // Mouse tracking & Raycasting
 const mouse = new THREE.Vector2();
@@ -116,7 +138,21 @@ window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight);
 });
+
+// Food rendering materials & geometries
+const foodColors = [0xff0055, 0x00ffcc, 0xffff00, 0xaa00ff, 0xff8800, 0x00ffaa];
+const smallFoodGeo = new THREE.DodecahedronGeometry(0.55, 0);
+const bigFoodGeo = new THREE.DodecahedronGeometry(1.2, 0);
+
+const foodMaterials = foodColors.map(color => new THREE.MeshStandardMaterial({
+    color: color,
+    emissive: color,
+    emissiveIntensity: 1.2,
+    roughness: 0.1,
+    metalness: 0.9
+}));
 
 // SOCKET EVENTS
 socket.on('init', (data) => {
@@ -177,6 +213,11 @@ socket.on('gameState', (state) => {
 socket.on('gameOver', (data) => {
     isGameRunning = false;
     isBoosting = false;
+
+    // Trigger death explosion SFX & Particles
+    audioManager.playDeath();
+    particleSystem.createDeathExplosion(localSnake.getHeadPosition());
+
     finalScoreElement.innerText = scoreElement.innerText;
     finalScoreBox.classList.remove('hidden');
     overlayDesc.innerText = data.reason || 'Oyun bitti!';
@@ -244,6 +285,7 @@ function openMenu(reasonText) {
 }
 
 function startGame() {
+    audioManager.init();
     const playerName = playerNameInput.value.trim() || 'YılanOyuncusu';
     currentScore = 0;
     scoreElement.innerText = '0';
@@ -269,6 +311,9 @@ function animate() {
         food.position.y = 0.8 + Math.sin(time + food.position.x) * 0.2;
     });
 
+    // Update 3D Particles
+    particleSystem.update(delta);
+
     if (isGameRunning) {
         // 1. Target Point via Raycast
         raycaster.setFromCamera(mouse, camera);
@@ -277,7 +322,13 @@ function animate() {
         // 2. Local Snake Physics Update
         localSnake.update(delta, targetPoint, isBoosting);
 
-        // 3. Head Collision Eating Check with Authentic Snake.io Mass System
+        // Boost Sound & Tail Thruster Particles
+        if (isBoosting) {
+            audioManager.playBoost();
+            particleSystem.createBoostParticle(localSnake.getHeadPosition(), localSnake.currentAngle);
+        }
+
+        // 3. Head Collision Eating Check & Particle / Audio Effects
         const headPos = localSnake.getHeadPosition();
         const foodKeys = Object.keys(foodMeshes);
         
@@ -293,19 +344,20 @@ function animate() {
                 if (dist < 2.8) {
                     localEatenFoods.add(foodId);
 
-                    const gainedVal = foodMesh.userData.foodValue || 2;
+                    // Play Eating SFX & Sparkle Particles
+                    audioManager.playEat();
+                    particleSystem.createEatBurst(foodMesh.position);
 
-                    // Remove food mesh locally immediately
+                    // Remove food mesh
                     removeFoodMesh(foodId);
 
-                    // Add mass/score
+                    // Add mass/score & update growth
+                    const gainedVal = foodMesh.userData.foodValue || 2;
                     currentScore += gainedVal;
                     scoreElement.innerText = currentScore;
-
-                    // Update authentic Snake.io segment growth threshold
                     localSnake.updateGrowth(currentScore);
 
-                    // Emit to server to update score & sync globally
+                    // Emit to server
                     socket.emit('eatFood', { foodId: foodId });
                     break;
                 }
@@ -346,7 +398,8 @@ function animate() {
     camera.position.z += (camTargetZ - camera.position.z) * 0.1;
     camera.lookAt(headPos.x, headPos.y, headPos.z - 2);
 
-    renderer.render(scene, camera);
+    // Render through Post-Processing Composer (Bloom Glow Effect)
+    composer.render();
 }
 
 animate();
