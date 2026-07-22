@@ -14,45 +14,35 @@ export class Arena {
 
         // Dark asphalt floor
         const floorGeo = new THREE.PlaneGeometry(this.size, this.size);
-        const floorMat = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
+        const floorMat = new THREE.MeshLambertMaterial({ color: 0x1e222a });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
         floor.position.y = 0;
         this.scene.add(floor);
 
-        // Road lane markings (dashed white lines)
-        const lineGeo = new THREE.PlaneGeometry(0.3, this.size);
-        const lineMat = new THREE.MeshBasicMaterial({ color: 0x666666 });
-
-        for (let i = -200; i <= 200; i += 50) {
-            const vLine = new THREE.Mesh(lineGeo, lineMat);
-            vLine.rotation.x = -Math.PI / 2;
-            vLine.position.set(i, 0.01, 0);
-            this.scene.add(vLine);
-
-            const hLine = new THREE.Mesh(new THREE.PlaneGeometry(this.size, 0.3), lineMat);
-            hLine.rotation.x = -Math.PI / 2;
-            hLine.position.set(0, 0.01, i);
-            this.scene.add(hLine);
-        }
+        // ================= 3D CITY ROADS & STREET MARKINGS =================
+        this.createCityRoads();
 
         // Center Drift Roundabout
-        const circleOuterGeo = new THREE.RingGeometry(16, 20, 48);
+        const circleOuterGeo = new THREE.RingGeometry(16, 21, 48);
         const circleOuterMat = new THREE.MeshBasicMaterial({ color: 0xffa500, side: THREE.DoubleSide });
         const circleOuter = new THREE.Mesh(circleOuterGeo, circleOuterMat);
         circleOuter.rotation.x = -Math.PI / 2;
-        circleOuter.position.y = 0.02;
+        circleOuter.position.y = 0.025;
         this.scene.add(circleOuter);
 
         const circleInnerGeo = new THREE.CircleGeometry(16, 48);
-        const circleInnerMat = new THREE.MeshBasicMaterial({ color: 0x222222, side: THREE.DoubleSide });
+        const circleInnerMat = new THREE.MeshBasicMaterial({ color: 0x111622, side: THREE.DoubleSide });
         const circleInner = new THREE.Mesh(circleInnerGeo, circleInnerMat);
         circleInner.rotation.x = -Math.PI / 2;
-        circleInner.position.y = 0.015;
+        circleInner.position.y = 0.02;
         this.scene.add(circleInner);
 
+        // ================= 3D CITY BUILDINGS & SKYSCRAPERS =================
+        this.createCityBuildings();
+
         // Neon boundary walls
-        const wallMat = new THREE.MeshBasicMaterial({ color: 0xff0044 });
+        const wallMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
         const wallConfigs = [
             { size: [this.size, this.wallHeight, 1.5], pos: [0, this.wallHeight / 2, -halfSize] },
             { size: [this.size, this.wallHeight, 1.5], pos: [0, this.wallHeight / 2, halfSize] },
@@ -68,13 +58,13 @@ export class Arena {
         });
 
         // Corner neon pillars
-        const pillarGeo = new THREE.CylinderGeometry(2, 2, this.wallHeight + 4, 8);
-        const pillarMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
+        const pillarGeo = new THREE.CylinderGeometry(2.5, 2.5, this.wallHeight + 6, 8);
+        const pillarMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff });
         const corners = [
-            [-halfSize, (this.wallHeight + 4) / 2, -halfSize],
-            [halfSize, (this.wallHeight + 4) / 2, -halfSize],
-            [-halfSize, (this.wallHeight + 4) / 2, halfSize],
-            [halfSize, (this.wallHeight + 4) / 2, halfSize]
+            [-halfSize, (this.wallHeight + 6) / 2, -halfSize],
+            [halfSize, (this.wallHeight + 6) / 2, -halfSize],
+            [-halfSize, (this.wallHeight + 6) / 2, halfSize],
+            [halfSize, (this.wallHeight + 6) / 2, halfSize]
         ];
         corners.forEach(pos => {
             const pillar = new THREE.Mesh(pillarGeo, pillarMat);
@@ -84,6 +74,135 @@ export class Arena {
 
         // ================= TRAFFIC CONES (KUKALAR) =================
         this.createTrafficCones();
+    }
+
+    createCityRoads() {
+        // Main City Avenues (Asphalt Strips)
+        const roadMat = new THREE.MeshLambertMaterial({ color: 0x282c34 });
+        
+        // Double Yellow Center Lines
+        const yellowLineMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+        const whiteLineMat = new THREE.MeshBasicMaterial({ color: 0xe2e8f0 });
+
+        // City Road Grid Layout
+        const roadPositions = [-120, 0, 120];
+
+        roadPositions.forEach(offset => {
+            // Vertical City Avenues
+            const vRoad = new THREE.Mesh(new THREE.PlaneGeometry(28, this.size), roadMat);
+            vRoad.rotation.x = -Math.PI / 2;
+            vRoad.position.set(offset, 0.01, 0);
+            this.scene.add(vRoad);
+
+            // Double Yellow Center Line (Vertical)
+            const vYellow1 = new THREE.Mesh(new THREE.PlaneGeometry(0.35, this.size), yellowLineMat);
+            vYellow1.rotation.x = -Math.PI / 2;
+            vYellow1.position.set(offset - 0.3, 0.02, 0);
+            this.scene.add(vYellow1);
+
+            const vYellow2 = new THREE.Mesh(new THREE.PlaneGeometry(0.35, this.size), yellowLineMat);
+            vYellow2.rotation.x = -Math.PI / 2;
+            vYellow2.position.set(offset + 0.3, 0.02, 0);
+            this.scene.add(vYellow2);
+
+            // Horizontal City Avenues
+            const hRoad = new THREE.Mesh(new THREE.PlaneGeometry(this.size, 28), roadMat);
+            hRoad.rotation.x = -Math.PI / 2;
+            hRoad.position.set(0, 0.01, offset);
+            this.scene.add(hRoad);
+
+            // Double Yellow Center Line (Horizontal)
+            const hYellow1 = new THREE.Mesh(new THREE.PlaneGeometry(this.size, 0.35), yellowLineMat);
+            hYellow1.rotation.x = -Math.PI / 2;
+            hYellow1.position.set(0, 0.02, offset - 0.3);
+            this.scene.add(hYellow1);
+
+            const hYellow2 = new THREE.Mesh(new THREE.PlaneGeometry(this.size, 0.35), yellowLineMat);
+            hYellow2.rotation.x = -Math.PI / 2;
+            hYellow2.position.set(0, 0.02, offset + 0.3);
+            this.scene.add(hYellow2);
+        });
+
+        // Zebra Crossings (Pedestrian Crosswalks) at intersections
+        const zebraStripGeo = new THREE.PlaneGeometry(1.2, 8.0);
+
+        roadPositions.forEach(x => {
+            roadPositions.forEach(z => {
+                if (x === 0 && z === 0) return; // Skip roundabout center
+
+                // Crosswalks around intersection
+                for (let i = -10; i <= 10; i += 2.5) {
+                    // North crosswalk
+                    const zNorth = new THREE.Mesh(zebraStripGeo, whiteLineMat);
+                    zNorth.rotation.x = -Math.PI / 2;
+                    zNorth.position.set(x + i * 0.7, 0.022, z - 16);
+                    this.scene.add(zNorth);
+
+                    // South crosswalk
+                    const zSouth = new THREE.Mesh(zebraStripGeo, whiteLineMat);
+                    zSouth.rotation.x = -Math.PI / 2;
+                    zSouth.position.set(x + i * 0.7, 0.022, z + 16);
+                    this.scene.add(zSouth);
+                }
+            });
+        });
+    }
+
+    createCityBuildings() {
+        const buildingColors = [0x0f172a, 0x1e293b, 0x334155, 0x1e1b4b];
+        const neonTrimColors = [0x00f3ff, 0xff0055, 0xf59e0b, 0x10b981];
+
+        const windowMat = new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.85 });
+
+        // Outer City Perimeter Skyscrapers & City Block Towers
+        const buildingLocations = [];
+
+        // Outer Perimeter Sky-scraping Towers
+        for (let i = -210; i <= 210; i += 60) {
+            buildingLocations.push({ x: i, z: -225, w: 45, d: 45, h: 30 + Math.random() * 35 });
+            buildingLocations.push({ x: i, z: 225, w: 45, d: 45, h: 30 + Math.random() * 35 });
+            buildingLocations.push({ x: -225, z: i, w: 45, d: 45, h: 30 + Math.random() * 35 });
+            buildingLocations.push({ x: 225, z: i, w: 45, d: 45, h: 30 + Math.random() * 35 });
+        }
+
+        // Inner City Block Buildings (Corner plazas)
+        const innerBlocks = [-170, -60, 60, 170];
+        innerBlocks.forEach(bx => {
+            innerBlocks.forEach(bz => {
+                if (Math.abs(bx) === 60 && Math.abs(bz) === 60) return; // Keep central drift arena open!
+                buildingLocations.push({ x: bx, z: bz, w: 38, d: 38, h: 20 + Math.random() * 25 });
+            });
+        });
+
+        buildingLocations.forEach((b, idx) => {
+            const bMat = new THREE.MeshLambertMaterial({ color: buildingColors[idx % buildingColors.length] });
+            const bGeo = new THREE.BoxGeometry(b.w, b.h, b.d);
+            const bMesh = new THREE.Mesh(bGeo, bMat);
+            bMesh.position.set(b.x, b.h / 2, b.z);
+            this.scene.add(bMesh);
+
+            // Glowing Neon Roof Trim
+            const trimMat = new THREE.MeshBasicMaterial({ color: neonTrimColors[idx % neonTrimColors.length] });
+            const trimGeo = new THREE.BoxGeometry(b.w + 0.8, 0.8, b.d + 0.8);
+            const trimMesh = new THREE.Mesh(trimGeo, trimMat);
+            trimMesh.position.set(b.x, b.h + 0.4, b.z);
+            this.scene.add(trimMesh);
+
+            // Illuminated Window Rows
+            const winRowGeo = new THREE.PlaneGeometry(b.w * 0.7, 0.8);
+            for (let y = 4; y < b.h - 2; y += 4) {
+                if (Math.random() > 0.25) {
+                    const winFront = new THREE.Mesh(winRowGeo, windowMat);
+                    winFront.position.set(b.x, y, b.z + b.d / 2 + 0.05);
+                    this.scene.add(winFront);
+
+                    const winBack = new THREE.Mesh(winRowGeo, windowMat);
+                    winBack.rotation.y = Math.PI;
+                    winBack.position.set(b.x, y, b.z - b.d / 2 - 0.05);
+                    this.scene.add(winBack);
+                }
+            }
+        });
     }
 
     createTrafficCones() {
@@ -100,13 +219,13 @@ export class Arena {
             positions.push({ x: Math.cos(angle) * ringRadius, z: Math.sin(angle) * ringRadius });
         }
 
-        // 2. Slalom cone courses (Straight slalom lines)
+        // 2. Slalom cone courses (Straight slalom lines along avenues)
         for (let i = -160; i <= 160; i += 40) {
             if (Math.abs(i) > 40) {
-                positions.push({ x: i, z: -80 });
-                positions.push({ x: i, z: 80 });
-                positions.push({ x: -80, z: i });
-                positions.push({ x: 80, z: i });
+                positions.push({ x: i, z: -120 });
+                positions.push({ x: i, z: 120 });
+                positions.push({ x: -120, z: i });
+                positions.push({ x: 120, z: i });
             }
         }
 
@@ -148,18 +267,16 @@ export class Arena {
 
     updateCones(delta, carPos) {
         this.cones.forEach(c => {
-            // Check collision with car
             if (!c.isKnockedOver) {
                 const dx = carPos.x - c.x;
                 const dz = carPos.z - c.z;
-                if (dx * dx + dz * dz < 2.8) { // Cone hit!
+                if (dx * dx + dz * dz < 2.8) {
                     c.isKnockedOver = true;
                     c.vx = (c.x - carPos.x) * 8.0;
                     c.vz = (c.z - carPos.z) * 8.0;
                     c.rotVx = Math.random() * 10 - 5;
                 }
             } else {
-                // Animate knocked over cone sliding & tumbling
                 if (Math.abs(c.vx) > 0.1 || Math.abs(c.vz) > 0.1) {
                     c.x += c.vx * delta;
                     c.z += c.vz * delta;
