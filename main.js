@@ -269,7 +269,14 @@ window.addEventListener('touchend', (e) => {
 }, { passive: true });
 
 let isTPSMode = false;
+let currentZoom = 1.0;
+let targetZoom = 1.0;
 const keysPressed = {};
+
+window.addEventListener('wheel', (e) => {
+    targetZoom += e.deltaY * 0.0015;
+    targetZoom = Math.max(0.4, Math.min(2.5, targetZoom));
+}, { passive: true });
 
 window.addEventListener('keydown', (e) => {
     if (document.activeElement === chatInput || document.activeElement === mobileChatInput) return;
@@ -517,22 +524,25 @@ function animate() {
         localCar.update(delta, targetPoint);
     }
 
-    // Camera follow (TPS Chase Cam vs Top-Down Cam)
+    // Camera follow (TPS Chase Cam with Zoom vs Top-Down Cam)
     const hp = localCar.getHeadPosition();
+    currentZoom += (targetZoom - currentZoom) * 0.1;
 
     if (isTPSMode) {
-        // TPS Mode (Third-Person Follow Camera behind car)
-        const camX = hp.x - Math.sin(localCar.heading) * 14;
-        const camZ = hp.z - Math.cos(localCar.heading) * 14;
-        const camY = 5.5;
+        // TPS Chase Camera with Zoom In / Zoom Out Support!
+        const tpsDist = 14 * currentZoom;
+        const tpsHeight = 5.5 * currentZoom;
+
+        const camX = hp.x - Math.sin(localCar.heading) * tpsDist;
+        const camZ = hp.z - Math.cos(localCar.heading) * tpsDist;
+        const camY = tpsHeight;
 
         camera.position.x += (camX - camera.position.x) * 0.15;
         camera.position.y += (camY - camera.position.y) * 0.15;
         camera.position.z += (camZ - camera.position.z) * 0.15;
-        camera.lookAt(hp.x + Math.sin(localCar.heading) * 8, 2.0, hp.z + Math.cos(localCar.heading) * 8);
+        camera.lookAt(hp.x + Math.sin(localCar.heading) * (8 * currentZoom), 2.0 * currentZoom, hp.z + Math.cos(localCar.heading) * (8 * currentZoom));
     } else {
-        // Classic Top-Down Isometric Camera
-        currentZoom += (targetZoom - currentZoom) * 0.1;
+        // Classic Top-Down Isometric Camera with Zoom
         const camX = hp.x - Math.sin(localCar.heading) * 8 * currentZoom;
         const camZ = hp.z - Math.cos(localCar.heading) * 8 * currentZoom;
         const camY = 15 * currentZoom;
@@ -560,25 +570,79 @@ function updateMinimap() {
     ctx.fill();
 
     const hp = localCar.getHeadPosition();
-    const mapScale = 140 / arena.size;
+    const mapScale = 140 / arena.size; // ~0.28 scale factor
 
-    // Draw arena boundary
+    // 1. Draw Road Avenues on Minimap
+    ctx.fillStyle = '#1e293b';
+    const roadPositions = [-120, 0, 120];
+    const roadWidth = 28 * mapScale;
+
+    roadPositions.forEach(offset => {
+        const rx = 70 + offset * mapScale - roadWidth / 2;
+        ctx.fillRect(rx, 0, roadWidth, 140); // Vertical road
+
+        const rz = 70 + offset * mapScale - roadWidth / 2;
+        ctx.fillRect(0, rz, 140, roadWidth); // Horizontal road
+    });
+
+    // 2. Draw Central Roundabout
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(70, 70, 19 * mapScale, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 3. Draw Buildings on Minimap
+    ctx.fillStyle = '#334155';
+    ctx.strokeStyle = '#00f3ff';
+    ctx.lineWidth = 1;
+
+    arena.buildings.forEach(b => {
+        const bx = 70 + ((b.minX + b.maxX) / 2) * mapScale;
+        const bz = 70 + ((b.minZ + b.maxZ) / 2) * mapScale;
+        const bw = (b.maxX - b.minX - 2.4) * mapScale;
+        const bh = (b.maxZ - b.minZ - 2.4) * mapScale;
+
+        ctx.fillRect(bx - bw / 2, bz - bh / 2, bw, bh);
+        ctx.strokeRect(bx - bw / 2, bz - bh / 2, bw, bh);
+    });
+
+    // 4. Draw Arena Border
     ctx.strokeStyle = '#ff0055';
     ctx.lineWidth = 2;
     ctx.strokeRect(70 - 250 * mapScale, 70 - 250 * mapScale, 500 * mapScale, 500 * mapScale);
 
-    // Draw player icon (Cyan Arrow)
+    // 5. Draw Multiplayer Server Players (Red Arrow Icons)
+    currentPlayersList.forEach(p => {
+        if (!p || p.id === localSocketId) return;
+        const rx = 70 + (p.x || 0) * mapScale;
+        const rz = 70 + (p.z || 0) * mapScale;
+
+        ctx.save();
+        ctx.translate(rx, rz);
+        ctx.rotate(p.angle || 0);
+        ctx.fillStyle = '#ef4444'; // Red for enemy players
+        ctx.beginPath();
+        ctx.moveTo(0, -5);
+        ctx.lineTo(3.5, 4);
+        ctx.lineTo(-3.5, 4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+    });
+
+    // 6. Draw Local Player (Cyan Arrow Icon)
     const px = 70 + hp.x * mapScale;
     const pz = 70 + hp.z * mapScale;
 
     ctx.save();
     ctx.translate(px, pz);
     ctx.rotate(localCar.heading);
-    ctx.fillStyle = '#00f3ff';
+    ctx.fillStyle = '#00f3ff'; // Cyan for local player
     ctx.beginPath();
-    ctx.moveTo(0, -6);
-    ctx.lineTo(4, 5);
-    ctx.lineTo(-4, 5);
+    ctx.moveTo(0, -7);
+    ctx.lineTo(5, 5);
+    ctx.lineTo(-5, 5);
     ctx.closePath();
     ctx.fill();
     ctx.restore();
