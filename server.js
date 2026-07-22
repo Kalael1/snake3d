@@ -3,6 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -17,11 +18,17 @@ const io = new Server(httpServer, {
 });
 
 // Serve static built files from 'dist' directory
-app.use(express.static(join(__dirname, 'dist')));
+const distPath = join(__dirname, 'dist');
+app.use(express.static(distPath));
 
 // Fallback catch-all for SPA routing
 app.use((req, res) => {
-    res.sendFile(join(__dirname, 'dist', 'index.html'));
+    const indexPath = join(distPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    } else {
+        res.status(404).send("Build in progress or 'dist' folder not ready. Please refresh in a few seconds!");
+    }
 });
 
 // Game State
@@ -74,7 +81,6 @@ io.on('connection', (socket) => {
             length: 8
         };
 
-        // Initialize initial body segments
         for (let i = 1; i <= 8; i++) {
             players[socket.id].body.push({
                 x: spawnX,
@@ -124,24 +130,20 @@ const DELTA = 1 / TICK_RATE;
 setInterval(() => {
     const playerIds = Object.keys(players);
 
-    // 1. Update Each Player Movement
     playerIds.forEach(id => {
         const p = players[id];
         if (!p) return;
 
-        // Smooth angle turn
         let angleDiff = p.targetAngle - p.angle;
         while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
         p.angle += angleDiff * Math.min(1, 8 * DELTA);
 
-        // Move Head
         const speed = p.isBoosting ? BOOST_SPEED : BASE_SPEED;
         const moveDist = speed * DELTA;
         p.x += Math.sin(p.angle) * moveDist;
         p.z += Math.cos(p.angle) * moveDist;
 
-        // Update body segments following head
         let prevX = p.x;
         let prevZ = p.z;
         let prevAngle = p.angle;
@@ -165,7 +167,6 @@ setInterval(() => {
             prevAngle = seg.angle;
         }
 
-        // Boundary Check
         const limit = ARENA_SIZE / 2 - 2.0;
         if (Math.abs(p.x) > limit || Math.abs(p.z) > limit) {
             io.to(id).emit('gameOver', { reason: 'Harita sınırına çarptın!' });
@@ -173,7 +174,6 @@ setInterval(() => {
             return;
         }
 
-        // Check Food Collision
         for (let i = foods.length - 1; i >= 0; i--) {
             const f = foods[i];
             const dx = p.x - f.x;
@@ -190,7 +190,6 @@ setInterval(() => {
         }
     });
 
-    // 2. Snake vs Snake Collision
     const aliveIds = Object.keys(players);
     aliveIds.forEach(idA => {
         const pA = players[idA];
@@ -223,7 +222,6 @@ setInterval(() => {
         });
     });
 
-    // 3. Broadcast State
     io.emit('gameState', {
         players: players,
         foods: foods
