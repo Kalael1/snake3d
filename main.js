@@ -69,9 +69,11 @@ const overlayDesc = document.getElementById('overlay-desc');
 const playerNameInput = document.getElementById('player-name');
 const lbList = document.getElementById('lb-list');
 
-// Food rendering materials
+// Food rendering materials & geometries
 const foodColors = [0xff0055, 0x00ffcc, 0xffff00, 0xaa00ff, 0xff8800, 0x00ffaa];
-const foodGeo = new THREE.DodecahedronGeometry(0.8, 0);
+const smallFoodGeo = new THREE.DodecahedronGeometry(0.55, 0); // Small ground pellet
+const bigFoodGeo = new THREE.DodecahedronGeometry(1.2, 0); // Big dead player drop
+
 const foodMaterials = foodColors.map(color => new THREE.MeshStandardMaterial({
     color: color,
     emissive: color,
@@ -147,6 +149,7 @@ socket.on('gameState', (state) => {
         if (serverScore > currentScore) {
             currentScore = serverScore;
             scoreElement.innerText = currentScore;
+            localSnake.updateGrowth(currentScore);
         }
     }
 
@@ -192,10 +195,12 @@ function removeFoodMesh(foodId) {
 function addFoodMesh(f) {
     if (!foodMeshes[f.id] && !localEatenFoods.has(f.id)) {
         const mat = foodMaterials[Math.floor(Math.random() * foodMaterials.length)];
-        const mesh = new THREE.Mesh(foodGeo, mat);
+        const geo = f.isBig ? bigFoodGeo : smallFoodGeo;
+        const mesh = new THREE.Mesh(geo, mat);
         mesh.position.set(f.x, 0.8, f.z);
         mesh.castShadow = true;
         mesh.userData.rotSpeed = (Math.random() - 0.5) * 3;
+        mesh.userData.foodValue = f.value || 2;
         scene.add(mesh);
         foodMeshes[f.id] = mesh;
     }
@@ -204,14 +209,12 @@ function addFoodMesh(f) {
 function syncFoods(foodList) {
     const currentFoodIds = new Set(foodList.map(f => f.id));
 
-    // Remove missing foods
     Object.keys(foodMeshes).forEach(id => {
         if (!currentFoodIds.has(id)) {
             removeFoodMesh(id);
         }
     });
 
-    // Add new foods (skipping locally eaten ones)
     foodList.forEach(f => {
         addFoodMesh(f);
     });
@@ -274,7 +277,7 @@ function animate() {
         // 2. Local Snake Physics Update
         localSnake.update(delta, targetPoint, isBoosting);
 
-        // 3. Head Collision Eating Check
+        // 3. Head Collision Eating Check with Authentic Snake.io Mass System
         const headPos = localSnake.getHeadPosition();
         const foodKeys = Object.keys(foodMeshes);
         
@@ -287,19 +290,22 @@ function animate() {
                 const dz = headPos.z - foodMesh.position.z;
                 const dist = Math.sqrt(dx * dx + dz * dz);
 
-                // Precise Head Eating Radius (2.6 units)
-                if (dist < 2.6) {
+                if (dist < 2.8) {
                     localEatenFoods.add(foodId);
+
+                    const gainedVal = foodMesh.userData.foodValue || 2;
 
                     // Remove food mesh locally immediately
                     removeFoodMesh(foodId);
 
-                    // Instantly grow snake & update UI score
-                    localSnake.grow();
-                    currentScore += 10;
+                    // Add mass/score
+                    currentScore += gainedVal;
                     scoreElement.innerText = currentScore;
 
-                    // Emit to server to remove globally and spawn new food far away
+                    // Update authentic Snake.io segment growth threshold
+                    localSnake.updateGrowth(currentScore);
+
+                    // Emit to server to update score & sync globally
                     socket.emit('eatFood', { foodId: foodId });
                     break;
                 }

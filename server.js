@@ -37,13 +37,15 @@ const players = {};
 let foods = [];
 const foodColors = [0xff0055, 0x00ffcc, 0xffff00, 0xaa00ff, 0xff8800, 0x00ffaa];
 
-function spawnFood(id = null) {
+function spawnFood(id = null, value = 2, isBig = false) {
     const halfSize = (ARENA_SIZE / 2) - 10;
     return {
         id: id || 'food_' + Math.random().toString(36).substring(2, 9),
         x: (Math.random() - 0.5) * 2 * halfSize,
         z: (Math.random() - 0.5) * 2 * halfSize,
-        color: foodColors[Math.floor(Math.random() * foodColors.length)]
+        color: foodColors[Math.floor(Math.random() * foodColors.length)],
+        value: value,
+        isBig: isBig
     };
 }
 
@@ -109,7 +111,10 @@ io.on('connection', (socket) => {
 
         const idx = foods.findIndex(f => f.id === data.foodId);
         if (idx !== -1) {
-            player.score += 10;
+            const eaten = foods[idx];
+            const gainedScore = eaten.value || 2;
+            player.score += gainedScore;
+
             const newFood = spawnFood();
             foods.splice(idx, 1);
             foods.push(newFood);
@@ -129,7 +134,9 @@ io.on('connection', (socket) => {
                         id: 'food_' + Math.random().toString(36).substring(2, 9),
                         x: seg.x,
                         z: seg.z,
-                        color: foodColors[Math.floor(Math.random() * foodColors.length)]
+                        color: foodColors[Math.floor(Math.random() * foodColors.length)],
+                        value: 15, // Dead player remains give big +15 points!
+                        isBig: true
                     });
                 });
             }
@@ -144,7 +151,7 @@ const TICK_RATE = 30;
 setInterval(() => {
     const playerIds = Object.keys(players);
 
-    // 1. Boundary Check for Each Active Player
+    // 1. Boundary Check
     playerIds.forEach(id => {
         const p = players[id];
         if (!p) return;
@@ -179,7 +186,9 @@ setInterval(() => {
                                 id: 'food_' + Math.random().toString(36).substring(2, 9),
                                 x: seg.x,
                                 z: seg.z,
-                                color: foodColors[Math.floor(Math.random() * foodColors.length)]
+                                color: foodColors[Math.floor(Math.random() * foodColors.length)],
+                                value: 15,
+                                isBig: true
                             });
                         });
                     }

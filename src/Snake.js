@@ -15,6 +15,7 @@ export class Snake {
         this.segmentSpacing = 1.3;
 
         this.currentAngle = 0;
+        this.massPerSegment = 35; // Authentic Snake.io: 35 points required per 1 segment growth
 
         // Head Material - Vibrant Neon Green/Cyan
         this.headMat = new THREE.MeshStandardMaterial({
@@ -80,7 +81,7 @@ export class Snake {
             });
         }
 
-        // Initial body segments
+        // Initial 8 body segments
         for (let i = 0; i < 8; i++) {
             this.grow();
         }
@@ -103,6 +104,14 @@ export class Snake {
         
         this.scene.add(segment);
         this.segments.push(segment);
+    }
+
+    // Authentic Snake.io Mass Growth Scaling
+    updateGrowth(score) {
+        const targetSegments = 8 + Math.floor(score / this.massPerSegment);
+        while (this.segments.length < targetSegments) {
+            this.grow();
+        }
     }
 
     update(delta, targetPoint, isBoosting = false) {
@@ -147,7 +156,7 @@ export class Snake {
             this.history.pop();
         }
 
-        // 5. Update Body Segments with Smooth Lerp Interpolation (Fixes Jitter completely)
+        // 5. Update Body Segments with Smooth Lerp Interpolation
         let currentHistIdx = 0;
         let accumulatedDist = 0;
 
@@ -163,11 +172,9 @@ export class Snake {
                 if (accumulatedDist + segLen >= desiredDist) {
                     const t = segLen > 0 ? (desiredDist - accumulatedDist) / segLen : 0;
                     
-                    // Smooth position lerp
                     segment.position.lerpVectors(p1, p2, t);
                     segment.position.y = this.segmentRadius;
 
-                    // Smooth angle lerp
                     const angle1 = this.history[currentHistIdx].angle;
                     let angle2 = this.history[currentHistIdx + 1].angle;
                     
