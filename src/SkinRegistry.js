@@ -6,7 +6,7 @@ export const SKINS = [
         modelUrl: '/Cars/sport.glb',
         reqScore: 0,
         desc: 'Aerodinamik süper spor drift arabası',
-        rotationY: Math.PI / 2
+        rotationY: -Math.PI / 2
     },
     {
         id: 'sedan',
@@ -15,7 +15,7 @@ export const SKINS = [
         modelUrl: '/Cars/Sedan.glb',
         reqScore: 200,
         desc: 'Konforlu ve yüksek performanslı özel sedan',
-        rotationY: Math.PI / 2
+        rotationY: -Math.PI / 2
     },
     {
         id: 'sedan2',
@@ -24,7 +24,7 @@ export const SKINS = [
         modelUrl: '/Cars/Sedan2.glb',
         reqScore: 500,
         desc: 'Şehir içi agresif taksi drift aracı',
-        rotationY: Math.PI / 2
+        rotationY: -Math.PI / 2
     },
     {
         id: 'sedan3',
@@ -33,7 +33,7 @@ export const SKINS = [
         modelUrl: '/Cars/Sedan3.glb',
         reqScore: 1000,
         desc: 'Hızlı müdahale kolluk kuvveti devriye aracı',
-        rotationY: Math.PI / 2
+        rotationY: -Math.PI / 2
     },
     {
         id: 'suv',
@@ -42,7 +42,7 @@ export const SKINS = [
         modelUrl: '/Cars/SUV.glb',
         reqScore: 2000,
         desc: 'Ağır zırhlı ve güçlü 4x4 drift canavarı',
-        rotationY: Math.PI / 2
+        rotationY: -Math.PI / 2
     },
     {
         id: 'suv2',
@@ -51,7 +51,7 @@ export const SKINS = [
         modelUrl: '/Cars/suv2.glb',
         reqScore: 3500,
         desc: 'Karanlık titanyum gövdeli devasa SUV',
-        rotationY: Math.PI / 2
+        rotationY: -Math.PI / 2
     }
 ];
 
