@@ -10,7 +10,7 @@ import { Snake } from './src/Snake.js';
 import { OtherSnake } from './src/OtherSnake.js';
 import { AudioManager } from './src/AudioManager.js';
 import { ParticleSystem } from './src/ParticleSystem.js';
-import { SKINS, getSkinById } from './src/SkinRegistry.js';
+import { SKINS } from './src/SkinRegistry.js';
 import { ProgressionManager } from './src/ProgressionManager.js';
 import { NameTagManager } from './src/NameTagManager.js';
 
@@ -115,6 +115,9 @@ const skinProgressFill = document.getElementById('skin-progress-bar-fill');
 const chatInput = document.getElementById('chat-input');
 const sendChatBtn = document.getElementById('send-chat-btn');
 const chatMessages = document.getElementById('chat-messages');
+const mobileBoostBtn = document.getElementById('mobile-boost-btn');
+const virtualJoystick = document.getElementById('virtual-joystick');
+const joystickKnob = document.getElementById('joystick-knob');
 
 highScoreElement.innerText = progressionManager.highScore;
 
@@ -208,18 +211,16 @@ document.querySelectorAll('.emoji-btn').forEach(btn => {
 socket.on('chatReceived', (data) => {
     if (!data) return;
 
-    // 1. Add to Chatbox UI Log
     const msgDiv = document.createElement('div');
     msgDiv.className = 'chat-msg';
     msgDiv.innerHTML = `<span class="sender">${data.name}:</span> ${data.text}`;
     chatMessages.appendChild(msgDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
-    // 2. Show Overhead Floating Speech / Emoji Bubble above 3D snake!
     nameTagManager.showBubble(data.id, data.text, data.isEmoji);
 });
 
-// Mouse tracking & Raycasting
+// MOUSE & TOUCH CONTROLS
 const mouse = new THREE.Vector2();
 const raycaster = new THREE.Raycaster();
 const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -228,6 +229,91 @@ const targetPoint = new THREE.Vector3(0, 0, 10);
 window.addEventListener('mousemove', (event) => {
     mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+});
+
+// MOBILE TOUCH & PINCH-TO-ZOOM CONTROLS
+let touchStartOrigin = { x: 0, y: 0 };
+let initialPinchDist = null;
+
+window.addEventListener('touchstart', (e) => {
+    if (!isGameRunning) return;
+
+    if (e.touches.length === 1) {
+        const touch = e.touches[0];
+        if (e.target.closest('#chat-container') || e.target.closest('#mobile-boost-btn') || e.target.closest('#sound-btn')) return;
+
+        touchStartOrigin = { x: touch.clientX, y: touch.clientY };
+        virtualJoystick.style.left = `${touch.clientX}px`;
+        virtualJoystick.style.top = `${touch.clientY}px`;
+        virtualJoystick.classList.remove('hidden');
+
+        mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+    } else if (e.touches.length === 2) {
+        // Pinch Zoom Start
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        initialPinchDist = Math.sqrt(dx * dx + dy * dy);
+    }
+}, { passive: true });
+
+window.addEventListener('touchmove', (e) => {
+    if (!isGameRunning) return;
+
+    if (e.touches.length === 1) {
+        const touch = e.touches[0];
+
+        mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+
+        // Joystick knob offset
+        const dx = touch.clientX - touchStartOrigin.x;
+        const dy = touch.clientY - touchStartOrigin.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const maxDist = 45;
+        const angle = Math.atan2(dy, dx);
+
+        const knobX = Math.cos(angle) * Math.min(dist, maxDist);
+        const knobY = Math.sin(angle) * Math.min(dist, maxDist);
+
+        joystickKnob.style.transform = `translate(-50%, -50%) translate(${knobX}px, ${knobY}px)`;
+    } else if (e.touches.length === 2 && initialPinchDist) {
+        // Pinch Zoom Update
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const currentDist = Math.sqrt(dx * dx + dy * dy);
+
+        const delta = (initialPinchDist - currentDist) * 0.005;
+        targetZoom += delta;
+        targetZoom = Math.max(0.35, Math.min(3.0, targetZoom));
+        initialPinchDist = currentDist;
+    }
+}, { passive: true });
+
+window.addEventListener('touchend', (e) => {
+    if (e.touches.length === 0) {
+        virtualJoystick.classList.add('hidden');
+        joystickKnob.style.transform = 'translate(-50%, -50%)';
+        initialPinchDist = null;
+    }
+}, { passive: true });
+
+// Dedicated Mobile Boost Button Triggers
+mobileBoostBtn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    setBoostState(true);
+});
+mobileBoostBtn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    setBoostState(false);
+});
+mobileBoostBtn.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    setBoostState(true);
+});
+mobileBoostBtn.addEventListener('mouseup', (e) => {
+    e.preventDefault();
+    setBoostState(false);
 });
 
 // Boost State Control
@@ -243,7 +329,7 @@ function setBoostState(state) {
 }
 
 window.addEventListener('mousedown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.closest('#mobile-boost-btn')) return;
     if (e.button === 0 && isGameRunning) setBoostState(true);
 });
 window.addEventListener('mouseup', (e) => {
@@ -325,7 +411,6 @@ socket.on('gameState', (state) => {
             }
         }
 
-        // Update Local Overhead 3D Name Tag
         nameTagManager.createOrUpdateTag(
             localSocketId,
             pData.name,
@@ -345,7 +430,6 @@ socket.on('gameState', (state) => {
             otherSnakes[id].update(playerData);
         }
 
-        // Update Remote Overhead 3D Name Tag
         const remoteSnake = otherSnakes[id];
         const remoteHeadPos = remoteSnake.segments[0] ? remoteSnake.segments[0].position : new THREE.Vector3(playerData.x, 1.2, playerData.z);
         const skinIcon = remoteSnake.activeSkin ? remoteSnake.activeSkin.icon : '🐍';
@@ -373,6 +457,7 @@ socket.on('gameState', (state) => {
 socket.on('gameOver', (data) => {
     isGameRunning = false;
     setBoostState(false);
+    virtualJoystick.classList.add('hidden');
 
     audioManager.playDeath();
     particleSystem.createDeathExplosion(localSnake.getHeadPosition());
@@ -440,6 +525,7 @@ function updateLeaderboard(serverPlayers) {
 function openMenu(reasonText) {
     isGameRunning = false;
     setBoostState(false);
+    virtualJoystick.classList.add('hidden');
     renderSkinGallery();
     finalScoreElement.innerText = currentScore;
     finalScoreBox.classList.remove('hidden');

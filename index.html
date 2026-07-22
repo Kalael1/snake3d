@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Snake.io 3D Multiplayer</title>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Outfit:wght@500;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./style.css">
@@ -13,6 +13,16 @@
 
     <!-- 3D Overhead Name Tags & Floating Emoji/Speech Bubbles Layer -->
     <div id="nametag-container"></div>
+
+    <!-- Mobile Virtual Joystick & Touch Controls -->
+    <div id="virtual-joystick" class="hidden">
+      <div id="joystick-ring">
+        <div id="joystick-knob"></div>
+      </div>
+    </div>
+
+    <!-- Mobile Touch Boost Button -->
+    <button id="mobile-boost-btn" class="mobile-only-btn">⚡ HIZLAN</button>
 
     <!-- HUD Layer -->
     <div id="ui-layer">
@@ -68,7 +78,7 @@
       </div>
 
       <div id="controls-hint">
-        <span>🎮 Fare: Yönlendir</span> • <span>⚡ Sol Tık: Hızlan</span> • <span>🔍 Tekerlek: Zoom</span> • <span>⏸️ ESC: Menü</span>
+        <span>🎮 Dokun / Fare: Yönlendir</span> • <span>⚡ Sol Tık / Buton: Hızlan</span> • <span>🔍 Çift Parmak: Zoom</span>
       </div>
     </div>
 

@@ -1,6 +1,9 @@
 * {
   box-sizing: border-box;
   user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  touch-action: none;
 }
 
 body, html {
@@ -27,6 +30,72 @@ canvas {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+/* MOBILE VIRTUAL JOYSTICK */
+#virtual-joystick {
+  position: absolute;
+  pointer-events: none;
+  z-index: 25;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.2s ease;
+}
+
+#virtual-joystick.hidden {
+  opacity: 0;
+  display: none;
+}
+
+#joystick-ring {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(6, 182, 212, 0.15);
+  border: 2px solid rgba(6, 182, 212, 0.5);
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+  position: relative;
+}
+
+#joystick-knob {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #06b6d4, #3b82f6);
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.6);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  will-change: transform;
+}
+
+/* MOBILE BOOST BUTTON */
+#mobile-boost-btn {
+  position: absolute;
+  bottom: 30px;
+  right: 30px;
+  z-index: 30;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #06b6d4, #fbbf24);
+  border: 3px solid rgba(255, 255, 255, 0.4);
+  color: #060611;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 0 8px 30px rgba(6, 182, 212, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+#mobile-boost-btn:active {
+  transform: scale(0.92);
+  box-shadow: 0 4px 15px rgba(6, 182, 212, 0.9);
 }
 
 /* 3D OVERHEAD NAMETAGS & SPEECH BUBBLES */
@@ -246,7 +315,7 @@ canvas {
 }
 
 #chat-messages {
-  max-height: 140px;
+  max-height: 120px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -293,7 +362,7 @@ canvas {
   font-size: 18px;
   padding: 4px 8px;
   cursor: pointer;
-  transition: transform 0.15 ease, border-color 0.15s ease;
+  transition: transform 0.15s ease, border-color 0.15s ease;
 }
 
 .emoji-btn:hover {
@@ -669,4 +738,57 @@ canvas {
 
 .play-icon {
   font-size: 16px;
+}
+
+/* MOBILE RESPONSIVE MEDIA QUERIES */
+@media (max-width: 768px) {
+  #ui-layer {
+    padding: 12px 14px;
+  }
+
+  .hud-pill {
+    padding: 6px 12px;
+  }
+  .hud-value {
+    font-size: 18px;
+  }
+
+  #leaderboard {
+    padding: 10px 14px;
+    min-width: 160px;
+    font-size: 11px;
+  }
+  .lb-header {
+    font-size: 11px;
+  }
+
+  #chat-container {
+    width: 220px;
+  }
+  #chat-messages {
+    max-height: 90px;
+    font-size: 11px;
+  }
+
+  #controls-hint {
+    font-size: 11px;
+    padding: 6px 14px;
+    gap: 6px;
+  }
+
+  .stylized-modal {
+    padding: 24px 20px;
+    border-radius: 24px;
+  }
+  .game-title {
+    font-size: 30px;
+  }
+
+  #mobile-boost-btn {
+    width: 70px;
+    height: 70px;
+    font-size: 13px;
+    bottom: 20px;
+    right: 20px;
+  }
 }
