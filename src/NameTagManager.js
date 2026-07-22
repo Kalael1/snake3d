@@ -4,11 +4,11 @@ export class NameTagManager {
     constructor(camera, containerElement) {
         this.camera = camera;
         this.container = containerElement;
-        this.tags = {}; // { socketId: { tagEl, bubbleEl, headPos, curX, curY, bubbleTimer } }
+        this.tags = {}; // { socketId: { tagEl, bubbleEl, getPosFn, bubbleTimer } }
         this.tempV = new THREE.Vector3();
     }
 
-    createOrUpdateTag(id, name, skinIcon, headPos, isLocal = false) {
+    createOrUpdateTag(id, name, skinIcon, getPosFn, isLocal = false) {
         if (!this.tags[id]) {
             const tagDiv = document.createElement('div');
             tagDiv.className = `nametag-pill ${isLocal ? 'local-tag' : ''}`;
@@ -25,13 +25,11 @@ export class NameTagManager {
             this.tags[id] = {
                 tagEl: tagDiv,
                 bubbleEl: bubbleDiv,
-                headPos: headPos.clone(),
-                curX: null,
-                curY: null,
+                getPosFn: getPosFn,
                 bubbleTimer: null
             };
         } else {
-            this.tags[id].headPos.copy(headPos);
+            this.tags[id].getPosFn = getPosFn;
         }
     }
 
@@ -56,11 +54,15 @@ export class NameTagManager {
 
         Object.keys(this.tags).forEach(id => {
             const item = this.tags[id];
-            if (!item) return;
+            if (!item || !item.getPosFn) return;
+
+            // Direct live 60 FPS 3D head position
+            const liveHeadPos = item.getPosFn();
+            if (!liveHeadPos) return;
 
             // Project 3D head position (+ height offset) to 2D screen space
-            this.tempV.copy(item.headPos);
-            this.tempV.y += 2.6;
+            this.tempV.copy(liveHeadPos);
+            this.tempV.y += 2.7;
             this.tempV.project(this.camera);
 
             // Hide if behind camera frustum
@@ -73,17 +75,8 @@ export class NameTagManager {
             const targetX = (this.tempV.x * 0.5 + 0.5) * width;
             const targetY = (-(this.tempV.y * 0.5) + 0.5) * height;
 
-            // Smooth Lerp Interpolation & Sub-Pixel Rounding to eliminate jittering
-            if (item.curX === null || item.curY === null) {
-                item.curX = targetX;
-                item.curY = targetY;
-            } else {
-                item.curX += (targetX - item.curX) * 0.5;
-                item.curY += (targetY - item.curY) * 0.5;
-            }
-
-            const roundedX = Math.round(item.curX);
-            const roundedY = Math.round(item.curY);
+            const roundedX = Math.round(targetX);
+            const roundedY = Math.round(targetY);
 
             item.tagEl.style.display = 'flex';
             item.tagEl.style.transform = `translate3d(${roundedX}px, ${roundedY}px, 0) translate(-50%, -100%)`;

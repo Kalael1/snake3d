@@ -10,7 +10,7 @@ import { Snake } from './src/Snake.js';
 import { OtherSnake } from './src/OtherSnake.js';
 import { AudioManager } from './src/AudioManager.js';
 import { ParticleSystem } from './src/ParticleSystem.js';
-import { SKINS } from './src/SkinRegistry.js';
+import { SKINS, getSkinById } from './src/SkinRegistry.js';
 import { ProgressionManager } from './src/ProgressionManager.js';
 import { NameTagManager } from './src/NameTagManager.js';
 
@@ -250,7 +250,6 @@ window.addEventListener('touchstart', (e) => {
         mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
     } else if (e.touches.length === 2) {
-        // Pinch Zoom Start
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
         initialPinchDist = Math.sqrt(dx * dx + dy * dy);
@@ -266,10 +265,9 @@ window.addEventListener('touchmove', (e) => {
         mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
 
-        // Joystick knob offset
         const dx = touch.clientX - touchStartOrigin.x;
         const dy = touch.clientY - touchStartOrigin.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        const dist = Math.sqrt(dx * dx + dz * dz);
         const maxDist = 45;
         const angle = Math.atan2(dy, dx);
 
@@ -278,7 +276,6 @@ window.addEventListener('touchmove', (e) => {
 
         joystickKnob.style.transform = `translate(-50%, -50%) translate(${knobX}px, ${knobY}px)`;
     } else if (e.touches.length === 2 && initialPinchDist) {
-        // Pinch Zoom Update
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
         const currentDist = Math.sqrt(dx * dx + dy * dy);
@@ -411,11 +408,12 @@ socket.on('gameState', (state) => {
             }
         }
 
+        // Live Direct 60 FPS Head Position Reference for Local Player
         nameTagManager.createOrUpdateTag(
             localSocketId,
             pData.name,
             localSnake.activeSkin.icon,
-            localSnake.getHeadPosition(),
+            () => localSnake.getHeadPosition(),
             true
         );
     }
@@ -431,14 +429,14 @@ socket.on('gameState', (state) => {
         }
 
         const remoteSnake = otherSnakes[id];
-        const remoteHeadPos = remoteSnake.segments[0] ? remoteSnake.segments[0].position : new THREE.Vector3(playerData.x, 1.2, playerData.z);
         const skinIcon = remoteSnake.activeSkin ? remoteSnake.activeSkin.icon : '🐍';
 
+        // Live Direct 60 FPS Head Position Reference for Remote Players
         nameTagManager.createOrUpdateTag(
             id,
             playerData.name,
             skinIcon,
-            remoteHeadPos,
+            () => remoteSnake.segments[0] ? remoteSnake.segments[0].position : null,
             false
         );
     });
@@ -653,7 +651,7 @@ function animate() {
     camera.position.z += (camTargetZ - camera.position.z) * 0.1;
     camera.lookAt(headPos.x, headPos.y, headPos.z - 2);
 
-    // 7. Update Overhead 3D projected Player Name Tags & Speech/Emoji Bubbles!
+    // 7. Update Overhead 3D projected Player Name Tags & Speech/Emoji Bubbles (Live 60 FPS!)
     nameTagManager.updatePositions();
 
     composer.render();
