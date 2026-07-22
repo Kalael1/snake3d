@@ -10,9 +10,15 @@ import { Snake } from './src/Snake.js';
 import { OtherSnake } from './src/OtherSnake.js';
 import { AudioManager } from './src/AudioManager.js';
 import { ParticleSystem } from './src/ParticleSystem.js';
+import { SKINS } from './src/SkinRegistry.js';
+import { ProgressionManager } from './src/ProgressionManager.js';
 
 // Setup Socket.io Client
 const socket = io();
+
+// Managers
+const progressionManager = new ProgressionManager();
+const audioManager = new AudioManager();
 
 // Setup basic scene with Slate Gray theme
 const scene = new THREE.Scene();
@@ -62,14 +68,14 @@ dirLight.shadow.camera.top = 400;
 dirLight.shadow.camera.bottom = -400;
 scene.add(dirLight);
 
-// Audio & Particles
-const audioManager = new AudioManager();
 const particleSystem = new ParticleSystem(scene);
 
 // Game Entities
 const arenaSize = 500;
 const arena = new Arena(scene, arenaSize);
 const localSnake = new Snake(scene);
+localSnake.applySkin(progressionManager.selectedSkinId);
+
 const otherSnakes = {};
 const foodMeshes = {};
 const localEatenFoods = new Set();
@@ -90,6 +96,7 @@ window.addEventListener('wheel', (event) => {
 
 // DOM Elements
 const scoreElement = document.getElementById('score');
+const highScoreElement = document.getElementById('high-score');
 const finalScoreElement = document.getElementById('final-score');
 const finalScoreBox = document.getElementById('final-score-box');
 const overlay = document.getElementById('overlay');
@@ -98,11 +105,60 @@ const overlayDesc = document.getElementById('overlay-desc');
 const playerNameInput = document.getElementById('player-name');
 const lbList = document.getElementById('lb-list');
 const soundBtn = document.getElementById('sound-btn');
+const skinCardsGrid = document.getElementById('skin-cards-grid');
+const skinProgressText = document.getElementById('skin-progress-text');
+const skinProgressFill = document.getElementById('skin-progress-bar-fill');
+
+// Set Initial High Score on HUD
+highScoreElement.innerText = progressionManager.highScore;
 
 soundBtn.addEventListener('click', () => {
     const muted = audioManager.toggleMute();
     soundBtn.innerText = muted ? '🔇' : '🔊';
 });
+
+// Render Skins Gallery Grid
+function renderSkinGallery() {
+    skinCardsGrid.innerHTML = '';
+    const highScore = progressionManager.highScore;
+    const nextUnlock = progressionManager.getNextUnlock();
+
+    if (nextUnlock) {
+        const pct = Math.min(100, Math.floor((highScore / nextUnlock.reqScore) * 100));
+        skinProgressText.innerText = `${highScore} / ${nextUnlock.reqScore} Puan (${nextUnlock.name})`;
+        skinProgressFill.style.width = `${pct}%`;
+    } else {
+        skinProgressText.innerText = `🏆 TÜM KOSTÜMLER AÇILDI! (${highScore} Rekor)`;
+        skinProgressFill.style.width = '100%';
+    }
+
+    SKINS.forEach(skin => {
+        const isUnlocked = progressionManager.isSkinUnlocked(skin.id);
+        const isSelected = progressionManager.selectedSkinId === skin.id;
+
+        const card = document.createElement('div');
+        card.className = `skin-card ${isUnlocked ? '' : 'locked'} ${isSelected ? 'selected' : ''}`;
+
+        card.innerHTML = `
+            <span class="skin-icon">${skin.icon}</span>
+            <span class="skin-title">${skin.name}</span>
+            <span class="skin-req">${isUnlocked ? (isSelected ? 'SEÇİLİ' : 'AÇIK') : `${skin.reqScore} Puan`}</span>
+        `;
+
+        if (isUnlocked) {
+            card.addEventListener('click', () => {
+                progressionManager.setSelectedSkin(skin.id);
+                localSnake.applySkin(skin.id);
+                audioManager.playEat();
+                renderSkinGallery();
+            });
+        }
+
+        skinCardsGrid.appendChild(card);
+    });
+}
+
+renderSkinGallery();
 
 // Mouse tracking & Raycasting
 const mouse = new THREE.Vector2();
@@ -115,7 +171,7 @@ window.addEventListener('mousemove', (event) => {
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 });
 
-// Professional Boost Control Triggers
+// Boost State Control
 function setBoostState(state) {
     if (isBoosting !== state) {
         isBoosting = state;
@@ -198,6 +254,12 @@ socket.on('gameState', (state) => {
             currentScore = serverScore;
             scoreElement.innerText = currentScore;
             localSnake.updateGrowth(currentScore);
+
+            // Live high score update
+            if (currentScore > progressionManager.highScore) {
+                progressionManager.saveHighScore(currentScore);
+                highScoreElement.innerText = currentScore;
+            }
         }
     }
 
@@ -229,7 +291,12 @@ socket.on('gameOver', (data) => {
     audioManager.playDeath();
     particleSystem.createDeathExplosion(localSnake.getHeadPosition());
 
-    finalScoreElement.innerText = scoreElement.innerText;
+    // Update High Score & Progression
+    progressionManager.saveHighScore(currentScore);
+    highScoreElement.innerText = progressionManager.highScore;
+    renderSkinGallery();
+
+    finalScoreElement.innerText = currentScore;
     finalScoreBox.classList.remove('hidden');
     overlayDesc.innerText = data.reason || 'Oyun bitti!';
     startBtn.innerText = 'TEKRAR OYNA';
@@ -288,7 +355,8 @@ function updateLeaderboard(serverPlayers) {
 function openMenu(reasonText) {
     isGameRunning = false;
     setBoostState(false);
-    finalScoreElement.innerText = scoreElement.innerText;
+    renderSkinGallery();
+    finalScoreElement.innerText = currentScore;
     finalScoreBox.classList.remove('hidden');
     overlayDesc.innerText = reasonText;
     startBtn.innerText = 'ARENAYA DÖN / YENİDEN BAŞLA';
@@ -302,7 +370,13 @@ function startGame() {
     scoreElement.innerText = '0';
     localEatenFoods.clear();
     localSnake.reset();
-    socket.emit('join', playerName);
+
+    // Join with selected skin
+    socket.emit('join', {
+        name: playerName,
+        skinId: progressionManager.selectedSkinId
+    });
+
     isGameRunning = true;
     overlay.classList.add('hidden');
 }
@@ -333,7 +407,6 @@ function animate() {
         // 2. Local Snake Physics Update
         localSnake.update(delta, targetPoint, isBoosting);
 
-        // Tail Thruster Particles during boost
         if (isBoosting) {
             particleSystem.createBoostParticle(localSnake.getHeadPosition(), localSnake.currentAngle);
         }
@@ -364,6 +437,11 @@ function animate() {
                     scoreElement.innerText = currentScore;
                     localSnake.updateGrowth(currentScore);
 
+                    if (currentScore > progressionManager.highScore) {
+                        progressionManager.saveHighScore(currentScore);
+                        highScoreElement.innerText = currentScore;
+                    }
+
                     socket.emit('eatFood', { foodId: foodId });
                     break;
                 }
@@ -383,6 +461,7 @@ function animate() {
             z: headPos.z,
             angle: localSnake.currentAngle,
             isBoosting: isBoosting,
+            skinId: progressionManager.selectedSkinId,
             body: bodyPositions
         });
     } else {

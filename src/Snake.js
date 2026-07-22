@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { getSkinById } from './SkinRegistry.js';
 
 export class Snake {
     constructor(scene) {
@@ -15,27 +16,9 @@ export class Snake {
         this.segmentSpacing = 1.3;
 
         this.currentAngle = 0;
-        this.massPerSegment = 35; // Authentic Snake.io: 35 points required per 1 segment growth
+        this.massPerSegment = 35;
+        this.activeSkin = getSkinById('classic');
 
-        // Head Material - Vibrant Neon Green/Cyan
-        this.headMat = new THREE.MeshStandardMaterial({
-            color: 0x00ffcc,
-            emissive: 0x00ffcc,
-            emissiveIntensity: 0.6,
-            roughness: 0.2,
-            metalness: 0.5
-        });
-
-        // Body Material
-        this.bodyMat = new THREE.MeshStandardMaterial({
-            color: 0x0099ff,
-            emissive: 0x0044aa,
-            emissiveIntensity: 0.4,
-            roughness: 0.3,
-            metalness: 0.4
-        });
-
-        // Eye Material
         this.eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1 });
         this.pupilMat = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.1 });
 
@@ -43,12 +26,12 @@ export class Snake {
     }
 
     init() {
-        const headGroup = new THREE.Group();
+        this.headGroup = new THREE.Group();
 
         const headGeo = new THREE.SphereGeometry(this.headRadius, 32, 32);
-        const headMesh = new THREE.Mesh(headGeo, this.headMat);
-        headMesh.castShadow = true;
-        headGroup.add(headMesh);
+        this.headMesh = new THREE.Mesh(headGeo, this.createHeadMaterial(this.activeSkin));
+        this.headMesh.castShadow = true;
+        this.headGroup.add(this.headMesh);
 
         // Add Eyes
         const eyeGeo = new THREE.SphereGeometry(0.35, 16, 16);
@@ -58,43 +41,120 @@ export class Snake {
         leftEye.position.set(-0.5, 0.6, 0.8);
         const leftPupil = new THREE.Mesh(pupilGeo, this.pupilMat);
         leftPupil.position.set(-0.5, 0.6, 1.05);
-        headGroup.add(leftEye, leftPupil);
+        this.headGroup.add(leftEye, leftPupil);
 
         const rightEye = new THREE.Mesh(eyeGeo, this.eyeMat);
         rightEye.position.set(0.5, 0.6, 0.8);
         const rightPupil = new THREE.Mesh(pupilGeo, this.pupilMat);
         rightPupil.position.set(0.5, 0.6, 1.05);
-        headGroup.add(rightEye, rightPupil);
+        this.headGroup.add(rightEye, rightPupil);
 
-        headGroup.position.set(0, this.headRadius, 0);
-        this.scene.add(headGroup);
-        this.segments.push(headGroup);
+        // Optional 3D Horns & Crown attachments
+        this.attachmentsGroup = new THREE.Group();
+        this.headGroup.add(this.attachmentsGroup);
+        this.updateAttachments(this.activeSkin);
+
+        this.headGroup.position.set(0, this.headRadius, 0);
+        this.scene.add(this.headGroup);
+        this.segments.push(this.headGroup);
 
         this.direction = new THREE.Vector3(0, 0, 1);
         this.currentAngle = 0;
 
-        // Pre-fill history buffer
-        for(let i=0; i<300; i++) {
+        for (let i = 0; i < 300; i++) {
             this.history.push({
                 position: new THREE.Vector3(0, this.headRadius, -i * 0.05),
                 angle: 0
             });
         }
 
-        // Initial 8 body segments
         for (let i = 0; i < 8; i++) {
             this.grow();
         }
     }
 
+    createHeadMaterial(skin) {
+        return new THREE.MeshStandardMaterial({
+            color: skin.headColor,
+            emissive: skin.headColor,
+            emissiveIntensity: skin.emissiveIntensity,
+            roughness: skin.roughness,
+            metalness: skin.metalness,
+            transparent: skin.transparent,
+            opacity: skin.opacity
+        });
+    }
+
+    createBodyMaterial(skin, index) {
+        const segMat = new THREE.MeshStandardMaterial({
+            color: skin.bodyColor,
+            emissive: skin.bodyColor,
+            emissiveIntensity: skin.emissiveIntensity * 0.7,
+            roughness: skin.roughness,
+            metalness: skin.metalness,
+            transparent: skin.transparent,
+            opacity: skin.opacity
+        });
+
+        // Add subtle color gradient per segment
+        const hueShift = (index * 0.02) % 0.15;
+        const color = new THREE.Color(skin.bodyColor);
+        color.offsetHSL(hueShift, 0, 0);
+        segMat.color = color;
+
+        return segMat;
+    }
+
+    updateAttachments(skin) {
+        // Clear previous attachments
+        while (this.attachmentsGroup.children.length > 0) {
+            const child = this.attachmentsGroup.children.pop();
+            if (child.geometry) child.geometry.dispose();
+            this.scene.remove(child);
+        }
+
+        // Add Dragon Horns
+        if (skin.hasHorns) {
+            const hornGeo = new THREE.ConeGeometry(0.2, 0.9, 16);
+            const hornMat = new THREE.MeshStandardMaterial({ color: 0xff0055, emissive: 0xff0055, emissiveIntensity: 0.6 });
+
+            const leftHorn = new THREE.Mesh(hornGeo, hornMat);
+            leftHorn.position.set(-0.6, 1.2, -0.3);
+            leftHorn.rotation.set(-0.3, 0, -0.3);
+
+            const rightHorn = new THREE.Mesh(hornGeo, hornMat);
+            rightHorn.position.set(0.6, 1.2, -0.3);
+            rightHorn.rotation.set(-0.3, 0, 0.3);
+
+            this.attachmentsGroup.add(leftHorn, rightHorn);
+        }
+
+        // Add Crown for Gold / Diamond
+        if (skin.hasCrown) {
+            const crownGeo = new THREE.CylinderGeometry(0.7, 0.5, 0.4, 6);
+            const crownMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.1 });
+            const crown = new THREE.Mesh(crownGeo, crownMat);
+            crown.position.set(0, 1.35, 0);
+            this.attachmentsGroup.add(crown);
+        }
+    }
+
+    applySkin(skinId) {
+        this.activeSkin = getSkinById(skinId);
+        if (this.headMesh) {
+            this.headMesh.material = this.createHeadMaterial(this.activeSkin);
+        }
+        this.updateAttachments(this.activeSkin);
+
+        // Update body segment materials
+        for (let i = 1; i < this.segments.length; i++) {
+            this.segments[i].material = this.createBodyMaterial(this.activeSkin, i);
+        }
+    }
+
     grow() {
         const geo = new THREE.SphereGeometry(this.segmentRadius, 24, 24);
-        
-        const segmentCount = this.segments.length;
-        const colorHue = (0.55 + segmentCount * 0.015) % 1.0;
-        const segMat = this.bodyMat.clone();
-        segMat.color.setHSL(colorHue, 0.9, 0.5);
-        segMat.emissive.setHSL(colorHue, 0.9, 0.3);
+        const segMat = this.createBodyMaterial(this.activeSkin, this.segments.length);
 
         const segment = new THREE.Mesh(geo, segMat);
         segment.castShadow = true;
@@ -106,7 +166,6 @@ export class Snake {
         this.segments.push(segment);
     }
 
-    // Authentic Snake.io Mass Growth Scaling
     updateGrowth(score) {
         const targetSegments = 8 + Math.floor(score / this.massPerSegment);
         while (this.segments.length < targetSegments) {
@@ -118,10 +177,8 @@ export class Snake {
         if (!targetPoint) return;
 
         this.speed = isBoosting ? this.baseSpeed * 1.8 : this.baseSpeed;
-
         const head = this.segments[0];
 
-        // 1. Steering Logic
         const diffX = targetPoint.x - head.position.x;
         const diffZ = targetPoint.z - head.position.z;
         const distanceToTarget = Math.sqrt(diffX * diffX + diffZ * diffZ);
@@ -136,17 +193,14 @@ export class Snake {
             this.currentAngle += angleDiff * Math.min(1, this.turnSpeed * delta);
         }
 
-        // 2. Update direction vector and head rotation
         this.direction.set(Math.sin(this.currentAngle), 0, Math.cos(this.currentAngle)).normalize();
         head.rotation.y = this.currentAngle;
 
-        // 3. Move Head
         const moveDistance = this.speed * delta;
         head.position.x += this.direction.x * moveDistance;
         head.position.z += this.direction.z * moveDistance;
         head.position.y = this.headRadius;
 
-        // 4. Record High-Resolution History
         this.history.unshift({
             position: head.position.clone(),
             angle: this.currentAngle
@@ -156,7 +210,6 @@ export class Snake {
             this.history.pop();
         }
 
-        // 5. Update Body Segments with Smooth Lerp Interpolation
         let currentHistIdx = 0;
         let accumulatedDist = 0;
 
@@ -203,14 +256,14 @@ export class Snake {
         this.direction.set(0, 0, 1);
         
         this.history = [];
-        for(let i=0; i<300; i++) {
+        for (let i = 0; i < 300; i++) {
             this.history.push({
                 position: new THREE.Vector3(0, this.headRadius, -i * 0.05),
                 angle: 0
             });
         }
 
-        while(this.segments.length > 9) {
+        while (this.segments.length > 9) {
             const seg = this.segments.pop();
             this.scene.remove(seg);
         }

@@ -56,7 +56,10 @@ for (let i = 0; i < MAX_FOODS; i++) {
 io.on('connection', (socket) => {
     console.log(`[+] Player connected: ${socket.id}`);
 
-    socket.on('join', (name) => {
+    socket.on('join', (data) => {
+        const name = typeof data === 'string' ? data : (data.name || 'Oyuncu');
+        const skinId = typeof data === 'object' && data.skinId ? data.skinId : 'classic';
+
         const halfSize = (ARENA_SIZE / 2) - 20;
         const spawnX = (Math.random() - 0.5) * 2 * halfSize;
         const spawnZ = (Math.random() - 0.5) * 2 * halfSize;
@@ -64,6 +67,7 @@ io.on('connection', (socket) => {
         players[socket.id] = {
             id: socket.id,
             name: name || 'Yılan #' + socket.id.substring(0, 4),
+            skinId: skinId,
             x: spawnX,
             z: spawnZ,
             angle: 0,
@@ -97,6 +101,7 @@ io.on('connection', (socket) => {
             player.z = data.z;
             player.angle = data.angle || 0;
             player.isBoosting = !!data.isBoosting;
+            if (data.skinId) player.skinId = data.skinId;
 
             if (Array.isArray(data.body)) {
                 player.body = data.body;
@@ -104,7 +109,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Single-Source Food Eating Handler
     socket.on('eatFood', (data) => {
         const player = players[socket.id];
         if (!player || !data || !data.foodId) return;
@@ -119,7 +123,6 @@ io.on('connection', (socket) => {
             foods.splice(idx, 1);
             foods.push(newFood);
 
-            // Broadcast food removal and replacement
             io.emit('foodRemoved', { foodId: data.foodId, newFood: newFood });
         }
     });
@@ -135,7 +138,7 @@ io.on('connection', (socket) => {
                         x: seg.x,
                         z: seg.z,
                         color: foodColors[Math.floor(Math.random() * foodColors.length)],
-                        value: 15, // Dead player remains give big +15 points!
+                        value: 15,
                         isBig: true
                     });
                 });
@@ -151,7 +154,6 @@ const TICK_RATE = 30;
 setInterval(() => {
     const playerIds = Object.keys(players);
 
-    // 1. Boundary Check
     playerIds.forEach(id => {
         const p = players[id];
         if (!p) return;
@@ -163,7 +165,7 @@ setInterval(() => {
         }
     });
 
-    // 2. Snake vs Snake Collision (Head of A vs Body of B)
+    // Snake vs Snake Collision
     const aliveIds = Object.keys(players);
     aliveIds.forEach(idA => {
         const pA = players[idA];
@@ -200,7 +202,6 @@ setInterval(() => {
         });
     });
 
-    // 3. Broadcast State
     io.emit('gameState', {
         players: players,
         foods: foods
