@@ -106,13 +106,14 @@ export class OtherSnake {
         this.segments.push(segment);
     }
 
+    // Direct Smooth Snapshot Interpolation (Zero Double-Lerp Lag!)
     updateInterpolated(state) {
         if (!state) return;
 
-        // Head position lerp
         const head = this.segments[0];
-        head.position.x += (state.x - head.position.x) * 0.35;
-        head.position.z += (state.z - head.position.z) * 0.35;
+
+        // Direct position set from NetworkInterpolator (Eliminates double-lerp stutter!)
+        head.position.set(state.x, this.headRadius, state.z);
         head.rotation.y = state.angle || 0;
 
         // Update body count based on score
