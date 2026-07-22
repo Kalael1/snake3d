@@ -29,16 +29,16 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 document.getElementById('app').appendChild(renderer.domElement);
 
-// Post-Processing Pipeline (Bloom filtered ONLY for bright crystals)
+// Post-Processing Pipeline
 const composer = new EffectComposer(renderer);
 const renderPass = new RenderPass(scene, camera);
 composer.addPass(renderPass);
 
 const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.22, // Subtle strength
-    0.2,  // Radius
-    0.92  // High threshold so gray floor is NEVER affected by bloom
+    0.22,
+    0.2,
+    0.92
 );
 composer.addPass(bloomPass);
 
@@ -115,22 +115,34 @@ window.addEventListener('mousemove', (event) => {
     mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 });
 
-// Boost & ESC Controls
+// Professional Boost Control Triggers
+function setBoostState(state) {
+    if (isBoosting !== state) {
+        isBoosting = state;
+        if (isBoosting) {
+            audioManager.startBoost();
+        } else {
+            audioManager.stopBoost();
+        }
+    }
+}
+
 window.addEventListener('mousedown', (e) => {
-    if (e.button === 0 && isGameRunning) isBoosting = true;
+    if (e.button === 0 && isGameRunning) setBoostState(true);
 });
 window.addEventListener('mouseup', (e) => {
-    if (e.button === 0) isBoosting = false;
+    if (e.button === 0) setBoostState(false);
 });
 window.addEventListener('keydown', (e) => {
     if (e.code === 'Space' && isGameRunning) {
-        isBoosting = true;
+        setBoostState(true);
     } else if (e.code === 'Escape' && isGameRunning) {
+        setBoostState(false);
         openMenu('Oyun Duraklatıldı');
     }
 });
 window.addEventListener('keyup', (e) => {
-    if (e.code === 'Space') isBoosting = false;
+    if (e.code === 'Space') setBoostState(false);
 });
 
 // Window resize
@@ -141,7 +153,7 @@ window.addEventListener('resize', () => {
     composer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Food rendering materials & geometries
+// Food materials
 const foodColors = [0xff0055, 0x00ffcc, 0xffff00, 0xaa00ff, 0xff8800, 0x00ffaa];
 const smallFoodGeo = new THREE.DodecahedronGeometry(0.55, 0);
 const bigFoodGeo = new THREE.DodecahedronGeometry(1.2, 0);
@@ -212,7 +224,7 @@ socket.on('gameState', (state) => {
 
 socket.on('gameOver', (data) => {
     isGameRunning = false;
-    isBoosting = false;
+    setBoostState(false);
 
     audioManager.playDeath();
     particleSystem.createDeathExplosion(localSnake.getHeadPosition());
@@ -275,7 +287,7 @@ function updateLeaderboard(serverPlayers) {
 
 function openMenu(reasonText) {
     isGameRunning = false;
-    isBoosting = false;
+    setBoostState(false);
     finalScoreElement.innerText = scoreElement.innerText;
     finalScoreBox.classList.remove('hidden');
     overlayDesc.innerText = reasonText;
@@ -321,13 +333,12 @@ function animate() {
         // 2. Local Snake Physics Update
         localSnake.update(delta, targetPoint, isBoosting);
 
-        // Boost Sound & Tail Thruster Particles
+        // Tail Thruster Particles during boost
         if (isBoosting) {
-            audioManager.playBoost();
             particleSystem.createBoostParticle(localSnake.getHeadPosition(), localSnake.currentAngle);
         }
 
-        // 3. Head Collision Eating Check & Particle / Audio Effects
+        // 3. Head Collision Eating Check
         const headPos = localSnake.getHeadPosition();
         const foodKeys = Object.keys(foodMeshes);
         
