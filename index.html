@@ -123,9 +123,41 @@
           <input type="text" id="player-name" placeholder="Oyuncu Adınız..." maxlength="12" value="YılanOyuncusu">
         </div>
 
+        <!-- Detailed Game Over Summary Modal Statistics -->
         <div id="final-score-box" class="hidden">
-          <span class="score-banner-label">SON SKORUNUZ</span>
-          <h2 id="final-score">0</h2>
+          <div class="gameover-stats-grid">
+            <div class="stat-card gold-stat">
+              <span class="stat-icon">👑</span>
+              <div class="stat-info">
+                <span class="stat-label">SIRALAMANIZ</span>
+                <span id="final-rank" class="stat-val">#1</span>
+              </div>
+            </div>
+
+            <div class="stat-card cyan-stat">
+              <span class="stat-icon">⚡</span>
+              <div class="stat-info">
+                <span class="stat-label">TOPLANAN SKOR</span>
+                <span id="final-score" class="stat-val">0</span>
+              </div>
+            </div>
+
+            <div class="stat-card purple-stat">
+              <span class="stat-icon">⏱️</span>
+              <div class="stat-info">
+                <span class="stat-label">HAYATTA KALMA</span>
+                <span id="final-survival-time" class="stat-val">00:00</span>
+              </div>
+            </div>
+
+            <div class="stat-card green-stat">
+              <span class="stat-icon">🏆</span>
+              <div class="stat-info">
+                <span class="stat-label">REKORUNUZ</span>
+                <span id="final-high-score" class="stat-val">0</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Skins Showcase Carousel / Grid -->

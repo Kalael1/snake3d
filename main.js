@@ -65,6 +65,8 @@ let isGameRunning = false;
 let isBoosting = false;
 let localSocketId = null;
 let currentScore = 0;
+let gameStartTime = 0;
+let currentPlayersList = [];
 
 // Camera Zoom
 let targetZoom = 1.0;
@@ -79,7 +81,11 @@ window.addEventListener('wheel', (event) => {
 const scoreElement = document.getElementById('score');
 const highScoreElement = document.getElementById('high-score');
 const finalScoreElement = document.getElementById('final-score');
+const finalRankElement = document.getElementById('final-rank');
+const finalSurvivalTimeElement = document.getElementById('final-survival-time');
+const finalHighScoreElement = document.getElementById('final-high-score');
 const finalScoreBox = document.getElementById('final-score-box');
+
 const overlay = document.getElementById('overlay');
 const startBtn = document.getElementById('start-btn');
 const overlayDesc = document.getElementById('overlay-desc');
@@ -255,7 +261,7 @@ socket.on('chatReceived', (data) => {
     nameTagManager.showBubble(data.id, data.text, data.isEmoji);
 });
 
-// INSTANT 0-LAG DIRECT SCREEN-SPACE ANGLE CONTROLS (SLITHER.IO PHYSICS)
+// INSTANT 0-LAG DIRECT SCREEN-SPACE ANGLE CONTROLS
 let targetAngle = 0;
 let mousePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
@@ -265,7 +271,7 @@ window.addEventListener('mousemove', (event) => {
 
     const dx = mousePos.x - window.innerWidth / 2;
     const dy = mousePos.y - window.innerHeight / 2;
-    targetAngle = Math.atan2(dx, -dy); // Slither.io 0-lag screen angle
+    targetAngle = Math.atan2(dx, -dy);
 });
 
 // MOBILE TOUCH CONTROLS
@@ -423,6 +429,7 @@ socket.on('gameState', (state) => {
 
     const serverPlayers = state.players || {};
     const serverIds = Object.keys(serverPlayers);
+    currentPlayersList = Object.values(serverPlayers);
 
     if (localSocketId && serverPlayers[localSocketId]) {
         const pData = serverPlayers[localSocketId];
@@ -482,6 +489,11 @@ socket.on('gameState', (state) => {
 });
 
 socket.on('gameOver', (data) => {
+    triggerGameOver(data ? data.reason : 'Oyun Bitti!');
+});
+
+function triggerGameOver(reasonText) {
+    if (!isGameRunning) return;
     isGameRunning = false;
     setBoostState(false);
     virtualJoystick.classList.add('hidden');
@@ -492,12 +504,28 @@ socket.on('gameOver', (data) => {
     highScoreElement.innerText = progressionManager.highScore;
     renderSkinGallery();
 
+    // Calculate survival duration
+    const secondsSurvived = Math.floor((Date.now() - gameStartTime) / 1000);
+    const mins = String(Math.floor(secondsSurvived / 60)).padStart(2, '0');
+    const secs = String(secondsSurvived % 60).padStart(2, '0');
+    const timeStr = `${mins}:${secs}`;
+
+    // Calculate player rank
+    const sorted = currentPlayersList.slice().sort((a, b) => (b.score || 0) - (a.score || 0));
+    const rankIndex = sorted.findIndex(p => p.id === localSocketId);
+    const playerRank = rankIndex !== -1 ? `#${rankIndex + 1}` : `#1`;
+
+    // Populate Detailed Game Over Statistics Modal
     finalScoreElement.innerText = currentScore;
+    finalRankElement.innerText = playerRank;
+    finalSurvivalTimeElement.innerText = timeStr;
+    finalHighScoreElement.innerText = progressionManager.highScore;
+
     finalScoreBox.classList.remove('hidden');
-    overlayDesc.innerText = data.reason || 'Oyun bitti!';
+    overlayDesc.innerText = reasonText || 'Oyun Bitti!';
     startBtn.innerHTML = '<span class="play-icon">▶</span> TEKRAR OYNA';
     overlay.classList.remove('hidden');
-});
+}
 
 function removeFoodMesh(foodId) {
     if (foodMeshes[foodId]) {
@@ -554,7 +582,6 @@ function openMenu(reasonText) {
     setBoostState(false);
     virtualJoystick.classList.add('hidden');
     renderSkinGallery();
-    finalScoreElement.innerText = currentScore;
     finalScoreBox.classList.remove('hidden');
     overlayDesc.innerText = reasonText;
     startBtn.innerHTML = '<span class="play-icon">▶</span> ARENAYA DÖN';
@@ -585,6 +612,7 @@ function startGame() {
     scoreElement.innerText = '0';
     localEatenFoods.clear();
     localSnake.reset();
+    gameStartTime = Date.now();
 
     socket.emit('join', {
         name: playerName,
@@ -606,8 +634,38 @@ function animate() {
     if (isGameRunning) {
         // 1. Local Snake Physics Update (Direct Instant Angle Physics - 0 Lag!)
         localSnake.update(delta, targetAngle, isBoosting);
+        const headPos = localSnake.getHeadPosition();
 
-        // 2. Update Remote Snakes via Network Interpolator Queue (Butter Smooth 60 FPS!)
+        // 2. WALL COLLISION CHECK (Strict boundary death)
+        const wallLimit = (arenaSize / 2) - 3.5;
+        if (Math.abs(headPos.x) >= wallLimit || Math.abs(headPos.z) >= wallLimit) {
+            triggerGameOver('💥 Harita duvarına çarptın!');
+            socket.emit('playerInput', { x: headPos.x, z: headPos.z, dead: true });
+            return;
+        }
+
+        // 3. SNAKE VS SNAKE COLLISION CHECK
+        // When local snake's head touches another remote snake's body segment -> WE DIE!
+        Object.keys(otherSnakes).forEach(otherId => {
+            const remoteSnake = otherSnakes[otherId];
+            if (!remoteSnake || !remoteSnake.segments) return;
+
+            // Check against body segments of remote snake
+            for (let i = 1; i < remoteSnake.segments.length; i++) {
+                const segPos = remoteSnake.segments[i].position;
+                const dx = headPos.x - segPos.x;
+                const dz = headPos.z - segPos.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+
+                if (dist < 2.0) {
+                    triggerGameOver(`💥 ${remoteSnake.name} oyuncusuna çarptın!`);
+                    socket.emit('playerInput', { x: headPos.x, z: headPos.z, dead: true });
+                    return;
+                }
+            }
+        });
+
+        // 4. Update Remote Snakes via Network Interpolator Queue
         Object.keys(otherSnakes).forEach(id => {
             const interpolatedState = networkInterpolator.getInterpolatedState(id);
             if (interpolatedState) {
@@ -615,10 +673,8 @@ function animate() {
             }
         });
 
-        // 3. Head Collision Eating Check
-        const headPos = localSnake.getHeadPosition();
+        // 5. Head Collision Eating Check
         const foodKeys = Object.keys(foodMeshes);
-        
         for (let i = 0; i < foodKeys.length; i++) {
             const foodId = foodKeys[i];
             const foodMesh = foodMeshes[foodId];
@@ -650,13 +706,20 @@ function animate() {
             }
         }
 
-        // 4. Emit Ultra-light Input to Server
+        // 6. Send Local Head & Body Segment positions to server so remote players die when touching OUR body!
+        const bodyPositions = localSnake.segments.slice(1).map(seg => ({
+            x: Math.round(seg.position.x * 10) / 10,
+            z: Math.round(seg.position.z * 10) / 10,
+            angle: Math.round(seg.rotation.y * 10) / 10
+        }));
+
         socket.volatile.emit('playerInput', {
-            x: headPos.x,
-            z: headPos.z,
-            angle: localSnake.currentAngle,
+            x: Math.round(headPos.x * 10) / 10,
+            z: Math.round(headPos.z * 10) / 10,
+            angle: Math.round(localSnake.currentAngle * 10) / 10,
             isBoosting: isBoosting,
-            skinId: progressionManager.selectedSkinId
+            skinId: progressionManager.selectedSkinId,
+            body: bodyPositions
         });
     } else {
         const time = Date.now() * 0.004;
@@ -664,7 +727,7 @@ function animate() {
         localSnake.update(delta, targetAngle, false);
     }
 
-    // 5. Dynamic Camera Follow & Smooth Zoom
+    // 7. Dynamic Camera Follow & Smooth Zoom
     currentZoom += (targetZoom - currentZoom) * 0.1;
 
     const headPos = localSnake.getHeadPosition();
@@ -677,7 +740,7 @@ function animate() {
     camera.position.z += (camTargetZ - camera.position.z) * 0.15;
     camera.lookAt(headPos.x, headPos.y, headPos.z - 2);
 
-    // 6. Update Overhead 3D projected Player Name Tags & Speech/Emoji Bubbles
+    // 8. Update Overhead 3D projected Player Name Tags & Speech/Emoji Bubbles
     nameTagManager.updatePositions();
 
     renderer.render(scene, camera);
