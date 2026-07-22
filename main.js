@@ -637,9 +637,9 @@ function animate() {
         localSnake.update(delta, targetPoint, isBoosting);
         const headPos = localSnake.getHeadPosition();
 
-        // 3. WALL COLLISION CHECK (Strict boundary death)
-        const wallLimit = (arenaSize / 2) - 3.5;
-        if (Math.abs(headPos.x) >= wallLimit || Math.abs(headPos.z) >= wallLimit) {
+        // 3. WALL COLLISION CHECK (Strict boundary death at ±240, arena size is 500)
+        const wallThreshold = 240;
+        if (Math.abs(headPos.x) >= wallThreshold || Math.abs(headPos.z) >= wallThreshold) {
             triggerGameOver('💥 Harita duvarına çarptın!');
             socket.emit('playerInput', { x: headPos.x, z: headPos.z, dead: true });
             return;

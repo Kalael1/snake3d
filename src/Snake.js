@@ -187,11 +187,6 @@ export class Snake {
         head.position.x += Math.sin(this.currentAngle) * moveDist;
         head.position.z += Math.cos(this.currentAngle) * moveDist;
 
-        // Constrain to arena bounds
-        const boundLimit = 245;
-        head.position.x = Math.max(-boundLimit, Math.min(boundLimit, head.position.x));
-        head.position.z = Math.max(-boundLimit, Math.min(boundLimit, head.position.z));
-
         // Smooth follow head logic
         for (let i = 1; i < this.segments.length; i++) {
             const prevSeg = this.segments[i - 1];
