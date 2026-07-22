@@ -35,20 +35,20 @@ export class Arena {
             this.scene.add(hLine);
         }
 
-        // Center circle (drift roundabout)
-        const circleGeo = new THREE.RingGeometry(18, 20, 32);
-        const circleMat = new THREE.MeshBasicMaterial({ color: 0xffa500, side: THREE.DoubleSide });
-        const circle = new THREE.Mesh(circleGeo, circleMat);
-        circle.rotation.x = -Math.PI / 2;
-        circle.position.y = 0.02;
-        this.scene.add(circle);
+        // Center Drift Roundabout (FLAT PAINTED ROAD MARKING - No raised height to trap cars!)
+        const circleOuterGeo = new THREE.RingGeometry(16, 20, 48);
+        const circleOuterMat = new THREE.MeshBasicMaterial({ color: 0xffa500, side: THREE.DoubleSide });
+        const circleOuter = new THREE.Mesh(circleOuterGeo, circleOuterMat);
+        circleOuter.rotation.x = -Math.PI / 2;
+        circleOuter.position.y = 0.02;
+        this.scene.add(circleOuter);
 
-        // Center island (solid cylinder)
-        const islandGeo = new THREE.CylinderGeometry(17, 17, 1.5, 24);
-        const islandMat = new THREE.MeshLambertMaterial({ color: 0x3a3a3a });
-        const island = new THREE.Mesh(islandGeo, islandMat);
-        island.position.y = 0.75;
-        this.scene.add(island);
+        const circleInnerGeo = new THREE.CircleGeometry(16, 48);
+        const circleInnerMat = new THREE.MeshBasicMaterial({ color: 0x222222, side: THREE.DoubleSide });
+        const circleInner = new THREE.Mesh(circleInnerGeo, circleInnerMat);
+        circleInner.rotation.x = -Math.PI / 2;
+        circleInner.position.y = 0.015;
+        this.scene.add(circleInner);
 
         // Neon boundary walls
         const wallMat = new THREE.MeshBasicMaterial({ color: 0xff0044 });
