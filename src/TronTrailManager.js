@@ -3,72 +3,143 @@ import * as THREE from 'three';
 export class TronTrailManager {
     constructor(scene) {
         this.scene = scene;
-        this.MAX_SEGMENTS = 1200;
-        this.TRAIL_LIFETIME = 4.0; // Seconds before light wall fades out
-
-        this.segments = []; // Active trail point objects: { id, playerId, x, z, angle, age }
-
-        // Ultra-smooth rounded glowing neon light wall geometry (no sharp blocky edges!)
-        const wallGeo = new THREE.CylinderGeometry(0.4, 0.4, 1.6, 12);
-        
-        const wallMat = new THREE.MeshBasicMaterial({
-            color: 0x00f3ff,
-            transparent: true,
-            opacity: 0.92,
-            depthWrite: false
-        });
-
-        this.instancedMesh = new THREE.InstancedMesh(wallGeo, wallMat, this.MAX_SEGMENTS);
-        this.instancedMesh.frustumCulled = false;
-        this.instancedMesh.count = 0;
-        this.scene.add(this.instancedMesh);
-
-        this._tempMatrix = new THREE.Matrix4();
+        this.playerTrails = {}; // Map of playerId -> RibbonMesh
+        this.allSegments = [];   // Collision data: { playerId, x, z, age }
+        this.TRAIL_LIFETIME = 4.0;
     }
 
     addSegment(playerId, x, z, angle) {
-        const seg = {
-            id: playerId + '_' + Date.now() + '_' + Math.random(),
+        // Store collision point
+        this.allSegments.push({
             playerId,
             x,
             z,
             angle,
             age: 0
-        };
-        this.segments.push(seg);
-        if (this.segments.length > this.MAX_SEGMENTS) {
-            this.segments.shift();
+        });
+
+        if (this.allSegments.length > 1200) {
+            this.allSegments.shift();
         }
+
+        // Add to continuous ribbon mesh for this player
+        if (!this.playerTrails[playerId]) {
+            this.playerTrails[playerId] = this.createRibbonMesh();
+        }
+        this.playerTrails[playerId].addPoint(x, z, angle);
+    }
+
+    createRibbonMesh() {
+        const maxPoints = 500;
+        const width = 0.5;
+        const height = 1.4;
+
+        const geometry = new THREE.BufferGeometry();
+        const positions = new Float32Array(maxPoints * 4 * 3); // 4 vertices per wall segment (bottom & top left/right)
+        const indices = new Uint16Array(maxPoints * 6);
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+
+        const material = new THREE.MeshBasicMaterial({
+            color: 0x00f3ff,
+            transparent: true,
+            opacity: 0.95,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.frustumCulled = false;
+        this.scene.add(mesh);
+
+        const pts = [];
+
+        return {
+            mesh,
+            geometry,
+            positions,
+            indices,
+            pts,
+            addPoint(x, z, angle) {
+                pts.push({ x, z, angle, age: 0 });
+                if (pts.length > maxPoints) pts.shift();
+                this.update();
+            },
+            update() {
+                const count = pts.length;
+                if (count < 2) {
+                    geometry.setDrawRange(0, 0);
+                    return;
+                }
+
+                let idx = 0;
+                let triIdx = 0;
+
+                for (let i = 0; i < count - 1; i++) {
+                    const p1 = pts[i];
+                    const p2 = pts[i + 1];
+
+                    const vIdx = i * 4;
+
+                    // Bottom 1, Top 1
+                    positions[idx] = p1.x;
+                    positions[idx + 1] = 0.1;
+                    positions[idx + 2] = p1.z;
+
+                    positions[idx + 3] = p1.x;
+                    positions[idx + 4] = height;
+                    positions[idx + 5] = p1.z;
+
+                    // Bottom 2, Top 2
+                    positions[idx + 6] = p2.x;
+                    positions[idx + 7] = 0.1;
+                    positions[idx + 8] = p2.z;
+
+                    positions[idx + 9] = p2.x;
+                    positions[idx + 10] = height;
+                    positions[idx + 11] = p2.z;
+
+                    idx += 12;
+
+                    // Quad indices
+                    indices[triIdx] = vIdx;
+                    indices[triIdx + 1] = vIdx + 1;
+                    indices[triIdx + 2] = vIdx + 2;
+
+                    indices[triIdx + 3] = vIdx + 1;
+                    indices[triIdx + 4] = vIdx + 3;
+                    indices[triIdx + 5] = vIdx + 2;
+
+                    triIdx += 6;
+                }
+
+                geometry.attributes.position.needsUpdate = true;
+                geometry.index.needsUpdate = true;
+                geometry.setDrawRange(0, triIdx);
+            },
+            destroy() {
+                scene.remove(mesh);
+                geometry.dispose();
+                material.dispose();
+            }
+        };
     }
 
     update(delta) {
-        // Age segments and remove expired ones
-        for (let i = this.segments.length - 1; i >= 0; i--) {
-            this.segments[i].age += delta;
-            if (this.segments[i].age > this.TRAIL_LIFETIME) {
-                this.segments.splice(i, 1);
+        // Age collision points
+        for (let i = this.allSegments.length - 1; i >= 0; i--) {
+            this.allSegments[i].age += delta;
+            if (this.allSegments[i].age > this.TRAIL_LIFETIME) {
+                this.allSegments.splice(i, 1);
             }
         }
-
-        // Update InstancedMesh matrices with smooth overlapping cylinders
-        for (let i = 0; i < this.segments.length; i++) {
-            const seg = this.segments[i];
-            const scaleY = Math.max(0.2, 1.0 - (seg.age / this.TRAIL_LIFETIME));
-            
-            this._tempMatrix.makeScale(1.0, scaleY, 1.0);
-            this._tempMatrix.setPosition(seg.x, 0.8 * scaleY, seg.z);
-            this.instancedMesh.setMatrixAt(i, this._tempMatrix);
-        }
-
-        this.instancedMesh.count = this.segments.length;
-        this.instancedMesh.instanceMatrix.needsUpdate = true;
     }
 
     checkCollision(carX, carZ, localPlayerId) {
         const radiusSq = 2.2 * 2.2;
-        for (let i = 0; i < this.segments.length; i++) {
-            const seg = this.segments[i];
-            // Don't collide with your own fresh trail (less than 0.8s old)
+        for (let i = 0; i < this.allSegments.length; i++) {
+            const seg = this.allSegments[i];
             if (seg.playerId === localPlayerId && seg.age < 0.8) continue;
 
             const dx = carX - seg.x;
@@ -81,8 +152,10 @@ export class TronTrailManager {
     }
 
     clear() {
-        this.segments = [];
-        this.instancedMesh.count = 0;
-        this.instancedMesh.instanceMatrix.needsUpdate = true;
+        this.allSegments = [];
+        for (const pid in this.playerTrails) {
+            this.playerTrails[pid].destroy();
+        }
+        this.playerTrails = {};
     }
 }

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { getSkinById } from './SkinRegistry.js';
+import { RibbonTrail } from './RibbonTrail.js';
 
 const gltfLoader = new GLTFLoader();
 const modelCache = {};
@@ -44,11 +45,9 @@ export class DriftCar {
         this.buildFallbackModel();
         this.loadCarModel(this.activeSkin.modelUrl);
 
-        // Tire marks system (InstancedMesh - Smooth Circle Overlay, No Blocky Gaps!)
-        this.MAX_MARKS = 1600;
-        this.markIndex = 0;
-        this.markTimer = 0;
-        this.initTireMarks();
+        // CONTINUOUS CONNECTED 3D RIBBON TRAIL MESHES (Zero blocky gaps!)
+        this.leftTireTrail = new RibbonTrail(this.scene, { width: 0.35, color: 0x050505, opacity: 0.85, maxPoints: 350 });
+        this.rightTireTrail = new RibbonTrail(this.scene, { width: 0.35, color: 0x050505, opacity: 0.85, maxPoints: 350 });
     }
 
     buildFallbackModel() {
@@ -106,35 +105,6 @@ export class DriftCar {
         this.group.add(this.loadedMesh);
     }
 
-    initTireMarks() {
-        // Smooth circular discs for seamless unbroken rubber tracks without blocky square edges!
-        const markGeo = new THREE.CircleGeometry(0.42, 12);
-        markGeo.rotateX(-Math.PI / 2);
-
-        const markMat = new THREE.MeshBasicMaterial({
-            color: 0x080808,
-            transparent: true,
-            opacity: 0.85,
-            depthWrite: false
-        });
-
-        this.tireMarksMesh = new THREE.InstancedMesh(markGeo, markMat, this.MAX_MARKS);
-        this.tireMarksMesh.frustumCulled = false;
-        this.tireMarksMesh.count = 0;
-        this.scene.add(this.tireMarksMesh);
-
-        this._markMatrix = new THREE.Matrix4();
-    }
-
-    addTireMark(x, z, angle) {
-        this._markMatrix.makeRotationY(angle);
-        this._markMatrix.setPosition(x, 0.08, z);
-        this.tireMarksMesh.setMatrixAt(this.markIndex % this.MAX_MARKS, this._markMatrix);
-        this.markIndex++;
-        this.tireMarksMesh.count = Math.min(this.markIndex, this.MAX_MARKS);
-        this.tireMarksMesh.instanceMatrix.needsUpdate = true;
-    }
-
     applySkin(skinId) {
         this.skinId = skinId;
         this.activeSkin = getSkinById(skinId);
@@ -169,20 +139,18 @@ export class DriftCar {
         this.position.x += Math.sin(this.velocityAngle) * this.speed * delta;
         this.position.z += Math.cos(this.velocityAngle) * this.speed * delta;
 
-        // 5. High-density 60 FPS sampling for 100% continuous unbroken tire marks!
-        this.markTimer += delta;
-        if ((this.isDrifting || this.slipAngle > 8) && this.markTimer > 0.012) {
-            this.markTimer = 0;
+        // 5. Continuous 3D Ribbon Mesh Tire Tracks (100% Solid & Connected, Zero Blocky Gaps!)
+        if (this.isDrifting || this.slipAngle > 8) {
             const cosH = Math.cos(this.heading);
             const sinH = Math.sin(this.heading);
 
             const rlX = this.position.x + (-1.1 * cosH) + (-1.3 * sinH);
             const rlZ = this.position.z + (1.1 * sinH) + (-1.3 * cosH);
-            this.addTireMark(rlX, rlZ, this.heading);
+            this.leftTireTrail.addPoint(rlX, rlZ, this.heading);
 
             const rrX = this.position.x + (1.1 * cosH) + (-1.3 * sinH);
             const rrZ = this.position.z + (-1.1 * sinH) + (-1.3 * cosH);
-            this.addTireMark(rrX, rrZ, this.heading);
+            this.rightTireTrail.addPoint(rrX, rrZ, this.heading);
         }
 
         // 6. Drift score update
@@ -262,6 +230,8 @@ export class DriftCar {
         this.driftTimer = 0;
         this.currentRoll = 0;
         this.currentPitch = 0;
+        if (this.leftTireTrail) this.leftTireTrail.clear();
+        if (this.rightTireTrail) this.rightTireTrail.clear();
         this.group.position.set(this.position.x, 0, this.position.z);
         this.group.rotation.set(0, this.heading, 0);
     }
