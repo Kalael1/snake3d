@@ -109,6 +109,19 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Real-Time Chat & Emoji Broadcast
+    socket.on('chatMessage', (data) => {
+        const player = players[socket.id];
+        if (!player || !data || !data.text) return;
+
+        io.emit('chatReceived', {
+            id: socket.id,
+            name: player.name,
+            text: data.text.substring(0, 60),
+            isEmoji: !!data.isEmoji
+        });
+    });
+
     socket.on('eatFood', (data) => {
         const player = players[socket.id];
         if (!player || !data || !data.foodId) return;

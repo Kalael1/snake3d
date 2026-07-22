@@ -29,6 +29,79 @@ canvas {
   height: 100%;
 }
 
+/* 3D OVERHEAD NAMETAGS & SPEECH BUBBLES */
+#nametag-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.nametag-pill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1.5px solid rgba(0, 255, 204, 0.4);
+  padding: 3px 10px;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  will-change: transform;
+}
+
+.nametag-pill.local-tag {
+  border-color: #fbbf24;
+  background: rgba(15, 23, 42, 0.95);
+  color: #fbbf24;
+}
+
+.speech-bubble {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: white;
+  color: #0f172a;
+  padding: 6px 12px;
+  border-radius: 16px;
+  border-bottom-left-radius: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  will-change: transform;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.speech-bubble.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.speech-bubble.pop-in {
+  animation: bubblePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes bubblePop {
+  from { transform: translate(-50%, -80%) scale(0.5); opacity: 0; }
+  to { transform: translate(-50%, -100%) scale(1); opacity: 1; }
+}
+
+.bubble-emoji {
+  font-size: 24px;
+  display: block;
+}
+
 /* HUD UI LAYER */
 #ui-layer {
   position: absolute;
@@ -60,7 +133,6 @@ canvas {
   display: flex;
   align-items: center;
   gap: 10px;
-  transition: transform 0.2s ease;
 }
 
 .hud-icon {
@@ -158,6 +230,109 @@ canvas {
 
 #lb-list li:last-child {
   border-bottom: none;
+}
+
+/* CHAT CONTAINER & QUICK EMOJI BAR */
+#chat-container {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: end;
+  justify-self: start;
+  width: 280px;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#chat-messages {
+  max-height: 140px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+#chat-messages::-webkit-scrollbar {
+  width: 4px;
+}
+#chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(6, 182, 212, 0.3);
+  border-radius: 10px;
+}
+
+.chat-msg {
+  color: #e2e8f0;
+  word-break: break-word;
+}
+.chat-msg .sender {
+  color: #06b6d4;
+  font-weight: 700;
+}
+.chat-msg.system-msg {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+#quick-emoji-bar {
+  display: flex;
+  gap: 6px;
+}
+
+.emoji-btn {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  font-size: 18px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: transform 0.15 ease, border-color 0.15s ease;
+}
+
+.emoji-btn:hover {
+  transform: scale(1.2);
+  border-color: #06b6d4;
+}
+
+#chat-input-wrapper {
+  display: flex;
+  gap: 6px;
+}
+
+#chat-input {
+  flex: 1;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  padding: 8px 12px;
+  color: white;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  outline: none;
+}
+
+#chat-input:focus {
+  border-color: #06b6d4;
+}
+
+#send-chat-btn {
+  background: #06b6d4;
+  border: none;
+  border-radius: 14px;
+  color: #060611;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0 12px;
+  cursor: pointer;
 }
 
 #controls-hint {
@@ -259,7 +434,6 @@ canvas {
   margin: 6px 0 20px 0;
 }
 
-/* PLAYER INPUT */
 .player-input-wrapper {
   position: relative;
   max-width: 340px;
@@ -294,7 +468,6 @@ canvas {
   background: rgba(30, 41, 59, 0.9);
 }
 
-/* FINAL SCORE BOX */
 #final-score-box {
   margin: 14px 0;
   background: rgba(6, 182, 212, 0.1);
@@ -465,7 +638,6 @@ canvas {
   color: #f43f5e;
 }
 
-/* PLAY BUTTON WITH PULSE ANIMATION */
 .play-btn {
   width: 100%;
   max-width: 320px;

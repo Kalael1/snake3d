@@ -11,6 +11,9 @@
   <body>
     <div id="app"></div>
 
+    <!-- 3D Overhead Name Tags & Floating Emoji/Speech Bubbles Layer -->
+    <div id="nametag-container"></div>
+
     <!-- HUD Layer -->
     <div id="ui-layer">
       <div id="top-left-hud">
@@ -39,6 +42,28 @@
           <ul id="lb-list">
             <li>1. Bekleniyor...</li>
           </ul>
+        </div>
+      </div>
+
+      <!-- Interactive Social Chatbox & Quick Emoji Bar (Bottom Left) -->
+      <div id="chat-container">
+        <div id="chat-messages">
+          <div class="chat-msg system-msg">💬 Sohbet alanına hoş geldiniz!</div>
+        </div>
+
+        <!-- Quick Reaction Emoji Bar -->
+        <div id="quick-emoji-bar">
+          <button class="emoji-btn" data-emoji="😂">😂</button>
+          <button class="emoji-btn" data-emoji="😈">😈</button>
+          <button class="emoji-btn" data-emoji="🔥">🔥</button>
+          <button class="emoji-btn" data-emoji="💀">💀</button>
+          <button class="emoji-btn" data-emoji="👑">👑</button>
+          <button class="emoji-btn" data-emoji="👋">👋</button>
+        </div>
+
+        <div id="chat-input-wrapper">
+          <input type="text" id="chat-input" placeholder="Mesaj yazın... (Enter)" maxlength="50" autocomplete="off">
+          <button id="send-chat-btn">Gönder</button>
         </div>
       </div>
 

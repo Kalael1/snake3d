@@ -10,8 +10,9 @@ import { Snake } from './src/Snake.js';
 import { OtherSnake } from './src/OtherSnake.js';
 import { AudioManager } from './src/AudioManager.js';
 import { ParticleSystem } from './src/ParticleSystem.js';
-import { SKINS } from './src/SkinRegistry.js';
+import { SKINS, getSkinById } from './src/SkinRegistry.js';
 import { ProgressionManager } from './src/ProgressionManager.js';
+import { NameTagManager } from './src/NameTagManager.js';
 
 // Setup Socket.io Client
 const socket = io();
@@ -34,6 +35,9 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 document.getElementById('app').appendChild(renderer.domElement);
+
+// NameTag & Floating Bubble Manager
+const nameTagManager = new NameTagManager(camera, document.getElementById('nametag-container'));
 
 // Post-Processing Pipeline
 const composer = new EffectComposer(renderer);
@@ -108,6 +112,9 @@ const soundBtn = document.getElementById('sound-btn');
 const skinCardsGrid = document.getElementById('skin-cards-grid');
 const skinProgressText = document.getElementById('skin-progress-text');
 const skinProgressFill = document.getElementById('skin-progress-bar-fill');
+const chatInput = document.getElementById('chat-input');
+const sendChatBtn = document.getElementById('send-chat-btn');
+const chatMessages = document.getElementById('chat-messages');
 
 highScoreElement.innerText = progressionManager.highScore;
 
@@ -168,6 +175,50 @@ function renderSkinGallery() {
 
 renderSkinGallery();
 
+// CHAT & EMOJI REACTION LOGIC
+function sendChatMessage(text, isEmoji = false) {
+    const cleanText = text.trim();
+    if (!cleanText) return;
+    socket.emit('chatMessage', { text: cleanText, isEmoji: isEmoji });
+}
+
+sendChatBtn.addEventListener('click', () => {
+    sendChatMessage(chatInput.value, false);
+    chatInput.value = '';
+});
+
+chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        sendChatMessage(chatInput.value, false);
+        chatInput.value = '';
+        chatInput.blur();
+    }
+});
+
+// Quick Emoji Reactions
+document.querySelectorAll('.emoji-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const emoji = btn.getAttribute('data-emoji');
+        if (emoji) {
+            sendChatMessage(emoji, true);
+        }
+    });
+});
+
+socket.on('chatReceived', (data) => {
+    if (!data) return;
+
+    // 1. Add to Chatbox UI Log
+    const msgDiv = document.createElement('div');
+    msgDiv.className = 'chat-msg';
+    msgDiv.innerHTML = `<span class="sender">${data.name}:</span> ${data.text}`;
+    chatMessages.appendChild(msgDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    // 2. Show Overhead Floating Speech / Emoji Bubble above 3D snake!
+    nameTagManager.showBubble(data.id, data.text, data.isEmoji);
+});
+
 // Mouse tracking & Raycasting
 const mouse = new THREE.Vector2();
 const raycaster = new THREE.Raycaster();
@@ -192,12 +243,15 @@ function setBoostState(state) {
 }
 
 window.addEventListener('mousedown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
     if (e.button === 0 && isGameRunning) setBoostState(true);
 });
 window.addEventListener('mouseup', (e) => {
     if (e.button === 0) setBoostState(false);
 });
 window.addEventListener('keydown', (e) => {
+    if (document.activeElement === chatInput) return;
+
     if (e.code === 'Space' && isGameRunning) {
         setBoostState(true);
     } else if (e.code === 'Escape' && isGameRunning) {
@@ -206,6 +260,7 @@ window.addEventListener('keydown', (e) => {
     }
 });
 window.addEventListener('keyup', (e) => {
+    if (document.activeElement === chatInput) return;
     if (e.code === 'Space') setBoostState(false);
 });
 
@@ -257,7 +312,8 @@ socket.on('gameState', (state) => {
     const serverIds = Object.keys(serverPlayers);
 
     if (localSocketId && serverPlayers[localSocketId]) {
-        const serverScore = serverPlayers[localSocketId].score || 0;
+        const pData = serverPlayers[localSocketId];
+        const serverScore = pData.score || 0;
         if (serverScore > currentScore) {
             currentScore = serverScore;
             scoreElement.innerText = currentScore;
@@ -268,6 +324,15 @@ socket.on('gameState', (state) => {
                 highScoreElement.innerText = currentScore;
             }
         }
+
+        // Update Local Overhead 3D Name Tag
+        nameTagManager.createOrUpdateTag(
+            localSocketId,
+            pData.name,
+            localSnake.activeSkin.icon,
+            localSnake.getHeadPosition(),
+            true
+        );
     }
 
     serverIds.forEach(id => {
@@ -279,12 +344,26 @@ socket.on('gameState', (state) => {
         } else {
             otherSnakes[id].update(playerData);
         }
+
+        // Update Remote Overhead 3D Name Tag
+        const remoteSnake = otherSnakes[id];
+        const remoteHeadPos = remoteSnake.segments[0] ? remoteSnake.segments[0].position : new THREE.Vector3(playerData.x, 1.2, playerData.z);
+        const skinIcon = remoteSnake.activeSkin ? remoteSnake.activeSkin.icon : '🐍';
+
+        nameTagManager.createOrUpdateTag(
+            id,
+            playerData.name,
+            skinIcon,
+            remoteHeadPos,
+            false
+        );
     });
 
     Object.keys(otherSnakes).forEach(id => {
         if (!serverPlayers[id]) {
             otherSnakes[id].destroy();
             delete otherSnakes[id];
+            nameTagManager.removeTag(id);
         }
     });
 
@@ -487,6 +566,9 @@ function animate() {
     camera.position.y += (camTargetY - camera.position.y) * 0.1;
     camera.position.z += (camTargetZ - camera.position.z) * 0.1;
     camera.lookAt(headPos.x, headPos.y, headPos.z - 2);
+
+    // 7. Update Overhead 3D projected Player Name Tags & Speech/Emoji Bubbles!
+    nameTagManager.updatePositions();
 
     composer.render();
 }
