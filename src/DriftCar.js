@@ -110,6 +110,15 @@ export class DriftCar {
             if (child.isMesh) {
                 child.castShadow = true;
                 child.receiveShadow = true;
+
+                if (child.material) {
+                    child.material = child.material.clone();
+                    if (child.material.color) {
+                        child.material.color.multiplyScalar(1.75); // Brighten car paint!
+                    }
+                    if (child.material.roughness !== undefined) child.material.roughness = 0.25;
+                    if (child.material.metalness !== undefined) child.material.metalness = 0.45;
+                }
             }
         });
 

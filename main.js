@@ -40,12 +40,12 @@ document.getElementById('app').appendChild(renderer.domElement);
 
 const nameTagManager = new NameTagManager(camera, document.getElementById('nametag-container'));
 
-// 1. Ambient Hemisphere Light (Cyan sky & dark cyber ground)
-const hemiLight = new THREE.HemisphereLight(0x00f3ff, 0x050a18, 0.85);
+// 1. Ambient Hemisphere Light (Cyan sky & bright cyber ground)
+const hemiLight = new THREE.HemisphereLight(0x00f3ff, 0x334155, 1.3);
 scene.add(hemiLight);
 
 // 2. Primary Cyber Moonlight (Soft Shadows)
-const dirLight = new THREE.DirectionalLight(0x38bdf8, 2.2);
+const dirLight = new THREE.DirectionalLight(0x7dd3fc, 2.5);
 dirLight.position.set(100, 180, 80);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.width = 2048;
@@ -60,13 +60,18 @@ dirLight.shadow.bias = -0.0001;
 scene.add(dirLight);
 
 // 3. Pink / Magenta Rim Accent Light
-const rimLight = new THREE.DirectionalLight(0xff0077, 1.8);
+const rimLight = new THREE.DirectionalLight(0xff0077, 2.0);
 rimLight.position.set(-120, 100, -100);
 scene.add(rimLight);
 
 // 4. Dynamic Car Underglow PointLight
-const carUnderglowLight = new THREE.PointLight(0x00f3ff, 8.0, 16);
+const carUnderglowLight = new THREE.PointLight(0x00f3ff, 12.0, 20);
 scene.add(carUnderglowLight);
+
+// 5. Dedicated Car Key Spotlight (Follows car directly from above!)
+const carKeySpotlight = new THREE.SpotLight(0xffffff, 16.0, 40, Math.PI / 3, 0.4);
+carKeySpotlight.castShadow = false;
+scene.add(carKeySpotlight);
 
 // ============== GAME ENTITIES ==============
 const arena = new Arena(scene, 500);
@@ -453,8 +458,11 @@ function animate() {
         const headPos = localCar.getHeadPosition();
         const driftScore = localCar.getScore();
 
-        // Dynamic Neon Underglow Light under car
+        // Dynamic Neon Underglow & Overhead Key Spotlight (Car Highlight!)
         carUnderglowLight.position.set(headPos.x, 0.4, headPos.z);
+        carKeySpotlight.position.set(headPos.x, 18.0, headPos.z);
+        carKeySpotlight.target.position.set(headPos.x, 0.5, headPos.z);
+        carKeySpotlight.target.updateMatrixWorld();
 
         // Update traffic cones physics (Kukaları devirme & fırlatma)
         arena.updateCones(delta, headPos);
