@@ -10,7 +10,7 @@ import { ProgressionManager } from './src/ProgressionManager.js';
 import { NameTagManager } from './src/NameTagManager.js';
 import { NetworkInterpolator } from './src/NetworkInterpolator.js';
 
-// Hybrid Auto-detect Socket URL (Connects to Oracle Cloud Backend if hosted on Vercel/GitHub Pages)
+// Hybrid Auto-detect Socket URL
 const SOCKET_URL = window.location.hostname.includes('github.io') || window.location.hostname.includes('vercel.app') || window.location.hostname.includes('netlify.app')
     ? 'https://boutique-mainly-being-succeed.trycloudflare.com'
     : window.location.origin;
@@ -255,18 +255,20 @@ socket.on('chatReceived', (data) => {
     nameTagManager.showBubble(data.id, data.text, data.isEmoji);
 });
 
-// MOUSE & TOUCH CONTROLS
-const mouse = new THREE.Vector2();
-const raycaster = new THREE.Raycaster();
-const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-const targetPoint = new THREE.Vector3(0, 0, 10);
+// INSTANT 0-LAG DIRECT SCREEN-SPACE ANGLE CONTROLS (SLITHER.IO PHYSICS)
+let targetAngle = 0;
+let mousePos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
 window.addEventListener('mousemove', (event) => {
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    mousePos.x = event.clientX;
+    mousePos.y = event.clientY;
+
+    const dx = mousePos.x - window.innerWidth / 2;
+    const dy = mousePos.y - window.innerHeight / 2;
+    targetAngle = Math.atan2(dx, -dy); // Slither.io 0-lag screen angle
 });
 
-// MOBILE TOUCH & PINCH-TO-ZOOM CONTROLS
+// MOBILE TOUCH CONTROLS
 let touchStartOrigin = { x: 0, y: 0 };
 let initialPinchDist = null;
 
@@ -282,8 +284,9 @@ window.addEventListener('touchstart', (e) => {
         virtualJoystick.style.top = `${touch.clientY}px`;
         virtualJoystick.classList.remove('hidden');
 
-        mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+        const dx = touch.clientX - window.innerWidth / 2;
+        const dy = touch.clientY - window.innerHeight / 2;
+        targetAngle = Math.atan2(dx, -dy);
     } else if (e.touches.length === 2) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
@@ -297,17 +300,17 @@ window.addEventListener('touchmove', (e) => {
     if (e.touches.length === 1) {
         const touch = e.touches[0];
 
-        mouse.x = (touch.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(touch.clientY / window.innerHeight) * 2 + 1;
-
         const dx = touch.clientX - touchStartOrigin.x;
         const dy = touch.clientY - touchStartOrigin.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         const maxDist = 45;
-        const angle = Math.atan2(dy, dx);
 
-        const knobX = Math.cos(angle) * Math.min(dist, maxDist);
-        const knobY = Math.sin(angle) * Math.min(dist, maxDist);
+        if (dist > 5) {
+            targetAngle = Math.atan2(dx, -dy);
+        }
+
+        const knobX = Math.cos(Math.atan2(dy, dx)) * Math.min(dist, maxDist);
+        const knobY = Math.sin(Math.atan2(dy, dx)) * Math.min(dist, maxDist);
 
         joystickKnob.style.transform = `translate(-50%, -50%) translate(${knobX}px, ${knobY}px)`;
     } else if (e.touches.length === 2 && initialPinchDist) {
@@ -601,14 +604,10 @@ function animate() {
     const delta = Math.min(clock.getDelta(), 0.1);
 
     if (isGameRunning) {
-        // 1. Target Point via Raycast
-        raycaster.setFromCamera(mouse, camera);
-        raycaster.ray.intersectPlane(groundPlane, targetPoint);
+        // 1. Local Snake Physics Update (Direct Instant Angle Physics - 0 Lag!)
+        localSnake.update(delta, targetAngle, isBoosting);
 
-        // 2. Local Snake Physics Update (Client Prediction)
-        localSnake.update(delta, targetPoint, isBoosting);
-
-        // 3. Update Remote Snakes via Network Interpolator Queue (Butter Smooth 60 FPS!)
+        // 2. Update Remote Snakes via Network Interpolator Queue (Butter Smooth 60 FPS!)
         Object.keys(otherSnakes).forEach(id => {
             const interpolatedState = networkInterpolator.getInterpolatedState(id);
             if (interpolatedState) {
@@ -616,7 +615,7 @@ function animate() {
             }
         });
 
-        // 4. Head Collision Eating Check
+        // 3. Head Collision Eating Check
         const headPos = localSnake.getHeadPosition();
         const foodKeys = Object.keys(foodMeshes);
         
@@ -651,7 +650,7 @@ function animate() {
             }
         }
 
-        // 5. Emit Ultra-light Input (head position only, 95% payload reduction!)
+        // 4. Emit Ultra-light Input to Server
         socket.volatile.emit('playerInput', {
             x: headPos.x,
             z: headPos.z,
@@ -661,11 +660,11 @@ function animate() {
         });
     } else {
         const time = Date.now() * 0.004;
-        targetPoint.set(Math.cos(time) * 20, 0, Math.sin(time) * 20);
-        localSnake.update(delta, targetPoint, false);
+        targetAngle = Math.sin(time) * 2;
+        localSnake.update(delta, targetAngle, false);
     }
 
-    // 6. Dynamic Camera Follow & Smooth Zoom
+    // 5. Dynamic Camera Follow & Smooth Zoom
     currentZoom += (targetZoom - currentZoom) * 0.1;
 
     const headPos = localSnake.getHeadPosition();
@@ -673,12 +672,12 @@ function animate() {
     const camTargetZ = headPos.z + (20 * currentZoom);
     const camTargetY = headPos.y + (26 * currentZoom);
 
-    camera.position.x += (camTargetX - camera.position.x) * 0.1;
-    camera.position.y += (camTargetY - camera.position.y) * 0.1;
-    camera.position.z += (camTargetZ - camera.position.z) * 0.1;
+    camera.position.x += (camTargetX - camera.position.x) * 0.15;
+    camera.position.y += (camTargetY - camera.position.y) * 0.15;
+    camera.position.z += (camTargetZ - camera.position.z) * 0.15;
     camera.lookAt(headPos.x, headPos.y, headPos.z - 2);
 
-    // 7. Update Overhead 3D projected Player Name Tags & Speech/Emoji Bubbles
+    // 6. Update Overhead 3D projected Player Name Tags & Speech/Emoji Bubbles
     nameTagManager.updatePositions();
 
     renderer.render(scene, camera);

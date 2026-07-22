@@ -8,17 +8,18 @@ export class Snake {
         this.skinId = 'classic';
         this.activeSkin = getSkinById(this.skinId);
 
-        this.speed = 18;
-        this.boostSpeed = 34;
-        this.turnSpeed = 4.2;
+        // Instant & Butter Smooth Speed & Turning (Slither.io Physics)
+        this.speed = 22;
+        this.boostSpeed = 38;
+        this.turnSpeed = 8.5; // High responsiveness for 0 lag turning
 
         this.currentAngle = 0;
         this.targetAngle = 0;
 
-        // Optimized Low-Poly Dimensions
+        // Dimensions
         this.headRadius = 1.2;
         this.segmentRadius = 0.95;
-        this.segmentSpacing = 1.25;
+        this.segmentSpacing = 1.2;
 
         this.eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1 });
         this.pupilMat = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.1 });
@@ -28,7 +29,6 @@ export class Snake {
 
     init() {
         this.headGroup = new THREE.Group();
-
         const skin = this.activeSkin;
 
         this.headMat = new THREE.MeshStandardMaterial({
@@ -39,12 +39,11 @@ export class Snake {
             opacity: skin.opacity
         });
 
-        // Polygon count cut by half: 16x16 segments instead of 32x32
         const headGeo = new THREE.SphereGeometry(this.headRadius, 16, 16);
         this.headMesh = new THREE.Mesh(headGeo, this.headMat);
         this.headGroup.add(this.headMesh);
 
-        // Eyes (Low-poly 8x8)
+        // Eyes
         const eyeGeo = new THREE.SphereGeometry(0.35, 8, 8);
         const pupilGeo = new THREE.SphereGeometry(0.18, 8, 8);
 
@@ -70,7 +69,6 @@ export class Snake {
         this.scene.add(this.headGroup);
         this.segments.push(this.headGroup);
 
-        // Initial 8 segments
         for (let i = 1; i <= 8; i++) {
             this.addSegment(0, -i * this.segmentSpacing);
         }
@@ -145,8 +143,6 @@ export class Snake {
 
     addSegment(x, z) {
         const skin = this.activeSkin;
-
-        // Polygon count cut by half: 12x12 segments instead of 24x24
         const geo = new THREE.SphereGeometry(this.segmentRadius, 12, 12);
         const segMat = new THREE.MeshStandardMaterial({
             color: skin.bodyColor,
@@ -171,15 +167,11 @@ export class Snake {
         }
     }
 
-    update(delta, targetPoint, isBoosting) {
+    // Direct Instant Angle Rotation (0 Lag Slither.io Physics)
+    update(delta, targetAngle, isBoosting) {
         const head = this.segments[0];
 
-        const dx = targetPoint.x - head.position.x;
-        const dz = targetPoint.z - head.position.z;
-
-        this.targetAngle = Math.atan2(dx, dz);
-
-        let diff = this.targetAngle - this.currentAngle;
+        let diff = targetAngle - this.currentAngle;
         while (diff < -Math.PI) diff += Math.PI * 2;
         while (diff > Math.PI) diff -= Math.PI * 2;
 
@@ -197,7 +189,7 @@ export class Snake {
         head.position.x = Math.max(-boundLimit, Math.min(boundLimit, head.position.x));
         head.position.z = Math.max(-boundLimit, Math.min(boundLimit, head.position.z));
 
-        // Follow head logic
+        // Smooth follow head logic
         for (let i = 1; i < this.segments.length; i++) {
             const prevSeg = this.segments[i - 1];
             const currSeg = this.segments[i];
