@@ -192,6 +192,15 @@
           <input type="text" id="player-name" placeholder="Sürücü Adınız..." maxlength="12" value="DriftPilotu">
         </div>
 
+        <!-- CONTROL SCHEME SELECTOR (Klavye vs Fare) -->
+        <div id="control-scheme-wrapper">
+          <span class="control-title">🎮 KONTROL YÖNTEMİ:</span>
+          <div class="control-btn-group">
+            <button type="button" id="ctrl-keyboard-btn" class="ctrl-option-btn active">⌨️ KLAVYE (A / D)</button>
+            <button type="button" id="ctrl-mouse-btn" class="ctrl-option-btn">🖱️ FARE İLE DİREKSİYON</button>
+          </div>
+        </div>
+
         <div id="skin-gallery-container">
           <div class="gallery-title-bar">
             <span class="gallery-title">🏎️ ARABA GARAJI</span>
@@ -207,6 +216,13 @@
           <span class="play-icon">▶</span> SÜRE BAŞLAT
         </button>
       </div>
+    </div>
+
+    <!-- MOBILE EASY TOUCH CONTROLS -->
+    <div id="mobile-touch-controls">
+      <button id="mobile-left-btn" class="touch-ctrl-btn steer-btn">◀ SOL</button>
+      <button id="mobile-engine-toggle-btn" class="touch-ctrl-btn engine-btn">⚡ MOTOR</button>
+      <button id="mobile-right-btn" class="touch-ctrl-btn steer-btn">SAĞ ▶</button>
     </div>
 
     <script type="module" src="/main.js"></script>

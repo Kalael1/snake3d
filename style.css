@@ -336,6 +336,102 @@ canvas {
   box-shadow: 0 4px 15px rgba(6, 182, 212, 0.9);
 }
 
+/* CONTROL SCHEME SELECTOR (KLAVYE VS FARE) */
+#control-scheme-wrapper {
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.control-title {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 1px;
+}
+
+.control-btn-group {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+.ctrl-option-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  background: rgba(15, 23, 42, 0.6);
+  color: #cbd5e1;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ctrl-option-btn.active {
+  border-color: #00f3ff;
+  background: linear-gradient(135deg, rgba(0, 243, 255, 0.25), rgba(59, 130, 246, 0.25));
+  color: #00f3ff;
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+}
+
+/* MOBILE TOUCH STEERING BUTTONS */
+#mobile-touch-controls {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  display: none; /* Shown on touch screens */
+  gap: 15px;
+  z-index: 950;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@media (max-width: 900px), (pointer: coarse) {
+  #mobile-touch-controls {
+    display: flex;
+  }
+}
+
+.touch-ctrl-btn {
+  width: 75px;
+  height: 75px;
+  border-radius: 50%;
+  border: 3px solid rgba(0, 243, 255, 0.6);
+  background: rgba(15, 23, 42, 0.85);
+  color: #00f3ff;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 900;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 15px rgba(0, 243, 255, 0.3);
+  backdrop-filter: blur(10px);
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+.touch-ctrl-btn:active, .touch-ctrl-btn.active-touch {
+  transform: scale(0.92);
+  background: #00f3ff;
+  color: #050c18;
+  box-shadow: 0 0 25px #00f3ff;
+}
+
+.touch-ctrl-btn.engine-btn {
+  border-color: #f59e0b;
+  color: #f59e0b;
+  box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+}
+
+.touch-ctrl-btn.engine-btn:active {
+  background: #f59e0b;
+  color: #050c18;
+}
+
 /* DEDICATED MOBILE CHAT MODAL DRAWER */
 #mobile-chat-modal {
   position: fixed;

@@ -9,6 +9,7 @@ import { SKINS } from './src/SkinRegistry.js';
 import { ProgressionManager } from './src/ProgressionManager.js';
 import { NameTagManager } from './src/NameTagManager.js';
 import { TronTrailManager } from './src/TronTrailManager.js';
+import { ExplosionManager } from './src/ExplosionManager.js';
 
 // ============== SOCKET ==============
 const SOCKET_URL = window.location.hostname.includes('github.io') || window.location.hostname.includes('vercel.app') || window.location.hostname.includes('netlify.app')
@@ -40,7 +41,7 @@ document.getElementById('app').appendChild(renderer.domElement);
 
 const nameTagManager = new NameTagManager(camera, document.getElementById('nametag-container'));
 
-// 1. Ambient Hemisphere Light (Cyan sky & bright cyber ground)
+// 1. Ambient Hemisphere Light
 const hemiLight = new THREE.HemisphereLight(0x00f3ff, 0x334155, 1.3);
 scene.add(hemiLight);
 
@@ -79,43 +80,31 @@ const localCar = new DriftCar(scene);
 localCar.applySkin(progressionManager.selectedSkinId);
 
 const tronTrailManager = new TronTrailManager(scene);
+const explosionManager = new ExplosionManager(scene);
 const otherCars = {};
 
 let isGameRunning = false;
-let localSocketId = null;
-let gameStartTime = 0;
-let currentPlayersList = [];
-let lastNetworkEmitTime = 0;
-let lastTrailEmitTime = 0;
 let isEmittingTrail = false;
+let lastTrailEmitTime = 0;
+let localSocketId = null;
+let currentPlayersList = [];
+let gameStartTime = 0;
+let lastNetworkEmitTime = 0;
 
-let targetZoom = 1.0;
-let currentZoom = 1.0;
-
-window.addEventListener('wheel', (e) => {
-    targetZoom += e.deltaY * 0.0015;
-    targetZoom = Math.max(0.4, Math.min(2.5, targetZoom));
-}, { passive: true });
-
-// ============== DOM ==============
-const scoreElement = document.getElementById('score');
-const highScoreElement = document.getElementById('high-score');
+// ============== DOM ELEMENTS ==============
 const overlay = document.getElementById('overlay');
 const startBtn = document.getElementById('start-btn');
-const overlayDesc = document.getElementById('overlay-desc');
 const playerNameInput = document.getElementById('player-name');
-const lbList = document.getElementById('lb-list');
+const overlayDesc = document.getElementById('overlay-desc');
+const scoreElement = document.getElementById('score');
+const highScoreElement = document.getElementById('high-score');
 const soundBtn = document.getElementById('sound-btn');
 const fullscreenBtn = document.getElementById('fullscreen-btn');
-const skinCardsGrid = document.getElementById('skin-cards-grid');
-const skinProgressText = document.getElementById('skin-progress-text');
-const skinProgressFill = document.getElementById('skin-progress-bar-fill');
+const lbList = document.getElementById('lb-list');
+
 const chatInput = document.getElementById('chat-input');
 const sendChatBtn = document.getElementById('send-chat-btn');
 const chatMessages = document.getElementById('chat-messages');
-const mobileBoostBtn = document.getElementById('mobile-boost-btn');
-const virtualJoystick = document.getElementById('virtual-joystick');
-const joystickKnob = document.getElementById('joystick-knob');
 
 const gameoverModalOverlay = document.getElementById('gameover-modal-overlay');
 const gameoverReasonText = document.getElementById('gameover-reason-text');
@@ -126,16 +115,93 @@ const statHighscore = document.getElementById('stat-highscore');
 const restartGameBtn = document.getElementById('restart-game-btn');
 const openSkinsBtn = document.getElementById('open-skins-btn');
 
+const skinCardsGrid = document.getElementById('skin-cards-grid');
+const skinProgressFill = document.getElementById('skin-progress-bar-fill');
+const skinProgressText = document.getElementById('skin-progress-text');
+
+const virtualJoystick = document.getElementById('virtual-joystick');
+const joystickKnob = document.getElementById('joystick-knob');
+
 const mobileChatModal = document.getElementById('mobile-chat-modal');
-const mobileChatMessages = document.getElementById('mobile-chat-messages');
+const closeMobileChatBtn = document.getElementById('close-mobile-chat-btn');
 const mobileChatInput = document.getElementById('mobile-chat-input');
 const mobileSendChatBtn = document.getElementById('mobile-send-chat-btn');
-const closeMobileChatBtn = document.getElementById('close-mobile-chat-btn');
+const mobileChatMessages = document.getElementById('mobile-chat-messages');
+
+const ctrlKeyboardBtn = document.getElementById('ctrl-keyboard-btn');
+const ctrlMouseBtn = document.getElementById('ctrl-mouse-btn');
+
+const mobileLeftBtn = document.getElementById('mobile-left-btn');
+const mobileRightBtn = document.getElementById('mobile-right-btn');
+const mobileEngineBtn = document.getElementById('mobile-engine-toggle-btn');
 
 const driftComboEl = document.getElementById('drift-combo');
 const driftAngleEl = document.getElementById('drift-angle');
 
 highScoreElement.innerText = progressionManager.highScore;
+
+// ============== CONTROL SCHEME SELECTOR (Klavye vs Fare) ==============
+let selectedControlScheme = localStorage.getItem('drift_control_scheme') || 'keyboard';
+
+function updateControlSchemeUI() {
+    if (selectedControlScheme === 'keyboard') {
+        if (ctrlKeyboardBtn) ctrlKeyboardBtn.classList.add('active');
+        if (ctrlMouseBtn) ctrlMouseBtn.classList.remove('active');
+    } else {
+        if (ctrlMouseBtn) ctrlMouseBtn.classList.add('active');
+        if (ctrlKeyboardBtn) ctrlKeyboardBtn.classList.remove('active');
+    }
+}
+updateControlSchemeUI();
+
+if (ctrlKeyboardBtn) {
+    ctrlKeyboardBtn.addEventListener('click', () => {
+        selectedControlScheme = 'keyboard';
+        localStorage.setItem('drift_control_scheme', 'keyboard');
+        updateControlSchemeUI();
+    });
+}
+
+if (ctrlMouseBtn) {
+    ctrlMouseBtn.addEventListener('click', () => {
+        selectedControlScheme = 'mouse';
+        localStorage.setItem('drift_control_scheme', 'mouse');
+        updateControlSchemeUI();
+    });
+}
+
+// ============== MOBILE EASY TOUCH STEERING BUTTONS ==============
+let mobileSteerLeft = false;
+let mobileSteerRight = false;
+
+if (mobileLeftBtn) {
+    const startLeft = (e) => { e.preventDefault(); mobileSteerLeft = true; mobileLeftBtn.classList.add('active-touch'); };
+    const stopLeft = (e) => { e.preventDefault(); mobileSteerLeft = false; mobileLeftBtn.classList.remove('active-touch'); };
+    mobileLeftBtn.addEventListener('touchstart', startLeft, { passive: false });
+    mobileLeftBtn.addEventListener('touchend', stopLeft, { passive: false });
+    mobileLeftBtn.addEventListener('mousedown', startLeft);
+    mobileLeftBtn.addEventListener('mouseup', stopLeft);
+}
+
+if (mobileRightBtn) {
+    const startRight = (e) => { e.preventDefault(); mobileSteerRight = true; mobileRightBtn.classList.add('active-touch'); };
+    const stopRight = (e) => { e.preventDefault(); mobileSteerRight = false; mobileRightBtn.classList.remove('active-touch'); };
+    mobileRightBtn.addEventListener('touchstart', startRight, { passive: false });
+    mobileRightBtn.addEventListener('touchend', stopRight, { passive: false });
+    mobileRightBtn.addEventListener('mousedown', startRight);
+    mobileRightBtn.addEventListener('mouseup', stopRight);
+}
+
+if (mobileEngineBtn) {
+    const toggleEngine = (e) => {
+        e.preventDefault();
+        isEngineOn = !isEngineOn;
+        isEmittingTrail = isEngineOn;
+        if (!isEngineOn) tronTrailManager.breakPlayerTrail(localSocketId);
+    };
+    mobileEngineBtn.addEventListener('touchstart', toggleEngine, { passive: false });
+    mobileEngineBtn.addEventListener('click', toggleEngine);
+}
 
 soundBtn.addEventListener('click', () => {
     const muted = audioManager.toggleMute();
@@ -155,6 +221,7 @@ fullscreenBtn.addEventListener('click', toggleFullscreen);
 
 // ============== SKIN GALLERY ==============
 function renderSkinGallery() {
+    if (!skinCardsGrid) return;
     skinCardsGrid.innerHTML = '';
     const highScore = progressionManager.highScore;
     const nextUnlock = progressionManager.getNextUnlock();
@@ -193,54 +260,134 @@ function renderSkinGallery() {
 }
 renderSkinGallery();
 
-// ============== CHAT ==============
-function sendChatMessage(text, isEmoji = false) {
-    const t = text.trim();
-    if (!t) return;
-    socket.emit('chatMessage', { text: t, isEmoji });
-}
-sendChatBtn.addEventListener('click', () => { sendChatMessage(chatInput.value); chatInput.value = ''; });
-chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { sendChatMessage(chatInput.value); chatInput.value = ''; chatInput.blur(); } });
-chatInput.addEventListener('focus', () => {
-    if (window.innerWidth <= 768 || 'ontouchstart' in window) {
-        chatInput.blur();
-        mobileChatModal.classList.remove('hidden');
-        setTimeout(() => mobileChatInput.focus(), 100);
+// ============== CHAT SYSTEM ==============
+function addChatMessage(sender, text, isSystem = false) {
+    const div = document.createElement('div');
+    div.className = `chat-msg ${isSystem ? 'system-msg' : ''}`;
+    if (isSystem) {
+        div.innerText = text;
+    } else {
+        div.innerHTML = `<span class="msg-sender">${sender}:</span> <span class="msg-text">${escapeHtml(text)}</span>`;
     }
-});
-closeMobileChatBtn.addEventListener('click', () => mobileChatModal.classList.add('hidden'));
-mobileSendChatBtn.addEventListener('click', () => { sendChatMessage(mobileChatInput.value); mobileChatInput.value = ''; mobileChatModal.classList.add('hidden'); });
-mobileChatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { sendChatMessage(mobileChatInput.value); mobileChatInput.value = ''; mobileChatInput.blur(); mobileChatModal.classList.add('hidden'); } });
-document.querySelectorAll('.emoji-btn').forEach(btn => {
-    btn.addEventListener('click', () => { const emoji = btn.getAttribute('data-emoji'); if (emoji) sendChatMessage(emoji, true); });
-});
-socket.on('chatReceived', (data) => {
-    if (!data) return;
-    const html = `<div class="chat-msg"><span class="sender">${data.name}:</span> ${data.text}</div>`;
-    chatMessages.insertAdjacentHTML('beforeend', html);
+    chatMessages.appendChild(div);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-    mobileChatMessages.insertAdjacentHTML('beforeend', html);
-    mobileChatMessages.scrollTop = mobileChatMessages.scrollHeight;
-    nameTagManager.showBubble(data.id, data.text, data.isEmoji);
+
+    if (mobileChatMessages) {
+        const mDiv = div.cloneNode(true);
+        mobileChatMessages.appendChild(mDiv);
+        mobileChatMessages.scrollTop = mobileChatMessages.scrollHeight;
+    }
+}
+
+function escapeHtml(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function sendChat() {
+    const text = chatInput.value.trim();
+    if (text) {
+        socket.emit('chatMessage', text);
+        chatInput.value = '';
+    }
+}
+
+sendChatBtn.addEventListener('click', sendChat);
+chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendChat();
 });
 
-// ============== CONTROLS ==============
-const mouse = new THREE.Vector2();
+if (mobileSendChatBtn) {
+    mobileSendChatBtn.addEventListener('click', () => {
+        const text = mobileChatInput.value.trim();
+        if (text) {
+            socket.emit('chatMessage', text);
+            mobileChatInput.value = '';
+            mobileChatModal.classList.add('hidden');
+        }
+    });
+}
+
+if (closeMobileChatBtn) {
+    closeMobileChatBtn.addEventListener('click', () => {
+        mobileChatModal.classList.add('hidden');
+    });
+}
+
+document.querySelectorAll('.emoji-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const emoji = btn.getAttribute('data-emoji');
+        socket.emit('chatMessage', emoji);
+    });
+});
+
+// ============== SOCKET EVENT LISTENERS ==============
+socket.on('connect', () => {
+    localSocketId = socket.id;
+});
+
+socket.on('init', (data) => {
+    localSocketId = data.id;
+});
+
+socket.on('state', (players) => {
+    currentPlayersList = Object.values(players);
+    updateLeaderboard(players);
+
+    for (const id in players) {
+        if (id === localSocketId) continue;
+        const p = players[id];
+        if (!otherCars[id]) {
+            otherCars[id] = new OtherCar(scene, p.id, p.name || 'Sürücü', p.skinId || 'sport', nameTagManager);
+            addChatMessage('SİSTEM', `🏎️ ${p.name || 'Sürücü'} arenaya katıldı!`, true);
+        }
+        otherCars[id].updateState(p.x, p.z, p.angle || 0, p.skinId || 'sport', p.emittingTrail);
+
+        if (p.emittingTrail && p.x !== undefined) {
+            tronTrailManager.addSegment(id, p.x, p.z, p.angle || 0);
+        }
+    }
+
+    for (const id in otherCars) {
+        if (!players[id]) {
+            addChatMessage('SİSTEM', `🏎️ ${otherCars[id].name} arenadan ayrıldı.`, true);
+            otherCars[id].destroy();
+            delete otherCars[id];
+            tronTrailManager.clearPlayerTrail(id);
+        }
+    }
+});
+
+socket.on('chatBroadcast', (data) => {
+    addChatMessage(data.sender, data.text);
+    if (otherCars[data.id]) {
+        otherCars[data.id].showSpeechBubble(data.text);
+    }
+});
+
+// ============== MOUSE & TOUCH CONTROLS ==============
 const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+const targetPoint = new THREE.Vector3();
 const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-const targetPoint = new THREE.Vector3(0, 0, 10);
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
 
 window.addEventListener('mousemove', (e) => {
     mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
 });
 
-// TRON TRAIL ACTIVATION VIA MOUSE CLICK & TOUCH
 window.addEventListener('mousedown', (e) => {
-    if (e.button === 0 && !e.target.closest('#overlay,#gameover-modal-overlay,#chat-container,#sound-btn,#fullscreen-btn,#skin-gallery-container')) {
+    if (e.target.closest('#ui-layer') || e.target.closest('#overlay') || e.target.closest('#gameover-modal-overlay') || e.target.closest('#mobile-touch-controls')) return;
+    if (e.button === 0 && isGameRunning) {
         isEmittingTrail = true;
     }
 });
+
 window.addEventListener('mouseup', (e) => {
     if (e.button === 0) {
         isEmittingTrail = false;
@@ -252,14 +399,13 @@ let touchStartOrigin = { x: 0, y: 0 };
 let initialPinchDist = null;
 
 window.addEventListener('touchstart', (e) => {
+    if (e.target.closest('#ui-layer') || e.target.closest('#overlay') || e.target.closest('#gameover-modal-overlay') || e.target.closest('#mobile-touch-controls')) return;
     if (!isGameRunning) return;
+
     if (e.touches.length === 1) {
-        if (e.target.closest('#chat-container,#mobile-boost-btn,#sound-btn,#fullscreen-btn,#mobile-chat-modal')) return;
         const t = e.touches[0];
-        touchStartOrigin = { x: t.clientX, y: t.clientY };
-        virtualJoystick.style.left = `${t.clientX}px`;
-        virtualJoystick.style.top = `${t.clientY}px`;
-        virtualJoystick.classList.remove('hidden');
+        touchStartOrigin.x = t.clientX;
+        touchStartOrigin.y = t.clientY;
         mouse.x = (t.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(t.clientY / window.innerHeight) * 2 + 1;
         isEmittingTrail = true;
@@ -276,12 +422,6 @@ window.addEventListener('touchmove', (e) => {
         const t = e.touches[0];
         mouse.x = (t.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(t.clientY / window.innerHeight) * 2 + 1;
-        const dx = t.clientX - touchStartOrigin.x;
-        const dy = t.clientY - touchStartOrigin.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const angle = Math.atan2(dy, dx);
-        const knobDist = Math.min(dist, 45);
-        joystickKnob.style.transform = `translate(-50%, -50%) translate(${Math.cos(angle) * knobDist}px, ${Math.sin(angle) * knobDist}px)`;
     } else if (e.touches.length === 2 && initialPinchDist) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
@@ -294,8 +434,6 @@ window.addEventListener('touchmove', (e) => {
 
 window.addEventListener('touchend', (e) => {
     if (e.touches.length === 0) {
-        virtualJoystick.classList.add('hidden');
-        joystickKnob.style.transform = 'translate(-50%, -50%)';
         initialPinchDist = null;
         isEmittingTrail = false;
         tronTrailManager.breakPlayerTrail(localSocketId);
@@ -304,6 +442,8 @@ window.addEventListener('touchend', (e) => {
 
 let isTPSMode = false;
 let isEngineOn = true;
+let currentZoom = 1.0;
+let targetZoom = 1.0;
 const keysPressed = {};
 
 window.addEventListener('wheel', (e) => {
@@ -325,64 +465,25 @@ window.addEventListener('keydown', (e) => {
 
 window.addEventListener('keyup', (e) => {
     keysPressed[e.code] = false;
-    if (e.code === 'Space') {
-        isEmittingTrail = false;
-        tronTrailManager.breakPlayerTrail(localSocketId);
-    }
 });
 
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
-
-// ============== SOCKET EVENTS ==============
-socket.on('init', (data) => { localSocketId = data.id; });
-
-socket.on('gameState', (state) => {
-    if (!state) return;
-    const sp = state.players || {};
-    currentPlayersList = Object.values(sp);
-
-    if (localSocketId && sp[localSocketId]) {
-        const pd = sp[localSocketId];
-        nameTagManager.createOrUpdateTag(localSocketId, pd.name, localCar.activeSkin.icon, () => localCar.getHeadPosition(), true);
-    }
-
-    for (const id in sp) {
-        if (id === localSocketId) continue;
-        const pd = sp[id];
-        if (!otherCars[id]) otherCars[id] = new OtherCar(scene, pd);
-        otherCars[id].updateFromServer(pd);
-        nameTagManager.createOrUpdateTag(id, pd.name, otherCars[id].activeSkin.icon, () => otherCars[id].group.position, false);
-    }
-
-    for (const id in otherCars) {
-        if (!sp[id]) {
-            otherCars[id].destroy();
-            delete otherCars[id];
-            nameTagManager.removeTag(id);
-        }
-    }
-
-    updateLeaderboard(sp);
-});
-
-socket.on('trailEmitted', (seg) => {
-    if (seg && seg.playerId !== localSocketId) {
-        tronTrailManager.addSegment(seg.playerId, seg.x, seg.z, seg.angle);
-    }
-});
-
-socket.on('gameOver', (data) => { triggerGameOver(data ? data.reason : 'Oyun Bitti!'); });
-
+// ============== GAME OVER & EXPLOSION SYSTEM ==============
 function triggerGameOver(reasonText) {
     if (!isGameRunning) return;
     isGameRunning = false;
     isEmittingTrail = false;
-    audioManager.playDeath();
+    audioManager.playCrash();
 
+    const hp = localCar.getHeadPosition();
+    localCar.group.visible = false; // Hide car instantly on crash
+
+    // Trigger 3D Particle Explosion effect before Game Over Modal!
+    explosionManager.triggerExplosion(hp.x, 0.5, hp.z, () => {
+        showGameOverModal(reasonText);
+    });
+}
+
+function showGameOverModal(reasonText) {
     const finalScore = localCar.getScore();
     progressionManager.saveHighScore(finalScore);
     highScoreElement.innerText = progressionManager.highScore;
@@ -415,7 +516,8 @@ function updateLeaderboard(sp) {
 function openMenu(reasonText) {
     isGameRunning = false;
     isEmittingTrail = false;
-    virtualJoystick.classList.add('hidden');
+    localCar.group.visible = true;
+    explosionManager.clear();
     renderSkinGallery();
     overlayDesc.innerText = reasonText;
     startBtn.innerHTML = '<span class="play-icon">▶</span> SÜRE BAŞLAT';
@@ -434,6 +536,8 @@ function startGame() {
     requestLandscapeAndFullscreen();
     const playerName = playerNameInput.value.trim() || 'DriftPilotu';
     localCar.reset();
+    localCar.group.visible = true;
+    explosionManager.clear();
     tronTrailManager.clear();
     gameStartTime = Date.now();
     socket.emit('join', { name: playerName, skinId: progressionManager.selectedSkinId });
@@ -452,15 +556,18 @@ function animate() {
     const delta = Math.min(clock.getDelta(), 0.05);
     const now = Date.now();
 
+    // Always update 3D crash particle explosion animation!
+    explosionManager.update(delta);
+
     if (isGameRunning) {
         // 1. Raycast for mouse target
         raycaster.setFromCamera(mouse, camera);
         raycaster.ray.intersectPlane(groundPlane, targetPoint);
 
-        // 2. Update local car physics with A/D Steering (A = Left, D = Right), Q/E Two-Wheel Stunt, and Space Engine Toggle
+        // 2. Control Steering & Engine State
         let steerDir = 0;
-        if (keysPressed['KeyA'] || keysPressed['ArrowLeft']) steerDir += 1; // Turn Left
-        if (keysPressed['KeyD'] || keysPressed['ArrowRight']) steerDir -= 1; // Turn Right
+        if (keysPressed['KeyA'] || keysPressed['ArrowLeft'] || mobileSteerLeft) steerDir += 1; // Turn Left
+        if (keysPressed['KeyD'] || keysPressed['ArrowRight'] || mobileSteerRight) steerDir -= 1; // Turn Right
 
         const controlState = {
             left: !!keysPressed['KeyQ'],
@@ -469,11 +576,18 @@ function animate() {
             isEngineOn
         };
 
-        localCar.update(delta, targetPoint, controlState);
+        if (selectedControlScheme === 'keyboard') {
+            // Keyboard / Touch steering: Ignore mouse target
+            localCar.update(delta, null, controlState);
+        } else {
+            // Mouse target steering
+            localCar.update(delta, targetPoint, controlState);
+        }
+
         const headPos = localCar.getHeadPosition();
         const driftScore = localCar.getScore();
 
-        // Dynamic Neon Underglow & Overhead Key Spotlight (Dims when engine is OFF!)
+        // Dynamic Neon Underglow & Overhead Key Spotlight
         const underglowIntensity = isEngineOn ? 12.0 : 2.0;
         carUnderglowLight.intensity = underglowIntensity;
         carUnderglowLight.position.set(headPos.x, 0.4, headPos.z);
@@ -481,34 +595,33 @@ function animate() {
         carKeySpotlight.target.position.set(headPos.x, 0.5, headPos.z);
         carKeySpotlight.target.updateMatrixWorld();
 
-        // Update traffic cones physics (Kukaları devirme & fırlatma)
+        // Update traffic cones physics
         arena.updateCones(delta, headPos);
 
-        // 3. Emit Tron Light Trail if left-click / touch / space is held down!
+        // 3. Emit Tron Light Trail if engine is ON or left-click held
         if (isEmittingTrail && now - lastTrailEmitTime > 60) {
             lastTrailEmitTime = now;
             tronTrailManager.addSegment(localSocketId, headPos.x, headPos.z, localCar.heading);
         }
 
-        // Update Tron Light Trail visuals & animations
         tronTrailManager.update(delta);
 
-        // 4. Check Tron Light Trail & Neon Crash Barrier Collisions!
+        // 4. Check Collisions (Tron Wall, Barriers, Buildings)
         const hitSeg = tronTrailManager.checkCollision(headPos.x, headPos.z, localSocketId);
         if (hitSeg) {
-            triggerGameOver("⚡ Tron Neon Işıklı Duvara Çarptın ve Patladın!");
+            triggerGameOver("⚡ Tron Neon Işıklı Duvara Çarptın!");
             return;
         }
 
         const hitBarrier = arena.checkBarrierCollision(headPos.x, headPos.z);
         if (hitBarrier) {
-            triggerGameOver("💥 Neon Güvenlik Bariyerine Yüksek Hızla Çarptın ve Patladın!");
+            triggerGameOver("💥 Neon Güvenlik Bariyerine Yüksek Hızla Çarptın!");
             return;
         }
 
         const hitBuilding = arena.checkBuildingCollision(headPos.x, headPos.z);
         if (hitBuilding) {
-            triggerGameOver("💥 Binaya Yüksek Hızla Çarptın ve Patladın!");
+            triggerGameOver("💥 Binaya Yüksek Hızla Çarptın!");
             return;
         }
 
@@ -568,44 +681,40 @@ function animate() {
                 x: Math.round(headPos.x * 10) / 10,
                 z: Math.round(headPos.z * 10) / 10,
                 angle: Math.round(localCar.currentAngle * 10) / 10,
-                driftScore: driftScore,
                 skinId: progressionManager.selectedSkinId,
                 emittingTrail: isEmittingTrail
             });
         }
+
+        // Camera follow
+        currentZoom += (targetZoom - currentZoom) * 0.1;
+
+        if (isTPSMode) {
+            const tpsDist = 14 * currentZoom;
+            const tpsHeight = 5.5 * currentZoom;
+
+            const camX = hp.x - Math.sin(localCar.heading) * tpsDist;
+            const camZ = hp.z - Math.cos(localCar.heading) * tpsDist;
+            const camY = tpsHeight;
+
+            camera.position.x += (camX - camera.position.x) * 0.15;
+            camera.position.y += (camY - camera.position.y) * 0.15;
+            camera.position.z += (camZ - camera.position.z) * 0.15;
+            camera.lookAt(hp.x + Math.sin(localCar.heading) * (8 * currentZoom), 2.0 * currentZoom, hp.z + Math.cos(localCar.heading) * (8 * currentZoom));
+        } else {
+            const camX = hp.x - Math.sin(localCar.heading) * 8 * currentZoom;
+            const camZ = hp.z - Math.cos(localCar.heading) * 8 * currentZoom;
+            const camY = 15 * currentZoom;
+
+            camera.position.x += (camX - camera.position.x) * 0.08;
+            camera.position.y += (camY - camera.position.y) * 0.08;
+            camera.position.z += (camZ - camera.position.z) * 0.08;
+            camera.lookAt(hp.x, 0, hp.z);
+        }
     } else {
-        const time = now * 0.003;
-        targetPoint.set(Math.cos(time) * 30, 0, Math.sin(time) * 30);
-        localCar.update(delta, targetPoint);
-    }
-
-    // Camera follow (TPS Chase Cam with Zoom vs Top-Down Cam)
-    const hp = localCar.getHeadPosition();
-    currentZoom += (targetZoom - currentZoom) * 0.1;
-
-    if (isTPSMode) {
-        // TPS Chase Camera with Zoom In / Zoom Out Support!
-        const tpsDist = 14 * currentZoom;
-        const tpsHeight = 5.5 * currentZoom;
-
-        const camX = hp.x - Math.sin(localCar.heading) * tpsDist;
-        const camZ = hp.z - Math.cos(localCar.heading) * tpsDist;
-        const camY = tpsHeight;
-
-        camera.position.x += (camX - camera.position.x) * 0.15;
-        camera.position.y += (camY - camera.position.y) * 0.15;
-        camera.position.z += (camZ - camera.position.z) * 0.15;
-        camera.lookAt(hp.x + Math.sin(localCar.heading) * (8 * currentZoom), 2.0 * currentZoom, hp.z + Math.cos(localCar.heading) * (8 * currentZoom));
-    } else {
-        // Classic Top-Down Isometric Camera with Zoom
-        const camX = hp.x - Math.sin(localCar.heading) * 8 * currentZoom;
-        const camZ = hp.z - Math.cos(localCar.heading) * 8 * currentZoom;
-        const camY = 15 * currentZoom;
-
-        camera.position.x += (camX - camera.position.x) * 0.08;
-        camera.position.y += (camY - camera.position.y) * 0.08;
-        camera.position.z += (camZ - camera.position.z) * 0.08;
-        camera.lookAt(hp.x, 0, hp.z);
+        // MENU MODE: STATIC CALM CAMERA OVERLOOK (ZERO DIZZINESS / NO SPINNING!)
+        camera.position.set(0, 48, 58);
+        camera.lookAt(0, 0, 0);
     }
 
     nameTagManager.updatePositions();
@@ -625,29 +734,29 @@ function updateMinimap() {
     ctx.fill();
 
     const hp = localCar.getHeadPosition();
-    const mapScale = 140 / arena.size; // ~0.28 scale factor
+    const mapScale = 140 / arena.size;
 
-    // 1. Draw Road Avenues on Minimap
+    // 1. Draw Road Avenues
     ctx.fillStyle = '#1e293b';
     const roadPositions = [-120, 0, 120];
     const roadWidth = 28 * mapScale;
 
     roadPositions.forEach(offset => {
         const rx = 70 + offset * mapScale - roadWidth / 2;
-        ctx.fillRect(rx, 0, roadWidth, 140); // Vertical road
+        ctx.fillRect(rx, 0, roadWidth, 140);
 
         const rz = 70 + offset * mapScale - roadWidth / 2;
-        ctx.fillRect(0, rz, 140, roadWidth); // Horizontal road
+        ctx.fillRect(0, rz, 140, roadWidth);
     });
 
-    // 2. Draw Central Roundabout
+    // 2. Draw Roundabout
     ctx.strokeStyle = '#f59e0b';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.arc(70, 70, 19 * mapScale, 0, Math.PI * 2);
     ctx.stroke();
 
-    // 3. Draw Buildings on Minimap
+    // 3. Draw Buildings
     ctx.fillStyle = '#334155';
     ctx.strokeStyle = '#00f3ff';
     ctx.lineWidth = 1;
@@ -662,12 +771,12 @@ function updateMinimap() {
         ctx.strokeRect(bx - bw / 2, bz - bh / 2, bw, bh);
     });
 
-    // 4. Draw Arena Border
+    // 4. Draw Border
     ctx.strokeStyle = '#ff0055';
     ctx.lineWidth = 2;
     ctx.strokeRect(70 - 250 * mapScale, 70 - 250 * mapScale, 500 * mapScale, 500 * mapScale);
 
-    // 5. Draw Multiplayer Server Players (Red Arrow Icons)
+    // 5. Draw Multiplayer Opponents (Red Arrows)
     currentPlayersList.forEach(p => {
         if (!p || p.id === localSocketId) return;
         const rx = 70 + (p.x || 0) * mapScale;
@@ -676,7 +785,7 @@ function updateMinimap() {
         ctx.save();
         ctx.translate(rx, rz);
         ctx.rotate(p.angle || 0);
-        ctx.fillStyle = '#ef4444'; // Red for enemy players
+        ctx.fillStyle = '#ef4444';
         ctx.beginPath();
         ctx.moveTo(0, -5);
         ctx.lineTo(3.5, 4);
@@ -686,14 +795,14 @@ function updateMinimap() {
         ctx.restore();
     });
 
-    // 6. Draw Local Player (Cyan Arrow Icon)
+    // 6. Draw Local Player (Cyan Arrow)
     const px = 70 + hp.x * mapScale;
     const pz = 70 + hp.z * mapScale;
 
     ctx.save();
     ctx.translate(px, pz);
     ctx.rotate(localCar.heading);
-    ctx.fillStyle = '#00f3ff'; // Cyan for local player
+    ctx.fillStyle = '#00f3ff';
     ctx.beginPath();
     ctx.moveTo(0, -7);
     ctx.lineTo(5, 5);
