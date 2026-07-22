@@ -56,7 +56,7 @@ const foodGeo = new THREE.CircleGeometry(0.7, 8);
 foodGeo.rotateX(-Math.PI / 2); // Pre-rotate to lie flat on ground
 const foodMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
 const foodInstancedMesh = new THREE.InstancedMesh(foodGeo, foodMat, MAX_FOOD_INSTANCES);
-// NO parent rotation — geometry is pre-rotated, instances use world coordinates directly
+foodInstancedMesh.frustumCulled = false; // CRITICAL: instances span entire arena, don't cull by tiny geometry bounds
 scene.add(foodInstancedMesh);
 
 // Food data stored in arrays (zero GC)
