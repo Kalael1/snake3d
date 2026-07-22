@@ -17,7 +17,7 @@ const socket = io();
 // Managers
 const progressionManager = new ProgressionManager();
 const audioManager = new AudioManager();
-const networkInterpolator = new NetworkInterpolator(50); // 50ms Industry-Standard Buffer
+const networkInterpolator = new NetworkInterpolator(50);
 
 // Setup basic scene with Slate Gray theme
 const scene = new THREE.Scene();
@@ -386,15 +386,14 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Food materials
+// ALL COLLECTIBLES ARE NOW 2D FLAT CIRCLE DISCS FOR MAXIMUM OPTIMIZED PERFORMANCE!
 const foodColors = [0xff0055, 0x00ffcc, 0xffff00, 0xaa00ff, 0xff8800, 0x00ffaa];
-const smallFoodGeo = new THREE.DodecahedronGeometry(0.55, 0);
-const bigFoodGeo = new THREE.DodecahedronGeometry(1.2, 0);
+const smallFoodGeo2D = new THREE.CircleGeometry(0.7, 16);
+const bigFoodGeo2D = new THREE.CircleGeometry(1.4, 16);
 
-const foodMaterials = foodColors.map(color => new THREE.MeshStandardMaterial({
+const foodMaterials = foodColors.map(color => new THREE.MeshBasicMaterial({
     color: color,
-    roughness: 0.3,
-    metalness: 0.5
+    side: THREE.DoubleSide
 }));
 
 // SOCKET EVENTS
@@ -450,7 +449,6 @@ socket.on('gameState', (state) => {
             otherSnakes[id] = new OtherSnake(scene, playerData);
         }
 
-        // Push to Network Interpolator Queue for 60 FPS Hermite/Lerp smooth rendering
         networkInterpolator.pushSnapshot(id, playerData);
 
         const remoteSnake = otherSnakes[id];
@@ -507,11 +505,14 @@ function removeFoodMesh(foodId) {
 function addFoodMesh(f) {
     if (!foodMeshes[f.id] && !localEatenFoods.has(f.id)) {
         const mat = foodMaterials[Math.floor(Math.random() * foodMaterials.length)];
-        const geo = f.isBig ? bigFoodGeo : smallFoodGeo;
+        const geo = f.isBig ? bigFoodGeo2D : smallFoodGeo2D;
         const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.set(f.x, 0.8, f.z);
-        mesh.userData.rotSpeed = (Math.random() - 0.5) * 3;
+        
+        // Flat 2D disc lying on ground plane
+        mesh.position.set(f.x, 0.2, f.z);
+        mesh.rotation.x = -Math.PI / 2;
         mesh.userData.foodValue = f.value || 2;
+
         scene.add(mesh);
         foodMeshes[f.id] = mesh;
     }
@@ -597,13 +598,6 @@ const clock = new THREE.Clock();
 function animate() {
     requestAnimationFrame(animate);
     const delta = Math.min(clock.getDelta(), 0.1);
-
-    // Animate foods
-    const time = Date.now() * 0.004;
-    Object.values(foodMeshes).forEach(food => {
-        food.rotation.y += (food.userData.rotSpeed || 1) * delta;
-        food.position.y = 0.8 + Math.sin(time + food.position.x) * 0.2;
-    });
 
     // Update 3D Particles
     particleSystem.update(delta);

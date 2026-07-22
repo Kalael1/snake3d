@@ -32,13 +32,14 @@ export class OtherSnake {
             opacity: skin.opacity
         });
 
-        const headGeo = new THREE.SphereGeometry(this.headRadius, 32, 32);
+        // Low-Poly 16x16 head sphere
+        const headGeo = new THREE.SphereGeometry(this.headRadius, 16, 16);
         const headMesh = new THREE.Mesh(headGeo, headMat);
         this.headGroup.add(headMesh);
 
-        // Add Eyes
-        const eyeGeo = new THREE.SphereGeometry(0.35, 16, 16);
-        const pupilGeo = new THREE.SphereGeometry(0.18, 16, 16);
+        // Eyes (Low-poly 8x8)
+        const eyeGeo = new THREE.SphereGeometry(0.35, 8, 8);
+        const pupilGeo = new THREE.SphereGeometry(0.18, 8, 8);
 
         const leftEye = new THREE.Mesh(eyeGeo, this.eyeMat);
         leftEye.position.set(-0.5, 0.6, 0.8);
@@ -54,7 +55,7 @@ export class OtherSnake {
 
         // Optional 3D Horns / Crown
         if (skin.hasHorns) {
-            const hornGeo = new THREE.ConeGeometry(0.2, 0.9, 16);
+            const hornGeo = new THREE.ConeGeometry(0.2, 0.9, 8);
             const hornMat = new THREE.MeshStandardMaterial({ color: 0xff0055 });
 
             const leftHorn = new THREE.Mesh(hornGeo, hornMat);
@@ -89,7 +90,8 @@ export class OtherSnake {
 
     addSegment(x, z, index) {
         const skin = this.activeSkin;
-        const geo = new THREE.SphereGeometry(this.segmentRadius, 24, 24);
+        // Low-Poly 12x12 body sphere
+        const geo = new THREE.SphereGeometry(this.segmentRadius, 12, 12);
 
         const segMat = new THREE.MeshStandardMaterial({
             color: skin.bodyColor,

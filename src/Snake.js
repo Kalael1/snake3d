@@ -5,19 +5,20 @@ export class Snake {
     constructor(scene) {
         this.scene = scene;
         this.segments = [];
-        this.history = [];
-        
-        this.baseSpeed = 18;
-        this.speed = this.baseSpeed;
-        this.turnSpeed = 8;
-        
-        this.headRadius = 1.2;
-        this.segmentRadius = 0.95;
-        this.segmentSpacing = 1.3;
+        this.skinId = 'classic';
+        this.activeSkin = getSkinById(this.skinId);
+
+        this.speed = 18;
+        this.boostSpeed = 34;
+        this.turnSpeed = 4.2;
 
         this.currentAngle = 0;
-        this.massPerSegment = 35;
-        this.activeSkin = getSkinById('classic');
+        this.targetAngle = 0;
+
+        // Optimized Low-Poly Dimensions
+        this.headRadius = 1.2;
+        this.segmentRadius = 0.95;
+        this.segmentSpacing = 1.25;
 
         this.eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1 });
         this.pupilMat = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.1 });
@@ -28,14 +29,24 @@ export class Snake {
     init() {
         this.headGroup = new THREE.Group();
 
-        const headGeo = new THREE.SphereGeometry(this.headRadius, 32, 32);
-        this.headMesh = new THREE.Mesh(headGeo, this.createHeadMaterial(this.activeSkin));
-        this.headMesh.castShadow = true;
+        const skin = this.activeSkin;
+
+        this.headMat = new THREE.MeshStandardMaterial({
+            color: skin.headColor,
+            roughness: skin.roughness,
+            metalness: skin.metalness,
+            transparent: skin.transparent,
+            opacity: skin.opacity
+        });
+
+        // Polygon count cut by half: 16x16 segments instead of 32x32
+        const headGeo = new THREE.SphereGeometry(this.headRadius, 16, 16);
+        this.headMesh = new THREE.Mesh(headGeo, this.headMat);
         this.headGroup.add(this.headMesh);
 
-        // Add Eyes
-        const eyeGeo = new THREE.SphereGeometry(0.35, 16, 16);
-        const pupilGeo = new THREE.SphereGeometry(0.18, 16, 16);
+        // Eyes (Low-poly 8x8)
+        const eyeGeo = new THREE.SphereGeometry(0.35, 8, 8);
+        const pupilGeo = new THREE.SphereGeometry(0.18, 8, 8);
 
         const leftEye = new THREE.Mesh(eyeGeo, this.eyeMat);
         leftEye.position.set(-0.5, 0.6, 0.8);
@@ -49,74 +60,68 @@ export class Snake {
         rightPupil.position.set(0.5, 0.6, 1.05);
         this.headGroup.add(rightEye, rightPupil);
 
-        // Optional 3D Horns & Crown attachments
-        this.attachmentsGroup = new THREE.Group();
-        this.headGroup.add(this.attachmentsGroup);
-        this.updateAttachments(this.activeSkin);
+        this.hornsGroup = new THREE.Group();
+        this.crownGroup = new THREE.Group();
+        this.headGroup.add(this.hornsGroup, this.crownGroup);
+
+        this.updateAttachments();
 
         this.headGroup.position.set(0, this.headRadius, 0);
         this.scene.add(this.headGroup);
         this.segments.push(this.headGroup);
 
-        this.direction = new THREE.Vector3(0, 0, 1);
-        this.currentAngle = 0;
-
-        for (let i = 0; i < 300; i++) {
-            this.history.push({
-                position: new THREE.Vector3(0, this.headRadius, -i * 0.05),
-                angle: 0
-            });
-        }
-
-        for (let i = 0; i < 8; i++) {
-            this.grow();
+        // Initial 8 segments
+        for (let i = 1; i <= 8; i++) {
+            this.addSegment(0, -i * this.segmentSpacing);
         }
     }
 
-    createHeadMaterial(skin) {
-        return new THREE.MeshStandardMaterial({
-            color: skin.headColor,
-            emissive: skin.headColor,
-            emissiveIntensity: skin.emissiveIntensity,
-            roughness: skin.roughness,
-            metalness: skin.metalness,
-            transparent: skin.transparent,
-            opacity: skin.opacity
-        });
-    }
+    applySkin(skinId) {
+        this.skinId = skinId;
+        this.activeSkin = getSkinById(skinId);
+        const skin = this.activeSkin;
 
-    createBodyMaterial(skin, index) {
-        const segMat = new THREE.MeshStandardMaterial({
-            color: skin.bodyColor,
-            emissive: skin.bodyColor,
-            emissiveIntensity: skin.emissiveIntensity * 0.7,
-            roughness: skin.roughness,
-            metalness: skin.metalness,
-            transparent: skin.transparent,
-            opacity: skin.opacity
-        });
-
-        // Add subtle color gradient per segment
-        const hueShift = (index * 0.02) % 0.15;
-        const color = new THREE.Color(skin.bodyColor);
-        color.offsetHSL(hueShift, 0, 0);
-        segMat.color = color;
-
-        return segMat;
-    }
-
-    updateAttachments(skin) {
-        // Clear previous attachments
-        while (this.attachmentsGroup.children.length > 0) {
-            const child = this.attachmentsGroup.children.pop();
-            if (child.geometry) child.geometry.dispose();
-            this.scene.remove(child);
+        if (this.headMat) {
+            this.headMat.color.setHex(skin.headColor);
+            this.headMat.roughness = skin.roughness;
+            this.headMat.metalness = skin.metalness;
+            this.headMat.transparent = skin.transparent;
+            this.headMat.opacity = skin.opacity;
+            this.headMat.needsUpdate = true;
         }
 
-        // Add Dragon Horns
+        for (let i = 1; i < this.segments.length; i++) {
+            const seg = this.segments[i];
+            if (seg.material) {
+                seg.material.color.setHex(skin.bodyColor);
+                seg.material.roughness = skin.roughness;
+                seg.material.metalness = skin.metalness;
+                seg.material.transparent = skin.transparent;
+                seg.material.opacity = skin.opacity;
+                seg.material.needsUpdate = true;
+            }
+        }
+
+        this.updateAttachments();
+    }
+
+    updateAttachments() {
+        while(this.hornsGroup.children.length > 0){
+            const obj = this.hornsGroup.children[0];
+            this.hornsGroup.remove(obj);
+            if (obj.geometry) obj.geometry.dispose();
+        }
+        while(this.crownGroup.children.length > 0){
+            const obj = this.crownGroup.children[0];
+            this.crownGroup.remove(obj);
+            if (obj.geometry) obj.geometry.dispose();
+        }
+
+        const skin = this.activeSkin;
+
         if (skin.hasHorns) {
-            const hornGeo = new THREE.ConeGeometry(0.2, 0.9, 16);
-            const hornMat = new THREE.MeshStandardMaterial({ color: 0xff0055, emissive: 0xff0055, emissiveIntensity: 0.6 });
+            const hornGeo = new THREE.ConeGeometry(0.2, 0.9, 8);
+            const hornMat = new THREE.MeshStandardMaterial({ color: 0xff0055 });
 
             const leftHorn = new THREE.Mesh(hornGeo, hornMat);
             leftHorn.position.set(-0.6, 1.2, -0.3);
@@ -126,121 +131,86 @@ export class Snake {
             rightHorn.position.set(0.6, 1.2, -0.3);
             rightHorn.rotation.set(-0.3, 0, 0.3);
 
-            this.attachmentsGroup.add(leftHorn, rightHorn);
+            this.hornsGroup.add(leftHorn, rightHorn);
         }
 
-        // Add Crown for Gold / Diamond
         if (skin.hasCrown) {
             const crownGeo = new THREE.CylinderGeometry(0.7, 0.5, 0.4, 6);
             const crownMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.1 });
             const crown = new THREE.Mesh(crownGeo, crownMat);
             crown.position.set(0, 1.35, 0);
-            this.attachmentsGroup.add(crown);
+            this.crownGroup.add(crown);
         }
     }
 
-    applySkin(skinId) {
-        this.activeSkin = getSkinById(skinId);
-        if (this.headMesh) {
-            this.headMesh.material = this.createHeadMaterial(this.activeSkin);
-        }
-        this.updateAttachments(this.activeSkin);
+    addSegment(x, z) {
+        const skin = this.activeSkin;
 
-        // Update body segment materials
-        for (let i = 1; i < this.segments.length; i++) {
-            this.segments[i].material = this.createBodyMaterial(this.activeSkin, i);
-        }
-    }
-
-    grow() {
-        const geo = new THREE.SphereGeometry(this.segmentRadius, 24, 24);
-        const segMat = this.createBodyMaterial(this.activeSkin, this.segments.length);
+        // Polygon count cut by half: 12x12 segments instead of 24x24
+        const geo = new THREE.SphereGeometry(this.segmentRadius, 12, 12);
+        const segMat = new THREE.MeshStandardMaterial({
+            color: skin.bodyColor,
+            roughness: skin.roughness,
+            metalness: skin.metalness,
+            transparent: skin.transparent,
+            opacity: skin.opacity
+        });
 
         const segment = new THREE.Mesh(geo, segMat);
-        segment.castShadow = true;
-        
-        const lastSegment = this.segments[this.segments.length - 1];
-        segment.position.copy(lastSegment.position);
-        
+        segment.position.set(x, this.segmentRadius, z);
+
         this.scene.add(segment);
         this.segments.push(segment);
     }
 
     updateGrowth(score) {
-        const targetSegments = 8 + Math.floor(score / this.massPerSegment);
+        const targetSegments = 8 + Math.floor(score / 35);
         while (this.segments.length < targetSegments) {
-            this.grow();
+            const lastSeg = this.segments[this.segments.length - 1];
+            this.addSegment(lastSeg.position.x, lastSeg.position.z);
         }
     }
 
-    update(delta, targetPoint, isBoosting = false) {
-        if (!targetPoint) return;
-
-        this.speed = isBoosting ? this.baseSpeed * 1.8 : this.baseSpeed;
+    update(delta, targetPoint, isBoosting) {
         const head = this.segments[0];
 
-        const diffX = targetPoint.x - head.position.x;
-        const diffZ = targetPoint.z - head.position.z;
-        const distanceToTarget = Math.sqrt(diffX * diffX + diffZ * diffZ);
+        const dx = targetPoint.x - head.position.x;
+        const dz = targetPoint.z - head.position.z;
 
-        if (distanceToTarget > 1.5) {
-            const targetAngle = Math.atan2(diffX, diffZ);
-            
-            let angleDiff = targetAngle - this.currentAngle;
-            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+        this.targetAngle = Math.atan2(dx, dz);
 
-            this.currentAngle += angleDiff * Math.min(1, this.turnSpeed * delta);
-        }
+        let diff = this.targetAngle - this.currentAngle;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        while (diff > Math.PI) diff -= Math.PI * 2;
 
-        this.direction.set(Math.sin(this.currentAngle), 0, Math.cos(this.currentAngle)).normalize();
+        this.currentAngle += diff * Math.min(1.0, this.turnSpeed * delta);
         head.rotation.y = this.currentAngle;
 
-        const moveDistance = this.speed * delta;
-        head.position.x += this.direction.x * moveDistance;
-        head.position.z += this.direction.z * moveDistance;
-        head.position.y = this.headRadius;
+        const currentSpeed = isBoosting ? this.boostSpeed : this.speed;
+        const moveDist = currentSpeed * delta;
 
-        this.history.unshift({
-            position: head.position.clone(),
-            angle: this.currentAngle
-        });
+        head.position.x += Math.sin(this.currentAngle) * moveDist;
+        head.position.z += Math.cos(this.currentAngle) * moveDist;
 
-        if (this.history.length > 4000) {
-            this.history.pop();
-        }
+        // Constrain to arena bounds
+        const boundLimit = 245;
+        head.position.x = Math.max(-boundLimit, Math.min(boundLimit, head.position.x));
+        head.position.z = Math.max(-boundLimit, Math.min(boundLimit, head.position.z));
 
-        let currentHistIdx = 0;
-        let accumulatedDist = 0;
-
+        // Follow head logic
         for (let i = 1; i < this.segments.length; i++) {
-            const segment = this.segments[i];
-            const desiredDist = i * this.segmentSpacing;
+            const prevSeg = this.segments[i - 1];
+            const currSeg = this.segments[i];
 
-            while (currentHistIdx < this.history.length - 1) {
-                const p1 = this.history[currentHistIdx].position;
-                const p2 = this.history[currentHistIdx + 1].position;
-                const segLen = p1.distanceTo(p2);
+            const segDx = prevSeg.position.x - currSeg.position.x;
+            const segDz = prevSeg.position.z - currSeg.position.z;
+            const dist = Math.sqrt(segDx * segDx + segDz * segDz);
 
-                if (accumulatedDist + segLen >= desiredDist) {
-                    const t = segLen > 0 ? (desiredDist - accumulatedDist) / segLen : 0;
-                    
-                    segment.position.lerpVectors(p1, p2, t);
-                    segment.position.y = this.segmentRadius;
-
-                    const angle1 = this.history[currentHistIdx].angle;
-                    let angle2 = this.history[currentHistIdx + 1].angle;
-                    
-                    let diff = angle2 - angle1;
-                    while (diff < -Math.PI) diff += Math.PI * 2;
-                    while (diff > Math.PI) diff -= Math.PI * 2;
-                    segment.rotation.y = angle1 + diff * t;
-
-                    break;
-                }
-
-                accumulatedDist += segLen;
-                currentHistIdx++;
+            if (dist > this.segmentSpacing) {
+                const angle = Math.atan2(segDx, segDz);
+                currSeg.position.x = prevSeg.position.x - Math.sin(angle) * this.segmentSpacing;
+                currSeg.position.z = prevSeg.position.z - Math.cos(angle) * this.segmentSpacing;
+                currSeg.rotation.y = angle;
             }
         }
     }
@@ -250,22 +220,17 @@ export class Snake {
     }
 
     reset() {
-        const head = this.segments[0];
-        head.position.set(0, this.headRadius, 0);
-        this.currentAngle = 0;
-        this.direction.set(0, 0, 1);
-        
-        this.history = [];
-        for (let i = 0; i < 300; i++) {
-            this.history.push({
-                position: new THREE.Vector3(0, this.headRadius, -i * 0.05),
-                angle: 0
-            });
-        }
-
-        while (this.segments.length > 9) {
+        while (this.segments.length > 1) {
             const seg = this.segments.pop();
             this.scene.remove(seg);
+            if (seg.geometry) seg.geometry.dispose();
+        }
+        this.segments[0].position.set(0, this.headRadius, 0);
+        this.currentAngle = 0;
+        this.targetAngle = 0;
+
+        for (let i = 1; i <= 8; i++) {
+            this.addSegment(0, -i * this.segmentSpacing);
         }
     }
 }
