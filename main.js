@@ -379,15 +379,10 @@ function animate() {
     if (isGameRunning) {
         // 1. Raycast for mouse target
         raycaster.setFromCamera(mouse, camera);
-        // Compute keyboard steering & nitro boost
-        let keySteerInput = 0;
-        if (keysPressed['KeyA'] || keysPressed['ArrowLeft']) keySteerInput -= 1;
-        if (keysPressed['KeyD'] || keysPressed['ArrowRight']) keySteerInput += 1;
+        raycaster.ray.intersectPlane(groundPlane, targetPoint);
 
-        const isBoosting = !!(keysPressed['Space'] || keysPressed['ShiftLeft'] || keysPressed['ShiftRight'] || keysPressed['KeyW'] || keysPressed['ArrowUp']);
-
-        // 2. Update local car physics
-        localCar.update(delta, targetPoint, isBoosting, keySteerInput);
+        // 2. Update local car physics (100% Pure Mouse Drift Steering)
+        localCar.update(delta, targetPoint);
         const headPos = localCar.getHeadPosition();
         const driftScore = localCar.getScore();
 

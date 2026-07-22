@@ -15,15 +15,9 @@ export class DriftCar {
         this.position = new THREE.Vector3(0, 0, 0);
         this.heading = 0;         // Heading angle (radians)
         this.velocityAngle = 0;   // Velocity direction angle (radians)
-        this.baseSpeed = 28;      // Normal cruising speed
-        this.boostSpeed = 44;     // Nitro boost speed
-        this.currentSpeed = 28;
-        this.steerSpeed = 4.2;    // Smooth steering responsiveness
+        this.speed = 30;          // Constant forward movement speed
+        this.steerSpeed = 5.5;    // Smooth mouse steering responsiveness
         this.gripFactor = 3.8;    // Grip level (lower = more drift slide)
-
-        // Keyboard & Mouse steering state
-        this.keySteerInput = 0;   // -1 (Left), 0 (None), +1 (Right)
-        this.isBoosting = false;
 
         // Suspension & Handling Lean Physics
         this.currentRoll = 0;     // Side-to-side body roll (Z-axis)
@@ -149,29 +143,19 @@ export class DriftCar {
         this.loadCarModel(this.activeSkin.modelUrl);
     }
 
-    update(delta, targetPoint, isBoosting = false, keySteerInput = 0) {
-        this.isBoosting = isBoosting;
-        const targetSpeed = this.isBoosting ? this.boostSpeed : this.baseSpeed;
-        this.currentSpeed += (targetSpeed - this.currentSpeed) * Math.min(1.0, 5.0 * delta);
-
-        // 1. DUAL STEERING ENGINE (KEYBOARD PRIORITY + MOUSE DEADZONE)
-        if (keySteerInput !== 0) {
-            // Keyboard A/D or Left/Right Arrow steering (Zero spinning!)
-            this.heading += keySteerInput * this.steerSpeed * 0.7 * delta;
-        } else if (targetPoint) {
-            // Mouse steering with 14.0 unit Deadzone threshold to stop infinite spinning!
+    update(delta, targetPoint) {
+        // 1. PURE MOUSE STEERING (Direct, Smooth & Natural Pointer Following)
+        if (targetPoint) {
             const dx = targetPoint.x - this.position.x;
             const dz = targetPoint.z - this.position.z;
-            const dist = Math.sqrt(dx * dx + dz * dz);
+            const targetAngle = Math.atan2(dx, dz);
 
-            if (dist > 14.0) { // Only steer if cursor is further than 14 units from car!
-                const targetAngle = Math.atan2(dx, dz);
-                let steerDiff = targetAngle - this.heading;
-                while (steerDiff < -Math.PI) steerDiff += Math.PI * 2;
-                while (steerDiff > Math.PI) steerDiff -= Math.PI * 2;
+            let steerDiff = targetAngle - this.heading;
+            while (steerDiff < -Math.PI) steerDiff += Math.PI * 2;
+            while (steerDiff > Math.PI) steerDiff -= Math.PI * 2;
 
-                this.heading += steerDiff * Math.min(1.0, this.steerSpeed * delta);
-            }
+            // Smooth heading rotation towards mouse direction
+            this.heading += steerDiff * Math.min(1.0, this.steerSpeed * delta);
         }
 
         // 2. Velocity direction with realistic drift lag
@@ -185,8 +169,8 @@ export class DriftCar {
         this.currentAngle = this.heading;
 
         // 4. Position update
-        this.position.x += Math.sin(this.velocityAngle) * this.currentSpeed * delta;
-        this.position.z += Math.cos(this.velocityAngle) * this.currentSpeed * delta;
+        this.position.x += Math.sin(this.velocityAngle) * this.speed * delta;
+        this.position.z += Math.cos(this.velocityAngle) * this.speed * delta;
 
         // 5. Drift score update
         this.updateDriftScore(delta);
@@ -281,7 +265,6 @@ export class DriftCar {
         this.driftTimer = 0;
         this.currentRoll = 0;
         this.currentPitch = 0;
-        this.currentSpeed = this.baseSpeed;
         this.group.position.set(this.position.x, 0, this.position.z);
         this.group.rotation.set(0, this.heading, 0);
     }
