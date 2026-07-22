@@ -12,6 +12,7 @@ export class OtherSnake {
         this.segments = [];
         this.headRadius = 1.2;
         this.segmentRadius = 0.95;
+        this.segmentSpacing = 1.25;
 
         this.eyeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1 });
         this.pupilMat = new THREE.MeshStandardMaterial({ color: 0x000000, roughness: 0.1 });
@@ -32,12 +33,11 @@ export class OtherSnake {
             opacity: skin.opacity
         });
 
-        // Low-Poly 16x16 head sphere
         const headGeo = new THREE.SphereGeometry(this.headRadius, 16, 16);
         const headMesh = new THREE.Mesh(headGeo, headMat);
         this.headGroup.add(headMesh);
 
-        // Eyes (Low-poly 8x8)
+        // Eyes
         const eyeGeo = new THREE.SphereGeometry(0.35, 8, 8);
         const pupilGeo = new THREE.SphereGeometry(0.18, 8, 8);
 
@@ -81,16 +81,14 @@ export class OtherSnake {
         this.scene.add(this.headGroup);
         this.segments.push(this.headGroup);
 
-        // Body segments
-        const bodyList = data.body || [];
-        bodyList.forEach((segData, idx) => {
-            this.addSegment(segData.x, segData.z, idx);
-        });
+        // Initial 8 body segments
+        for (let i = 1; i <= 8; i++) {
+            this.addSegment(data.x || 0, (data.z || 0) - i * this.segmentSpacing);
+        }
     }
 
-    addSegment(x, z, index) {
+    addSegment(x, z) {
         const skin = this.activeSkin;
-        // Low-Poly 12x12 body sphere
         const geo = new THREE.SphereGeometry(this.segmentRadius, 12, 12);
 
         const segMat = new THREE.MeshStandardMaterial({
@@ -111,33 +109,33 @@ export class OtherSnake {
     updateInterpolated(state) {
         if (!state) return;
 
-        // Head Position & Angle
+        // Head position lerp
         const head = this.segments[0];
-        head.position.x = state.x;
-        head.position.z = state.z;
+        head.position.x += (state.x - head.position.x) * 0.35;
+        head.position.z += (state.z - head.position.z) * 0.35;
         head.rotation.y = state.angle || 0;
 
-        const bodyData = state.body || [];
-
-        // Adjust body segment count
-        while (this.segments.length - 1 < bodyData.length) {
+        // Update body count based on score
+        const targetSegments = 8 + Math.floor((state.score || 0) / 35);
+        while (this.segments.length < targetSegments) {
             const lastSeg = this.segments[this.segments.length - 1];
-            this.addSegment(lastSeg.position.x, lastSeg.position.z, this.segments.length);
-        }
-        while (this.segments.length - 1 > bodyData.length && this.segments.length > 1) {
-            const popped = this.segments.pop();
-            this.scene.remove(popped);
-            if (popped.geometry) popped.geometry.dispose();
+            this.addSegment(lastSeg.position.x, lastSeg.position.z);
         }
 
-        // Apply 60 FPS interpolated positions directly to body segments
-        for (let i = 0; i < bodyData.length; i++) {
-            const seg = this.segments[i + 1];
-            const target = bodyData[i];
-            if (seg && target) {
-                seg.position.x = target.x;
-                seg.position.z = target.z;
-                seg.rotation.y = target.angle || 0;
+        // Local physics-follow for body segments (0 Network Payload Overhead!)
+        for (let i = 1; i < this.segments.length; i++) {
+            const prevSeg = this.segments[i - 1];
+            const currSeg = this.segments[i];
+
+            const segDx = prevSeg.position.x - currSeg.position.x;
+            const segDz = prevSeg.position.z - currSeg.position.z;
+            const dist = Math.sqrt(segDx * segDx + segDz * segDz);
+
+            if (dist > this.segmentSpacing) {
+                const angle = Math.atan2(segDx, segDz);
+                currSeg.position.x = prevSeg.position.x - Math.sin(angle) * this.segmentSpacing;
+                currSeg.position.z = prevSeg.position.z - Math.cos(angle) * this.segmentSpacing;
+                currSeg.rotation.y = angle;
             }
         }
     }

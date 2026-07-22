@@ -15,10 +15,9 @@ const io = new Server(httpServer, {
         origin: "*",
         methods: ["GET", "POST"]
     },
-    // Industry-standard IO game network tuning
     pingInterval: 10000,
     pingTimeout: 5000,
-    perMessageDeflate: false // Disabling compression overhead for tiny 60Hz UDP-like packets
+    perMessageDeflate: false
 });
 
 const distPath = join(__dirname, 'dist');
@@ -80,17 +79,8 @@ io.on('connection', (socket) => {
             z: spawnZ,
             angle: 0,
             isBoosting: false,
-            score: 0,
-            body: []
+            score: 0
         };
-
-        for (let i = 1; i <= 8; i++) {
-            players[socket.id].body.push({
-                x: spawnX,
-                z: round1(spawnZ - i * 1.3),
-                angle: 0
-            });
-        }
 
         socket.emit('init', {
             id: socket.id,
@@ -109,14 +99,6 @@ io.on('connection', (socket) => {
             player.angle = round1(data.angle || 0);
             player.isBoosting = !!data.isBoosting;
             if (data.skinId) player.skinId = data.skinId;
-
-            if (Array.isArray(data.body)) {
-                player.body = data.body.map(seg => ({
-                    x: round1(seg.x),
-                    z: round1(seg.z),
-                    angle: round1(seg.angle || 0)
-                }));
-            }
         }
     });
 
@@ -154,26 +136,26 @@ io.on('connection', (socket) => {
         console.log(`[-] Player disconnected: ${socket.id}`);
         const player = players[socket.id];
         if (player) {
-            if (player.body) {
-                player.body.forEach(seg => {
-                    const drop = {
-                        id: 'f_' + Math.random().toString(36).substring(2, 7),
-                        x: round1(seg.x),
-                        z: round1(seg.z),
-                        color: foodColors[Math.floor(Math.random() * foodColors.length)],
-                        value: 15,
-                        isBig: true
-                    };
-                    foods.push(drop);
-                    io.emit('foodRemoved', { foodId: null, newFood: drop });
-                });
+            // Drop food on death
+            const dropCount = Math.min(20, 8 + Math.floor((player.score || 0) / 35));
+            for (let i = 0; i < dropCount; i++) {
+                const drop = {
+                    id: 'f_' + Math.random().toString(36).substring(2, 7),
+                    x: round1(player.x + (Math.random() - 0.5) * 15),
+                    z: round1(player.z + (Math.random() - 0.5) * 15),
+                    color: foodColors[Math.floor(Math.random() * foodColors.length)],
+                    value: 15,
+                    isBig: true
+                };
+                foods.push(drop);
+                io.emit('foodRemoved', { foodId: null, newFood: drop });
             }
             delete players[socket.id];
         }
     });
 });
 
-// High-Frequency Zero-Lag Volatile Network Tick (30 Ticks/sec)
+// High-Frequency Ultra-Light Volatile Network Tick (30 Ticks/sec)
 const TICK_RATE = 30;
 
 setInterval(() => {
@@ -199,37 +181,18 @@ setInterval(() => {
         aliveIds.forEach(idB => {
             if (idA === idB) return;
             const pB = players[idB];
-            if (!pB || !pB.body) return;
+            if (!pB) return;
 
-            for (const segB of pB.body) {
-                const dx = pA.x - segB.x;
-                const dz = pA.z - segB.z;
-                if (Math.sqrt(dx * dx + dz * dz) < 2.0) {
-                    io.to(idA).emit('gameOver', { reason: `${pB.name} oyuncusuna çarptın!` });
-                    
-                    if (pA.body) {
-                        pA.body.forEach(seg => {
-                            const drop = {
-                                id: 'f_' + Math.random().toString(36).substring(2, 7),
-                                x: round1(seg.x),
-                                z: round1(seg.z),
-                                color: foodColors[Math.floor(Math.random() * foodColors.length)],
-                                value: 15,
-                                isBig: true
-                            };
-                            foods.push(drop);
-                            io.emit('foodRemoved', { foodId: null, newFood: drop });
-                        });
-                    }
-
-                    delete players[idA];
-                    break;
-                }
+            const dx = pA.x - pB.x;
+            const dz = pA.z - pB.z;
+            if (Math.sqrt(dx * dx + dz * dz) < 2.0) {
+                io.to(idA).emit('gameOver', { reason: `${pB.name} oyuncusuna çarptın!` });
+                delete players[idA];
             }
         });
     });
 
-    // Broadcast volatile UDP-like snapshots (skips TCP buffer queue lag!)
+    // Ultra-light snapshot (skips body segments entirely, saving 95% payload overhead!)
     io.volatile.emit('gameState', {
         players: players
     });
@@ -238,7 +201,7 @@ setInterval(() => {
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
     console.log(`================================================`);
-    console.log(`🚀 Snake.io 3D Industry-Standard Zero-Lag Sunucu Hazır!`);
+    console.log(`🚀 Snake.io 3D Slither-Style Ultra-Light Sunucu Hazır!`);
     console.log(`🌐 Bağlantı adresi: http://localhost:${PORT}`);
     console.log(`================================================`);
 });

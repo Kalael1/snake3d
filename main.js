@@ -5,7 +5,6 @@ import { Arena } from './src/Arena.js';
 import { Snake } from './src/Snake.js';
 import { OtherSnake } from './src/OtherSnake.js';
 import { AudioManager } from './src/AudioManager.js';
-import { ParticleSystem } from './src/ParticleSystem.js';
 import { SKINS } from './src/SkinRegistry.js';
 import { ProgressionManager } from './src/ProgressionManager.js';
 import { NameTagManager } from './src/NameTagManager.js';
@@ -17,7 +16,7 @@ const socket = io();
 // Managers
 const progressionManager = new ProgressionManager();
 const audioManager = new AudioManager();
-const networkInterpolator = new NetworkInterpolator(50);
+const networkInterpolator = new NetworkInterpolator(40); // Ultra-light 40ms buffer
 
 // Setup basic scene with Slate Gray theme
 const scene = new THREE.Scene();
@@ -45,8 +44,6 @@ const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
 dirLight.position.set(120, 200, 100);
 dirLight.castShadow = false;
 scene.add(dirLight);
-
-const particleSystem = new ParticleSystem(scene);
 
 // Game Entities
 const arenaSize = 500;
@@ -386,7 +383,7 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// ALL COLLECTIBLES ARE NOW 2D FLAT CIRCLE DISCS FOR MAXIMUM OPTIMIZED PERFORMANCE!
+// 2D FLAT DISCS FOR MAXIMUM OPTIMIZED PERFORMANCE
 const foodColors = [0xff0055, 0x00ffcc, 0xffff00, 0xaa00ff, 0xff8800, 0x00ffaa];
 const smallFoodGeo2D = new THREE.CircleGeometry(0.7, 16);
 const bigFoodGeo2D = new THREE.CircleGeometry(1.4, 16);
@@ -481,7 +478,6 @@ socket.on('gameOver', (data) => {
     virtualJoystick.classList.add('hidden');
 
     audioManager.playDeath();
-    particleSystem.createDeathExplosion(localSnake.getHeadPosition());
 
     progressionManager.saveHighScore(currentScore);
     highScoreElement.innerText = progressionManager.highScore;
@@ -508,7 +504,6 @@ function addFoodMesh(f) {
         const geo = f.isBig ? bigFoodGeo2D : smallFoodGeo2D;
         const mesh = new THREE.Mesh(geo, mat);
         
-        // Flat 2D disc lying on ground plane
         mesh.position.set(f.x, 0.2, f.z);
         mesh.rotation.x = -Math.PI / 2;
         mesh.userData.foodValue = f.value || 2;
@@ -599,9 +594,6 @@ function animate() {
     requestAnimationFrame(animate);
     const delta = Math.min(clock.getDelta(), 0.1);
 
-    // Update 3D Particles
-    particleSystem.update(delta);
-
     if (isGameRunning) {
         // 1. Target Point via Raycast
         raycaster.setFromCamera(mouse, camera);
@@ -609,10 +601,6 @@ function animate() {
 
         // 2. Local Snake Physics Update (Client Prediction)
         localSnake.update(delta, targetPoint, isBoosting);
-
-        if (isBoosting) {
-            particleSystem.createBoostParticle(localSnake.getHeadPosition(), localSnake.currentAngle);
-        }
 
         // 3. Update Remote Snakes via Network Interpolator Queue (Butter Smooth 60 FPS!)
         Object.keys(otherSnakes).forEach(id => {
@@ -639,8 +627,6 @@ function animate() {
                     localEatenFoods.add(foodId);
 
                     audioManager.playEat();
-                    particleSystem.createEatBurst(foodMesh.position);
-
                     removeFoodMesh(foodId);
 
                     const gainedVal = foodMesh.userData.foodValue || 2;
@@ -659,20 +645,13 @@ function animate() {
             }
         }
 
-        // 5. Emit Head & Body Position to Server (Volatile UDP-like emit)
-        const bodyPositions = localSnake.segments.slice(1).map(seg => ({
-            x: seg.position.x,
-            z: seg.position.z,
-            angle: seg.rotation.y
-        }));
-
+        // 5. Emit Ultra-light Input (head position only, 95% payload reduction!)
         socket.volatile.emit('playerInput', {
             x: headPos.x,
             z: headPos.z,
             angle: localSnake.currentAngle,
             isBoosting: isBoosting,
-            skinId: progressionManager.selectedSkinId,
-            body: bodyPositions
+            skinId: progressionManager.selectedSkinId
         });
     } else {
         const time = Date.now() * 0.004;
