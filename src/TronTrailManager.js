@@ -3,20 +3,18 @@ import * as THREE from 'three';
 export class TronTrailManager {
     constructor(scene) {
         this.scene = scene;
-        this.MAX_SEGMENTS = 800;
+        this.MAX_SEGMENTS = 1200;
         this.TRAIL_LIFETIME = 4.0; // Seconds before light wall fades out
 
         this.segments = []; // Active trail point objects: { id, playerId, x, z, angle, age }
 
-        // 3D Visual Mesh for Glowing Neon Light Walls (Vertical planes)
-        const wallGeo = new THREE.PlaneGeometry(1.2, 2.0);
-        wallGeo.rotateY(Math.PI / 2);
+        // Ultra-smooth rounded glowing neon light wall geometry (no sharp blocky edges!)
+        const wallGeo = new THREE.CylinderGeometry(0.4, 0.4, 1.6, 12);
         
         const wallMat = new THREE.MeshBasicMaterial({
             color: 0x00f3ff,
             transparent: true,
-            opacity: 0.95,
-            side: THREE.DoubleSide,
+            opacity: 0.92,
             depthWrite: false
         });
 
@@ -44,8 +42,6 @@ export class TronTrailManager {
     }
 
     update(delta) {
-        const now = Date.now();
-        
         // Age segments and remove expired ones
         for (let i = this.segments.length - 1; i >= 0; i--) {
             this.segments[i].age += delta;
@@ -54,13 +50,13 @@ export class TronTrailManager {
             }
         }
 
-        // Update InstancedMesh matrices
+        // Update InstancedMesh matrices with smooth overlapping cylinders
         for (let i = 0; i < this.segments.length; i++) {
             const seg = this.segments[i];
-            const fade = Math.max(0.1, 1.0 - (seg.age / this.TRAIL_LIFETIME));
+            const scaleY = Math.max(0.2, 1.0 - (seg.age / this.TRAIL_LIFETIME));
             
-            this._tempMatrix.makeRotationY(seg.angle);
-            this._tempMatrix.setPosition(seg.x, 1.0, seg.z);
+            this._tempMatrix.makeScale(1.0, scaleY, 1.0);
+            this._tempMatrix.setPosition(seg.x, 0.8 * scaleY, seg.z);
             this.instancedMesh.setMatrixAt(i, this._tempMatrix);
         }
 
@@ -78,7 +74,7 @@ export class TronTrailManager {
             const dx = carX - seg.x;
             const dz = carZ - seg.z;
             if (dx * dx + dz * dz < radiusSq) {
-                return seg; // Collision detected!
+                return seg;
             }
         }
         return null;

@@ -44,8 +44,8 @@ export class DriftCar {
         this.buildFallbackModel();
         this.loadCarModel(this.activeSkin.modelUrl);
 
-        // Tire marks system (InstancedMesh - High Visibility y=0.08)
-        this.MAX_MARKS = 1000;
+        // Tire marks system (InstancedMesh - Smooth Circle Overlay, No Blocky Gaps!)
+        this.MAX_MARKS = 1600;
         this.markIndex = 0;
         this.markTimer = 0;
         this.initTireMarks();
@@ -107,14 +107,17 @@ export class DriftCar {
     }
 
     initTireMarks() {
-        const markGeo = new THREE.PlaneGeometry(0.5, 0.9);
+        // Smooth circular discs for seamless unbroken rubber tracks without blocky square edges!
+        const markGeo = new THREE.CircleGeometry(0.42, 12);
         markGeo.rotateX(-Math.PI / 2);
+
         const markMat = new THREE.MeshBasicMaterial({
-            color: 0x050505,
+            color: 0x080808,
             transparent: true,
             opacity: 0.85,
             depthWrite: false
         });
+
         this.tireMarksMesh = new THREE.InstancedMesh(markGeo, markMat, this.MAX_MARKS);
         this.tireMarksMesh.frustumCulled = false;
         this.tireMarksMesh.count = 0;
@@ -149,7 +152,6 @@ export class DriftCar {
             while (steerDiff < -Math.PI) steerDiff += Math.PI * 2;
             while (steerDiff > Math.PI) steerDiff -= Math.PI * 2;
 
-            // Smooth natural heading rotation towards mouse direction
             this.heading += steerDiff * Math.min(1.0, this.steerSpeed * delta);
         }
 
@@ -167,9 +169,9 @@ export class DriftCar {
         this.position.x += Math.sin(this.velocityAngle) * this.speed * delta;
         this.position.z += Math.cos(this.velocityAngle) * this.speed * delta;
 
-        // 5. Leave tire marks on all drifts
+        // 5. High-density 60 FPS sampling for 100% continuous unbroken tire marks!
         this.markTimer += delta;
-        if ((this.isDrifting || this.slipAngle > 10) && this.markTimer > 0.02) {
+        if ((this.isDrifting || this.slipAngle > 8) && this.markTimer > 0.012) {
             this.markTimer = 0;
             const cosH = Math.cos(this.heading);
             const sinH = Math.sin(this.heading);
