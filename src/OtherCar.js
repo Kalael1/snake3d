@@ -1,68 +1,74 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { getSkinById } from './SkinRegistry.js';
+
+const gltfLoader = new GLTFLoader();
+const modelCache = {};
 
 export class OtherCar {
     constructor(scene, initialData) {
         this.scene = scene;
         this.id = initialData.id;
         this.name = initialData.name || 'Oyuncu';
-        this.skinId = initialData.skinId || 'red_classic';
+        this.skinId = initialData.skinId || 'sport';
         this.activeSkin = getSkinById(this.skinId);
 
-        // Smooth target values
         this.targetX = initialData.x || 0;
         this.targetZ = initialData.z || 0;
         this.targetAngle = initialData.angle || 0;
         this.driftScore = 0;
 
-        // 3D Model
         this.group = new THREE.Group();
-        this.buildModel();
         this.group.position.set(this.targetX, 0, this.targetZ);
         this.scene.add(this.group);
+
+        this.buildFallbackModel();
+        this.loadCarModel(this.activeSkin.modelUrl);
     }
 
-    buildModel() {
-        const skin = this.activeSkin;
-
-        // Body
+    buildFallbackModel() {
+        this.fallbackGroup = new THREE.Group();
         const bodyGeo = new THREE.BoxGeometry(2.4, 0.7, 4.2);
-        const bodyMat = new THREE.MeshLambertMaterial({ color: skin.bodyColor });
+        const bodyMat = new THREE.MeshLambertMaterial({ color: 0x3b82f6 });
         const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
         bodyMesh.position.y = 0.55;
-        this.group.add(bodyMesh);
+        this.fallbackGroup.add(bodyMesh);
+        this.group.add(this.fallbackGroup);
+    }
 
-        // Roof
-        const roofGeo = new THREE.BoxGeometry(2.0, 0.55, 2.0);
-        const roofMat = new THREE.MeshLambertMaterial({ color: skin.roofColor });
-        const roofMesh = new THREE.Mesh(roofGeo, roofMat);
-        roofMesh.position.set(0, 1.15, -0.2);
-        this.group.add(roofMesh);
+    loadCarModel(url) {
+        if (!url) return;
 
-        // Wheels
-        const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 8);
-        const wheelMat = new THREE.MeshLambertMaterial({ color: skin.wheelColor || 0x222222 });
-        [[-1.25, 0.35, 1.4], [1.25, 0.35, 1.4], [-1.25, 0.35, -1.4], [1.25, 0.35, -1.4]].forEach(pos => {
-            const wheel = new THREE.Mesh(wheelGeo, wheelMat);
-            wheel.rotation.z = Math.PI / 2;
-            wheel.position.set(...pos);
-            this.group.add(wheel);
+        if (modelCache[url]) {
+            this.setLoadedModel(modelCache[url].clone());
+            return;
+        }
+
+        gltfLoader.load(url, (gltf) => {
+            const model = gltf.scene;
+            modelCache[url] = model;
+
+            const box = new THREE.Box3().setFromObject(model);
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const targetScale = 4.2 / maxDim;
+
+            model.scale.set(targetScale, targetScale, targetScale);
+            const newBox = new THREE.Box3().setFromObject(model);
+            model.position.y = -newBox.min.y;
+
+            this.setLoadedModel(model.clone());
+        }, undefined, (err) => {
+            console.warn('Failed to load GLB model for OtherCar:', url, err);
         });
+    }
 
-        // Headlights
-        const lightGeo = new THREE.SphereGeometry(0.15, 6, 6);
-        const headMat = new THREE.MeshBasicMaterial({ color: 0xffffcc });
-        [[-0.8, 0.55, 2.15], [0.8, 0.55, 2.15]].forEach(pos => {
-            this.group.add(new THREE.Mesh(lightGeo, headMat).translateX(pos[0]).translateY(pos[1]).translateZ(pos[2]));
-        });
+    setLoadedModel(model) {
+        if (this.loadedMesh) this.group.remove(this.loadedMesh);
+        if (this.fallbackGroup) this.group.remove(this.fallbackGroup);
 
-        // Tail lights
-        const tailMat = new THREE.MeshBasicMaterial({ color: 0xff2222 });
-        [[-0.8, 0.55, -2.15], [0.8, 0.55, -2.15]].forEach(pos => {
-            const m = new THREE.Mesh(lightGeo, tailMat);
-            m.position.set(...pos);
-            this.group.add(m);
-        });
+        this.loadedMesh = model;
+        this.group.add(this.loadedMesh);
     }
 
     updateFromServer(state) {
@@ -71,10 +77,15 @@ export class OtherCar {
         this.targetZ = state.z;
         this.targetAngle = state.angle || 0;
         this.driftScore = state.driftScore || 0;
+
+        if (state.skinId && state.skinId !== this.skinId) {
+            this.skinId = state.skinId;
+            this.activeSkin = getSkinById(this.skinId);
+            this.loadCarModel(this.activeSkin.modelUrl);
+        }
     }
 
     animate(delta) {
-        // Smooth lerp to server target
         this.group.position.x += (this.targetX - this.group.position.x) * 0.2;
         this.group.position.z += (this.targetZ - this.group.position.z) * 0.2;
         this.group.rotation.y = this.targetAngle;

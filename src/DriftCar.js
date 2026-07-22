@@ -1,33 +1,43 @@
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { getSkinById } from './SkinRegistry.js';
+
+const gltfLoader = new GLTFLoader();
+const modelCache = {}; // Cache loaded GLB models for fast skin swapping!
 
 export class DriftCar {
     constructor(scene) {
         this.scene = scene;
-        this.skinId = 'red_classic';
+        this.skinId = 'sport';
         this.activeSkin = getSkinById(this.skinId);
 
-        // Physics
+        // Physics parameters
         this.position = new THREE.Vector3(0, 0, 0);
-        this.heading = 0;         // Direction car is FACING
-        this.velocityAngle = 0;   // Direction car is MOVING
-        this.speed = 28;          // Constant forward speed
-        this.steerSpeed = 5.0;    // How fast heading follows mouse
-        this.gripFactor = 4.5;    // How fast velocity follows heading (lower = more drift)
+        this.heading = 0;         // Heading angle (radians)
+        this.velocityAngle = 0;   // Velocity direction angle (radians)
+        this.speed = 28;          // Constant forward movement speed
+        this.steerSpeed = 5.0;    // Smooth steering responsiveness
+        this.gripFactor = 4.5;    // Grip level (lower = more drift slide)
 
-        // Drift state
-        this.slipAngle = 0;       // Degrees
+        // Drift tracking
+        this.slipAngle = 0;
         this.isDrifting = false;
         this.currentDriftScore = 0;
         this.totalDriftScore = 0;
         this.driftCombo = 1;
         this.driftTimer = 0;
-        this.currentAngle = 0;    // For network sync
+        this.currentAngle = 0;
 
-        // 3D Model
+        // 3D Scene Group
         this.group = new THREE.Group();
-        this.buildModel();
         this.scene.add(this.group);
+
+        this.loadedMesh = null;
+        this.fallbackMesh = null;
+
+        // Build procedural fallback & load GLB
+        this.buildFallbackModel();
+        this.loadCarModel(this.activeSkin.modelUrl);
 
         // Tire marks system
         this.MAX_MARKS = 600;
@@ -36,59 +46,65 @@ export class DriftCar {
         this.initTireMarks();
     }
 
-    buildModel() {
-        const skin = this.activeSkin;
+    buildFallbackModel() {
+        this.fallbackGroup = new THREE.Group();
 
-        // Car body
+        // Simple box car body fallback while GLB loads
         const bodyGeo = new THREE.BoxGeometry(2.4, 0.7, 4.2);
-        this.bodyMat = new THREE.MeshLambertMaterial({ color: skin.bodyColor });
-        this.bodyMesh = new THREE.Mesh(bodyGeo, this.bodyMat);
-        this.bodyMesh.position.y = 0.55;
-        this.group.add(this.bodyMesh);
+        const bodyMat = new THREE.MeshLambertMaterial({ color: 0xef4444 });
+        const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+        bodyMesh.position.y = 0.55;
+        this.fallbackGroup.add(bodyMesh);
 
-        // Roof/cabin
         const roofGeo = new THREE.BoxGeometry(2.0, 0.55, 2.0);
-        this.roofMat = new THREE.MeshLambertMaterial({ color: skin.roofColor });
-        this.roofMesh = new THREE.Mesh(roofGeo, this.roofMat);
-        this.roofMesh.position.set(0, 1.15, -0.2);
-        this.group.add(this.roofMesh);
+        const roofMat = new THREE.MeshLambertMaterial({ color: 0x991b1b });
+        const roofMesh = new THREE.Mesh(roofGeo, roofMat);
+        roofMesh.position.set(0, 1.15, -0.2);
+        this.fallbackGroup.add(roofMesh);
 
-        // Wheels (4x cylinder)
-        const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 8);
-        const wheelMat = new THREE.MeshLambertMaterial({ color: skin.wheelColor || 0x222222 });
+        this.group.add(this.fallbackGroup);
+    }
 
-        this.wheels = [];
-        const wheelPos = [
-            [-1.25, 0.35, 1.4],   // FL
-            [1.25, 0.35, 1.4],    // FR
-            [-1.25, 0.35, -1.4],  // RL
-            [1.25, 0.35, -1.4]    // RR
-        ];
+    loadCarModel(url) {
+        if (!url) return;
 
-        wheelPos.forEach(pos => {
-            const wheel = new THREE.Mesh(wheelGeo, wheelMat);
-            wheel.rotation.z = Math.PI / 2;
-            wheel.position.set(...pos);
-            this.group.add(wheel);
-            this.wheels.push(wheel);
+        if (modelCache[url]) {
+            this.setLoadedModel(modelCache[url].clone());
+            return;
+        }
+
+        gltfLoader.load(url, (gltf) => {
+            const model = gltf.scene;
+            modelCache[url] = model;
+
+            // Auto-center & auto-scale GLB model
+            const box = new THREE.Box3().setFromObject(model);
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const targetScale = 4.2 / maxDim;
+
+            model.scale.set(targetScale, targetScale, targetScale);
+            
+            // Adjust elevation
+            const newBox = new THREE.Box3().setFromObject(model);
+            model.position.y = -newBox.min.y;
+
+            this.setLoadedModel(model.clone());
+        }, undefined, (err) => {
+            console.warn('Failed to load GLB model:', url, err);
         });
+    }
 
-        // Headlights (front)
-        const lightGeo = new THREE.SphereGeometry(0.15, 6, 6);
-        const headlightMat = new THREE.MeshBasicMaterial({ color: 0xffffcc });
-        [[-0.8, 0.55, 2.15], [0.8, 0.55, 2.15]].forEach(pos => {
-            const light = new THREE.Mesh(lightGeo, headlightMat);
-            light.position.set(...pos);
-            this.group.add(light);
-        });
+    setLoadedModel(model) {
+        if (this.loadedMesh) {
+            this.group.remove(this.loadedMesh);
+        }
+        if (this.fallbackGroup) {
+            this.group.remove(this.fallbackGroup);
+        }
 
-        // Tail lights (rear)
-        const tailMat = new THREE.MeshBasicMaterial({ color: 0xff2222 });
-        [[-0.8, 0.55, -2.15], [0.8, 0.55, -2.15]].forEach(pos => {
-            const light = new THREE.Mesh(lightGeo, tailMat);
-            light.position.set(...pos);
-            this.group.add(light);
-        });
+        this.loadedMesh = model;
+        this.group.add(this.loadedMesh);
     }
 
     initTireMarks() {
@@ -120,44 +136,43 @@ export class DriftCar {
     applySkin(skinId) {
         this.skinId = skinId;
         this.activeSkin = getSkinById(skinId);
-        this.bodyMat.color.setHex(this.activeSkin.bodyColor);
-        this.roofMat.color.setHex(this.activeSkin.roofColor);
+        this.loadCarModel(this.activeSkin.modelUrl);
     }
 
     update(delta, targetPoint) {
-        // 1. Calculate target steering angle from mouse
+        // 1. Steering target angle from mouse
         const dx = targetPoint.x - this.position.x;
         const dz = targetPoint.z - this.position.z;
         const targetAngle = Math.atan2(dx, dz);
 
-        // 2. Smooth steering — heading follows mouse
+        // 2. Smooth heading rotation
         let steerDiff = targetAngle - this.heading;
         while (steerDiff < -Math.PI) steerDiff += Math.PI * 2;
         while (steerDiff > Math.PI) steerDiff -= Math.PI * 2;
         this.heading += steerDiff * Math.min(1.0, this.steerSpeed * delta);
 
-        // 3. Velocity follows heading WITH LAG — this creates drift!
+        // 3. Velocity direction with drift lag
         let velDiff = this.heading - this.velocityAngle;
         while (velDiff < -Math.PI) velDiff += Math.PI * 2;
         while (velDiff > Math.PI) velDiff -= Math.PI * 2;
         this.velocityAngle += velDiff * this.gripFactor * delta;
 
-        // 4. Slip angle = drift amount (degrees)
+        // 4. Slip angle (drift magnitude)
         this.slipAngle = Math.abs(velDiff) * (180 / Math.PI);
         this.currentAngle = this.heading;
 
-        // 5. Move car in velocity direction (never stops!)
+        // 5. Position update
         this.position.x += Math.sin(this.velocityAngle) * this.speed * delta;
         this.position.z += Math.cos(this.velocityAngle) * this.speed * delta;
 
-        // 6. Drift scoring
+        // 6. Drift score update
         this.updateDriftScore(delta);
 
-        // 7. Update 3D model position & rotation
+        // 7. Group position & rotation
         this.group.position.set(this.position.x, 0, this.position.z);
         this.group.rotation.y = this.heading;
 
-        // 8. Visual tilt during drift
+        // 8. Dynamic drift tilt
         const tiltAmount = Math.max(-0.18, Math.min(0.18, velDiff * 0.25));
         this.group.rotation.z = -tiltAmount;
 
@@ -165,7 +180,6 @@ export class DriftCar {
         this.markTimer += delta;
         if (this.isDrifting && this.markTimer > 0.03) {
             this.markTimer = 0;
-            // Rear left wheel world position
             const cosH = Math.cos(this.heading);
             const sinH = Math.sin(this.heading);
 
@@ -177,9 +191,6 @@ export class DriftCar {
             const rrZ = this.position.z + (-1.25 * sinH) + (-1.4 * cosH);
             this.addTireMark(rrX, rrZ, this.heading);
         }
-
-        // 10. Spin wheels
-        this.wheels.forEach(w => { w.rotation.x += this.speed * delta * 0.5; });
     }
 
     updateDriftScore(delta) {
@@ -196,12 +207,10 @@ export class DriftCar {
 
             this.driftTimer += delta;
 
-            // Combo escalation
             if (this.driftTimer > 1.5) this.driftCombo = 2;
             if (this.driftTimer > 3.5) this.driftCombo = 3;
             if (this.driftTimer > 6.0) this.driftCombo = 5;
 
-            // Angle multiplier
             let angleMult = 1;
             if (this.slipAngle > MEGA_THRESHOLD) angleMult = 3;
             else if (this.slipAngle > 20) angleMult = 2;
@@ -209,7 +218,6 @@ export class DriftCar {
             this.currentDriftScore += this.slipAngle * delta * angleMult * this.driftCombo;
         } else {
             if (this.isDrifting) {
-                // Drift ended — bank the combo score
                 this.totalDriftScore += Math.floor(this.currentDriftScore);
                 this.isDrifting = false;
                 this.currentDriftScore = 0;

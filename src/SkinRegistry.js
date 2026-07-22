@@ -1,85 +1,57 @@
-import * as THREE from 'three';
-
 export const SKINS = [
     {
-        id: 'red_classic',
-        name: 'Klasik Kırmızı',
-        icon: '🔴',
+        id: 'sport',
+        name: 'Spor GT Yarışçı',
+        icon: '🏎️',
+        modelUrl: '/Cars/sport.glb',
         reqScore: 0,
-        desc: 'Efsanevi kırmızı yarış makinesi',
-        bodyColor: 0xe53e3e,
-        roofColor: 0x991b1b,
-        wheelColor: 0x222222
+        desc: 'Aerodinamik süper spor drift arabası',
+        scale: 1.5
     },
     {
-        id: 'neon_blue',
-        name: 'Neon Mavi',
-        icon: '🔵',
+        id: 'sedan',
+        name: 'Lüks Sedan',
+        icon: '🚗',
+        modelUrl: '/Cars/Sedan.glb',
         reqScore: 200,
-        desc: 'Elektrik mavisi gece yarışçısı',
-        bodyColor: 0x3b82f6,
-        roofColor: 0x1e40af,
-        wheelColor: 0x1a1a2e
+        desc: 'Konforlu ve yüksek performanslı özel sedan',
+        scale: 1.5
     },
     {
-        id: 'sunset_orange',
-        name: 'Gün Batımı',
-        icon: '🟠',
+        id: 'sedan2',
+        name: 'Taksi Nitro',
+        icon: '🚕',
+        modelUrl: '/Cars/Sedan2.glb',
         reqScore: 500,
-        desc: 'Turuncu alev hızı',
-        bodyColor: 0xf97316,
-        roofColor: 0xc2410c,
-        wheelColor: 0x222222
+        desc: 'Şehir içi agresif taksi drift aracı',
+        scale: 1.5
     },
     {
-        id: 'toxic_green',
-        name: 'Toksik Yeşil',
-        icon: '🟢',
+        id: 'sedan3',
+        name: 'Polis Interceptor',
+        icon: '🚔',
+        modelUrl: '/Cars/Sedan3.glb',
         reqScore: 1000,
-        desc: 'Neon zehir yeşili canavar',
-        bodyColor: 0x22c55e,
-        roofColor: 0x15803d,
-        wheelColor: 0x1a1a1a
+        desc: 'Hızlı müdahale kolluk kuvveti devriye aracı',
+        scale: 1.5
     },
     {
-        id: 'cyberpunk_purple',
-        name: 'Cyberpunk Mor',
-        icon: '🟣',
+        id: 'suv',
+        name: 'Offroad Monster SUV',
+        icon: '🚙',
+        modelUrl: '/Cars/SUV.glb',
         reqScore: 2000,
-        desc: 'Matrix veri akışı moru',
-        bodyColor: 0xa855f7,
-        roofColor: 0x7e22ce,
-        wheelColor: 0x1e1033
+        desc: 'Ağır zırhlı ve güçlü 4x4 drift canavarı',
+        scale: 1.5
     },
     {
-        id: 'midnight_black',
-        name: 'Gece Siyahı',
-        icon: '⬛',
+        id: 'suv2',
+        name: 'Zırhlı Titan SUV',
+        icon: '🚐',
+        modelUrl: '/Cars/suv2.glb',
         reqScore: 3500,
-        desc: 'Karanlık gölge hayaleti',
-        bodyColor: 0x1e293b,
-        roofColor: 0x0f172a,
-        wheelColor: 0x0a0a0a
-    },
-    {
-        id: 'gold_royal',
-        name: 'Altın Kraliyet',
-        icon: '👑',
-        reqScore: 5000,
-        desc: '24 ayar altın kaplama şampiyon',
-        bodyColor: 0xeab308,
-        roofColor: 0xa16207,
-        wheelColor: 0x292524
-    },
-    {
-        id: 'diamond_crystal',
-        name: 'Kristal Elmas',
-        icon: '💎',
-        reqScore: 8000,
-        desc: 'Prizmatik elmas kaplama efsane',
-        bodyColor: 0xe0f2fe,
-        roofColor: 0xbae6fd,
-        wheelColor: 0x334155
+        desc: 'Karanlık titanyum gövdeli devasa SUV',
+        scale: 1.5
     }
 ];
 
