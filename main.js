@@ -109,7 +109,6 @@ const skinCardsGrid = document.getElementById('skin-cards-grid');
 const skinProgressText = document.getElementById('skin-progress-text');
 const skinProgressFill = document.getElementById('skin-progress-bar-fill');
 
-// Set Initial High Score on HUD
 highScoreElement.innerText = progressionManager.highScore;
 
 soundBtn.addEventListener('click', () => {
@@ -117,7 +116,7 @@ soundBtn.addEventListener('click', () => {
     soundBtn.innerText = muted ? '🔇' : '🔊';
 });
 
-// Render Skins Gallery Grid
+// Render Gamified Skin Gallery Grid
 function renderSkinGallery() {
     skinCardsGrid.innerHTML = '';
     const highScore = progressionManager.highScore;
@@ -125,10 +124,10 @@ function renderSkinGallery() {
 
     if (nextUnlock) {
         const pct = Math.min(100, Math.floor((highScore / nextUnlock.reqScore) * 100));
-        skinProgressText.innerText = `${highScore} / ${nextUnlock.reqScore} Puan (${nextUnlock.name})`;
+        skinProgressText.innerText = `${highScore} / ${nextUnlock.reqScore} Pn (${nextUnlock.name})`;
         skinProgressFill.style.width = `${pct}%`;
     } else {
-        skinProgressText.innerText = `🏆 TÜM KOSTÜMLER AÇILDI! (${highScore} Rekor)`;
+        skinProgressText.innerText = `👑 TÜM KOSTÜMLER AÇILDI! (${highScore} Rekor)`;
         skinProgressFill.style.width = '100%';
     }
 
@@ -139,10 +138,19 @@ function renderSkinGallery() {
         const card = document.createElement('div');
         card.className = `skin-card ${isUnlocked ? '' : 'locked'} ${isSelected ? 'selected' : ''}`;
 
+        let badgeHtml = '';
+        if (isSelected) {
+            badgeHtml = `<span class="skin-badge active">SEÇİLİ</span>`;
+        } else if (isUnlocked) {
+            badgeHtml = `<span class="skin-badge unlocked">AÇIK</span>`;
+        } else {
+            badgeHtml = `<span class="skin-badge locked-badge">🔒 ${skin.reqScore} Pn</span>`;
+        }
+
         card.innerHTML = `
             <span class="skin-icon">${skin.icon}</span>
             <span class="skin-title">${skin.name}</span>
-            <span class="skin-req">${isUnlocked ? (isSelected ? 'SEÇİLİ' : 'AÇIK') : `${skin.reqScore} Puan`}</span>
+            ${badgeHtml}
         `;
 
         if (isUnlocked) {
@@ -255,7 +263,6 @@ socket.on('gameState', (state) => {
             scoreElement.innerText = currentScore;
             localSnake.updateGrowth(currentScore);
 
-            // Live high score update
             if (currentScore > progressionManager.highScore) {
                 progressionManager.saveHighScore(currentScore);
                 highScoreElement.innerText = currentScore;
@@ -291,7 +298,6 @@ socket.on('gameOver', (data) => {
     audioManager.playDeath();
     particleSystem.createDeathExplosion(localSnake.getHeadPosition());
 
-    // Update High Score & Progression
     progressionManager.saveHighScore(currentScore);
     highScoreElement.innerText = progressionManager.highScore;
     renderSkinGallery();
@@ -299,7 +305,7 @@ socket.on('gameOver', (data) => {
     finalScoreElement.innerText = currentScore;
     finalScoreBox.classList.remove('hidden');
     overlayDesc.innerText = data.reason || 'Oyun bitti!';
-    startBtn.innerText = 'TEKRAR OYNA';
+    startBtn.innerHTML = '<span class="play-icon">▶</span> TEKRAR OYNA';
     overlay.classList.remove('hidden');
 });
 
@@ -347,7 +353,7 @@ function updateLeaderboard(serverPlayers) {
     lbList.innerHTML = sorted.map((p, idx) => `
         <li>
             <span>${idx + 1}. ${p.name || 'Oyuncu'}</span>
-            <span style="color:#00ffcc">${p.score || 0}</span>
+            <span style="color:#06b6d4">${p.score || 0}</span>
         </li>
     `).join('') || '<li>1. Bekleniyor...</li>';
 }
@@ -359,7 +365,7 @@ function openMenu(reasonText) {
     finalScoreElement.innerText = currentScore;
     finalScoreBox.classList.remove('hidden');
     overlayDesc.innerText = reasonText;
-    startBtn.innerText = 'ARENAYA DÖN / YENİDEN BAŞLA';
+    startBtn.innerHTML = '<span class="play-icon">▶</span> ARENAYA DÖN';
     overlay.classList.remove('hidden');
 }
 
@@ -371,7 +377,6 @@ function startGame() {
     localEatenFoods.clear();
     localSnake.reset();
 
-    // Join with selected skin
     socket.emit('join', {
         name: playerName,
         skinId: progressionManager.selectedSkinId

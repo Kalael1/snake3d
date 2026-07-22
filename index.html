@@ -5,7 +5,7 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Snake.io 3D Multiplayer</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Outfit:wght@500;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./style.css">
   </head>
   <body>
@@ -14,13 +14,20 @@
     <!-- HUD Layer -->
     <div id="ui-layer">
       <div id="top-left-hud">
-        <div id="score-card" class="hud-card">
-          <span class="label">SKOR</span>
-          <span id="score" class="value">0</span>
+        <div id="score-card" class="hud-pill">
+          <span class="hud-icon">⚡</span>
+          <div class="hud-info">
+            <span class="hud-label">SKOR</span>
+            <span id="score" class="hud-value">0</span>
+          </div>
         </div>
-        <div id="high-score-card" class="hud-card">
-          <span class="label">REKOR</span>
-          <span id="high-score" class="value">0</span>
+
+        <div id="high-score-card" class="hud-pill gold-pill">
+          <span class="hud-icon">🏆</span>
+          <div class="hud-info">
+            <span class="hud-label">REKOR</span>
+            <span id="high-score" class="hud-value">0</span>
+          </div>
         </div>
       </div>
 
@@ -28,7 +35,7 @@
       <div id="top-right-bar">
         <button id="sound-btn" class="icon-btn" title="Ses Aç/Kapat">🔊</button>
         <div id="leaderboard">
-          <div class="lb-header">🏆 LİDERLİK TABLOSU</div>
+          <div class="lb-header">👑 LİDERLİK TABLOSU</div>
           <ul id="lb-list">
             <li>1. Bekleniyor...</li>
           </ul>
@@ -36,30 +43,34 @@
       </div>
 
       <div id="controls-hint">
-        💡 <span>Fare: Yönlendir</span> | <span>Sol Tık / Boşluk: Hızlan</span> | <span>Tekerlek: Zoom</span> | <span>ESC: Menü</span>
+        <span>🎮 Fare: Yönlendir</span> • <span>⚡ Sol Tık: Hızlan</span> • <span>🔍 Tekerlek: Zoom</span> • <span>⏸️ ESC: Menü</span>
       </div>
     </div>
 
-    <!-- Start / Skin Gallery Overlay -->
+    <!-- Start / Skin Gallery Stylized Modal -->
     <div id="overlay">
-      <div class="glass-card main-modal">
-        <h1 class="game-title">SNAKE.IO <span class="accent">3D</span></h1>
-        <p class="subtitle" id="overlay-desc">Multiplayer Arenaya Katıl ve Özel Skin'leri Aç!</p>
+      <div class="stylized-modal">
+        <div class="modal-header">
+          <div class="brand-badge">🎮 3D MULTIPLAYER ARENA</div>
+          <h1 class="game-title">SNAKE<span class="dot">.</span>IO <span class="accent-badge">3D</span></h1>
+          <p class="subtitle" id="overlay-desc">Arenaya katıl, rakipleri avla ve özel 3D kostümleri aç!</p>
+        </div>
         
-        <div class="input-group">
+        <div class="player-input-wrapper">
+          <span class="input-icon">👤</span>
           <input type="text" id="player-name" placeholder="Oyuncu Adınız..." maxlength="12" value="YılanOyuncusu">
         </div>
 
         <div id="final-score-box" class="hidden">
-          <p>SON SKORUNUZ</p>
+          <span class="score-banner-label">SON SKORUNUZ</span>
           <h2 id="final-score">0</h2>
         </div>
 
-        <!-- Skins & Trophy Gallery Section -->
+        <!-- Skins Showcase Carousel / Grid -->
         <div id="skin-gallery-container">
-          <div class="gallery-header">
-            <span>🎭 YILAN KOSTÜMLERİ (TROPHIES)</span>
-            <span id="skin-progress-text">0 / 50 Puan</span>
+          <div class="gallery-title-bar">
+            <span class="gallery-title">🐉 KOSTÜM GARAZI</span>
+            <span id="skin-progress-text" class="progress-badge">0 / 50 Puan</span>
           </div>
 
           <div id="skin-progress-bar-bg">
@@ -71,7 +82,9 @@
           </div>
         </div>
 
-        <button id="start-btn" class="glow-button">ARENAYA KATIL</button>
+        <button id="start-btn" class="play-btn">
+          <span class="play-icon">▶</span> OYUNA BAŞLA
+        </button>
       </div>
     </div>
 
