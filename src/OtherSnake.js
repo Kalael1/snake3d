@@ -10,8 +10,6 @@ export class OtherSnake {
         this.activeSkin = getSkinById(this.skinId);
         
         this.segments = [];
-        this.targetPositions = [];
-
         this.headRadius = 1.2;
         this.segmentRadius = 0.95;
 
@@ -28,8 +26,6 @@ export class OtherSnake {
 
         const headMat = new THREE.MeshStandardMaterial({
             color: skin.headColor,
-            emissive: skin.headColor,
-            emissiveIntensity: skin.emissiveIntensity,
             roughness: skin.roughness,
             metalness: skin.metalness,
             transparent: skin.transparent,
@@ -38,7 +34,6 @@ export class OtherSnake {
 
         const headGeo = new THREE.SphereGeometry(this.headRadius, 32, 32);
         const headMesh = new THREE.Mesh(headGeo, headMat);
-        headMesh.castShadow = true;
         this.headGroup.add(headMesh);
 
         // Add Eyes
@@ -60,7 +55,7 @@ export class OtherSnake {
         // Optional 3D Horns / Crown
         if (skin.hasHorns) {
             const hornGeo = new THREE.ConeGeometry(0.2, 0.9, 16);
-            const hornMat = new THREE.MeshStandardMaterial({ color: 0xff0055, emissive: 0xff0055, emissiveIntensity: 0.6 });
+            const hornMat = new THREE.MeshStandardMaterial({ color: 0xff0055 });
 
             const leftHorn = new THREE.Mesh(hornGeo, hornMat);
             leftHorn.position.set(-0.6, 1.2, -0.3);
@@ -98,8 +93,6 @@ export class OtherSnake {
 
         const segMat = new THREE.MeshStandardMaterial({
             color: skin.bodyColor,
-            emissive: skin.bodyColor,
-            emissiveIntensity: skin.emissiveIntensity * 0.7,
             roughness: skin.roughness,
             metalness: skin.metalness,
             transparent: skin.transparent,
@@ -108,42 +101,40 @@ export class OtherSnake {
 
         const segment = new THREE.Mesh(geo, segMat);
         segment.position.set(x, this.segmentRadius, z);
-        segment.castShadow = true;
 
         this.scene.add(segment);
         this.segments.push(segment);
     }
 
-    update(data) {
-        if (!data) return;
+    updateInterpolated(state) {
+        if (!state) return;
 
-        // Check if skin changed
-        if (data.skinId && data.skinId !== this.skinId) {
-            this.skinId = data.skinId;
-            this.activeSkin = getSkinById(this.skinId);
-        }
-
-        // Target position lerp for smooth network movement
+        // Head Position & Angle
         const head = this.segments[0];
-        head.position.x += (data.x - head.position.x) * 0.3;
-        head.position.z += (data.z - head.position.z) * 0.3;
-        head.rotation.y = data.angle || 0;
+        head.position.x = state.x;
+        head.position.z = state.z;
+        head.rotation.y = state.angle || 0;
 
-        const bodyData = data.body || [];
+        const bodyData = state.body || [];
 
         // Adjust body segment count
         while (this.segments.length - 1 < bodyData.length) {
             const lastSeg = this.segments[this.segments.length - 1];
             this.addSegment(lastSeg.position.x, lastSeg.position.z, this.segments.length);
         }
+        while (this.segments.length - 1 > bodyData.length && this.segments.length > 1) {
+            const popped = this.segments.pop();
+            this.scene.remove(popped);
+            if (popped.geometry) popped.geometry.dispose();
+        }
 
-        // Sync positions smoothly
+        // Apply 60 FPS interpolated positions directly to body segments
         for (let i = 0; i < bodyData.length; i++) {
             const seg = this.segments[i + 1];
             const target = bodyData[i];
             if (seg && target) {
-                seg.position.x += (target.x - seg.position.x) * 0.3;
-                seg.position.z += (target.z - seg.position.z) * 0.3;
+                seg.position.x = target.x;
+                seg.position.z = target.z;
                 seg.rotation.y = target.angle || 0;
             }
         }

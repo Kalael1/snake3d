@@ -9,6 +9,7 @@ import { ParticleSystem } from './src/ParticleSystem.js';
 import { SKINS } from './src/SkinRegistry.js';
 import { ProgressionManager } from './src/ProgressionManager.js';
 import { NameTagManager } from './src/NameTagManager.js';
+import { NetworkInterpolator } from './src/NetworkInterpolator.js';
 
 // Setup Socket.io Client
 const socket = io();
@@ -16,6 +17,7 @@ const socket = io();
 // Managers
 const progressionManager = new ProgressionManager();
 const audioManager = new AudioManager();
+const networkInterpolator = new NetworkInterpolator(50); // 50ms Industry-Standard Buffer
 
 // Setup basic scene with Slate Gray theme
 const scene = new THREE.Scene();
@@ -235,14 +237,12 @@ document.querySelectorAll('.emoji-btn').forEach(btn => {
 socket.on('chatReceived', (data) => {
     if (!data) return;
 
-    // Desktop Chat Log
     const msgDiv = document.createElement('div');
     msgDiv.className = 'chat-msg';
     msgDiv.innerHTML = `<span class="sender">${data.name}:</span> ${data.text}`;
     chatMessages.appendChild(msgDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
-    // Mobile Drawer Chat Log
     const mMsgDiv = document.createElement('div');
     mMsgDiv.className = 'chat-msg';
     mMsgDiv.innerHTML = `<span class="sender">${data.name}:</span> ${data.text}`;
@@ -448,9 +448,10 @@ socket.on('gameState', (state) => {
 
         if (!otherSnakes[id]) {
             otherSnakes[id] = new OtherSnake(scene, playerData);
-        } else {
-            otherSnakes[id].update(playerData);
         }
+
+        // Push to Network Interpolator Queue for 60 FPS Hermite/Lerp smooth rendering
+        networkInterpolator.pushSnapshot(id, playerData);
 
         const remoteSnake = otherSnakes[id];
         const skinIcon = remoteSnake.activeSkin ? remoteSnake.activeSkin.icon : '🐍';
@@ -469,6 +470,7 @@ socket.on('gameState', (state) => {
             otherSnakes[id].destroy();
             delete otherSnakes[id];
             nameTagManager.removeTag(id);
+            networkInterpolator.removeEntity(id);
         }
     });
 
@@ -611,14 +613,22 @@ function animate() {
         raycaster.setFromCamera(mouse, camera);
         raycaster.ray.intersectPlane(groundPlane, targetPoint);
 
-        // 2. Local Snake Physics Update
+        // 2. Local Snake Physics Update (Client Prediction)
         localSnake.update(delta, targetPoint, isBoosting);
 
         if (isBoosting) {
             particleSystem.createBoostParticle(localSnake.getHeadPosition(), localSnake.currentAngle);
         }
 
-        // 3. Head Collision Eating Check
+        // 3. Update Remote Snakes via Network Interpolator Queue (Butter Smooth 60 FPS!)
+        Object.keys(otherSnakes).forEach(id => {
+            const interpolatedState = networkInterpolator.getInterpolatedState(id);
+            if (interpolatedState) {
+                otherSnakes[id].updateInterpolated(interpolatedState);
+            }
+        });
+
+        // 4. Head Collision Eating Check
         const headPos = localSnake.getHeadPosition();
         const foodKeys = Object.keys(foodMeshes);
         
@@ -655,15 +665,14 @@ function animate() {
             }
         }
 
-        // 4. Prepare Body Segment Positions for Server
+        // 5. Emit Head & Body Position to Server (Volatile UDP-like emit)
         const bodyPositions = localSnake.segments.slice(1).map(seg => ({
             x: seg.position.x,
             z: seg.position.z,
             angle: seg.rotation.y
         }));
 
-        // 5. Emit Head & Body Position to Server
-        socket.emit('playerInput', {
+        socket.volatile.emit('playerInput', {
             x: headPos.x,
             z: headPos.z,
             angle: localSnake.currentAngle,

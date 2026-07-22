@@ -14,7 +14,11 @@ const io = new Server(httpServer, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"]
-    }
+    },
+    // Industry-standard IO game network tuning
+    pingInterval: 10000,
+    pingTimeout: 5000,
+    perMessageDeflate: false // Disabling compression overhead for tiny 60Hz UDP-like packets
 });
 
 const distPath = join(__dirname, 'dist');
@@ -37,16 +41,16 @@ const players = {};
 let foods = [];
 const foodColors = [0xff0055, 0x00ffcc, 0xffff00, 0xaa00ff, 0xff8800, 0x00ffaa];
 
-function round2(num) {
-    return Math.round(num * 100) / 100;
+function round1(num) {
+    return Math.round(num * 10) / 10;
 }
 
 function spawnFood(id = null, value = 2, isBig = false) {
     const halfSize = (ARENA_SIZE / 2) - 10;
     return {
-        id: id || 'food_' + Math.random().toString(36).substring(2, 9),
-        x: round2((Math.random() - 0.5) * 2 * halfSize),
-        z: round2((Math.random() - 0.5) * 2 * halfSize),
+        id: id || 'f_' + Math.random().toString(36).substring(2, 7),
+        x: round1((Math.random() - 0.5) * 2 * halfSize),
+        z: round1((Math.random() - 0.5) * 2 * halfSize),
         color: foodColors[Math.floor(Math.random() * foodColors.length)],
         value: value,
         isBig: isBig
@@ -65,8 +69,8 @@ io.on('connection', (socket) => {
         const skinId = typeof data === 'object' && data.skinId ? data.skinId : 'classic';
 
         const halfSize = (ARENA_SIZE / 2) - 20;
-        const spawnX = round2((Math.random() - 0.5) * 2 * halfSize);
-        const spawnZ = round2((Math.random() - 0.5) * 2 * halfSize);
+        const spawnX = round1((Math.random() - 0.5) * 2 * halfSize);
+        const spawnZ = round1((Math.random() - 0.5) * 2 * halfSize);
 
         players[socket.id] = {
             id: socket.id,
@@ -83,7 +87,7 @@ io.on('connection', (socket) => {
         for (let i = 1; i <= 8; i++) {
             players[socket.id].body.push({
                 x: spawnX,
-                z: round2(spawnZ - i * 1.3),
+                z: round1(spawnZ - i * 1.3),
                 angle: 0
             });
         }
@@ -100,17 +104,17 @@ io.on('connection', (socket) => {
         if (!player || !data) return;
 
         if (typeof data.x === 'number' && typeof data.z === 'number') {
-            player.x = round2(data.x);
-            player.z = round2(data.z);
-            player.angle = round2(data.angle || 0);
+            player.x = round1(data.x);
+            player.z = round1(data.z);
+            player.angle = round1(data.angle || 0);
             player.isBoosting = !!data.isBoosting;
             if (data.skinId) player.skinId = data.skinId;
 
             if (Array.isArray(data.body)) {
                 player.body = data.body.map(seg => ({
-                    x: round2(seg.x),
-                    z: round2(seg.z),
-                    angle: round2(seg.angle || 0)
+                    x: round1(seg.x),
+                    z: round1(seg.z),
+                    angle: round1(seg.angle || 0)
                 }));
             }
         }
@@ -153,9 +157,9 @@ io.on('connection', (socket) => {
             if (player.body) {
                 player.body.forEach(seg => {
                     const drop = {
-                        id: 'food_' + Math.random().toString(36).substring(2, 9),
-                        x: round2(seg.x),
-                        z: round2(seg.z),
+                        id: 'f_' + Math.random().toString(36).substring(2, 7),
+                        x: round1(seg.x),
+                        z: round1(seg.z),
                         color: foodColors[Math.floor(Math.random() * foodColors.length)],
                         value: 15,
                         isBig: true
@@ -169,7 +173,7 @@ io.on('connection', (socket) => {
     });
 });
 
-// Server Tick Loop (30 Ticks/sec)
+// High-Frequency Zero-Lag Volatile Network Tick (30 Ticks/sec)
 const TICK_RATE = 30;
 
 setInterval(() => {
@@ -206,9 +210,9 @@ setInterval(() => {
                     if (pA.body) {
                         pA.body.forEach(seg => {
                             const drop = {
-                                id: 'food_' + Math.random().toString(36).substring(2, 9),
-                                x: round2(seg.x),
-                                z: round2(seg.z),
+                                id: 'f_' + Math.random().toString(36).substring(2, 7),
+                                x: round1(seg.x),
+                                z: round1(seg.z),
                                 color: foodColors[Math.floor(Math.random() * foodColors.length)],
                                 value: 15,
                                 isBig: true
@@ -225,8 +229,8 @@ setInterval(() => {
         });
     });
 
-    // Emit light snapshot with players (foods excluded to save 90% bandwidth!)
-    io.emit('gameState', {
+    // Broadcast volatile UDP-like snapshots (skips TCP buffer queue lag!)
+    io.volatile.emit('gameState', {
         players: players
     });
 }, 1000 / TICK_RATE);
@@ -234,7 +238,7 @@ setInterval(() => {
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
     console.log(`================================================`);
-    console.log(`🚀 Snake.io 3D Multiplayer Sunucusu Hazır! (Lag Optimizasyonu Aktif)`);
+    console.log(`🚀 Snake.io 3D Industry-Standard Zero-Lag Sunucu Hazır!`);
     console.log(`🌐 Bağlantı adresi: http://localhost:${PORT}`);
     console.log(`================================================`);
 });
