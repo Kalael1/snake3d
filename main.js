@@ -10,13 +10,19 @@ import { ProgressionManager } from './src/ProgressionManager.js';
 import { NameTagManager } from './src/NameTagManager.js';
 import { NetworkInterpolator } from './src/NetworkInterpolator.js';
 
-// Setup Socket.io Client
-const socket = io();
+// Hybrid Auto-detect Socket URL (Connects to Oracle Cloud Backend if hosted on Vercel/GitHub Pages)
+const SOCKET_URL = window.location.hostname.includes('github.io') || window.location.hostname.includes('vercel.app') || window.location.hostname.includes('netlify.app')
+    ? 'https://boutique-mainly-being-succeed.trycloudflare.com'
+    : window.location.origin;
+
+const socket = io(SOCKET_URL, {
+    transports: ['websocket', 'polling']
+});
 
 // Managers
 const progressionManager = new ProgressionManager();
 const audioManager = new AudioManager();
-const networkInterpolator = new NetworkInterpolator(40); // Ultra-light 40ms buffer
+const networkInterpolator = new NetworkInterpolator(40);
 
 // Setup basic scene with Slate Gray theme
 const scene = new THREE.Scene();
