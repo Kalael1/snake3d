@@ -22,6 +22,11 @@ export class DriftCar {
         this.steerSpeed = 6.0;    // Smooth mouse steering responsiveness
         this.gripFactor = 3.6;    // Balanced grip for natural drift sliding
 
+        // Q & E TWO-WHEEL STUNT DRIVING MECHANIC
+        this.isTwoWheelLeft = false;  // Q Key
+        this.isTwoWheelRight = false; // E Key
+        this.isTwoWheeling = false;
+
         // Suspension & Handling Lean Physics
         this.currentRoll = 0;     // Side-to-side body roll (Z-axis)
         this.currentPitch = 0;    // Front-to-back nose dip (X-axis)
@@ -45,7 +50,7 @@ export class DriftCar {
         this.buildFallbackModel();
         this.loadCarModel(this.activeSkin.modelUrl);
 
-        // CONTINUOUS CONNECTED 3D RIBBON TRAIL MESHES (Zero blocky gaps!)
+        // CONTINUOUS CONNECTED 3D RIBBON TRAIL MESHES
         this.leftTireTrail = new RibbonTrail(this.scene, { width: 0.35, color: 0x050505, opacity: 0.85, maxPoints: 350 });
         this.rightTireTrail = new RibbonTrail(this.scene, { width: 0.35, color: 0x050505, opacity: 0.85, maxPoints: 350 });
     }
@@ -111,7 +116,11 @@ export class DriftCar {
         this.loadCarModel(this.activeSkin.modelUrl);
     }
 
-    update(delta, targetPoint) {
+    update(delta, targetPoint, twoWheelState = { left: false, right: false }) {
+        this.isTwoWheelLeft = twoWheelState.left;
+        this.isTwoWheelRight = twoWheelState.right;
+        this.isTwoWheeling = this.isTwoWheelLeft || this.isTwoWheelRight;
+
         // 1. PURE SMOOTH MOUSE STEERING
         if (targetPoint) {
             const dx = targetPoint.x - this.position.x;
@@ -139,32 +148,44 @@ export class DriftCar {
         this.position.x += Math.sin(this.velocityAngle) * this.speed * delta;
         this.position.z += Math.cos(this.velocityAngle) * this.speed * delta;
 
-        // 5. Continuous 3D Ribbon Mesh Tire Tracks (100% Solid & Connected, Zero Blocky Gaps!)
-        if (this.isDrifting || this.slipAngle > 8) {
+        // 5. Tire Marks (Only on the grounded wheels when on 2 wheels!)
+        if (this.isDrifting || this.slipAngle > 8 || this.isTwoWheeling) {
             const cosH = Math.cos(this.heading);
             const sinH = Math.sin(this.heading);
 
-            const rlX = this.position.x + (-1.1 * cosH) + (-1.3 * sinH);
-            const rlZ = this.position.z + (1.1 * sinH) + (-1.3 * cosH);
-            this.leftTireTrail.addPoint(rlX, rlZ, this.heading);
+            if (!this.isTwoWheelRight) { // Left wheel stays on ground
+                const rlX = this.position.x + (-1.1 * cosH) + (-1.3 * sinH);
+                const rlZ = this.position.z + (1.1 * sinH) + (-1.3 * cosH);
+                this.leftTireTrail.addPoint(rlX, rlZ, this.heading);
+            }
 
-            const rrX = this.position.x + (1.1 * cosH) + (-1.3 * sinH);
-            const rrZ = this.position.z + (-1.1 * sinH) + (-1.3 * cosH);
-            this.rightTireTrail.addPoint(rrX, rrZ, this.heading);
+            if (!this.isTwoWheelLeft) { // Right wheel stays on ground
+                const rrX = this.position.x + (1.1 * cosH) + (-1.3 * sinH);
+                const rrZ = this.position.z + (-1.1 * sinH) + (-1.3 * cosH);
+                this.rightTireTrail.addPoint(rrX, rrZ, this.heading);
+            }
         }
 
-        // 6. Drift score update
+        // 6. Drift & Two-Wheel Stunt Score Update
         this.updateDriftScore(delta);
 
         // 7. Group position & heading rotation
         this.group.position.set(this.position.x, 0, this.position.z);
         this.group.rotation.y = this.heading;
 
-        // 8. REALISTIC HANDLING & SUSPENSION TILT MECHANIC (Roll & Pitch)
-        const targetRoll = Math.max(-0.35, Math.min(0.35, velDiff * 0.45));
-        const targetPitch = Math.min(0.12, Math.abs(velDiff) * 0.15);
+        // 8. Q & E TWO-WHEEL STUNT TILT PHYSICS (45° Roll Angle)
+        let targetRoll = Math.max(-0.35, Math.min(0.35, velDiff * 0.45));
+        let targetPitch = Math.min(0.12, Math.abs(velDiff) * 0.15);
 
-        this.currentRoll += (targetRoll - this.currentRoll) * Math.min(1.0, 12.0 * delta);
+        if (this.isTwoWheelLeft) {
+            targetRoll = -0.78; // 45° tilt onto left two wheels!
+            targetPitch = 0.05;
+        } else if (this.isTwoWheelRight) {
+            targetRoll = 0.78;  // 45° tilt onto right two wheels!
+            targetPitch = 0.05;
+        }
+
+        this.currentRoll += (targetRoll - this.currentRoll) * Math.min(1.0, 10.0 * delta);
         this.currentPitch += (targetPitch - this.currentPitch) * Math.min(1.0, 10.0 * delta);
 
         this.group.rotation.z = -this.currentRoll;
@@ -174,6 +195,11 @@ export class DriftCar {
     updateDriftScore(delta) {
         const DRIFT_THRESHOLD = 10;
         const MEGA_THRESHOLD = 25;
+
+        // Bonus score for two-wheel stunt driving!
+        if (this.isTwoWheeling) {
+            this.totalDriftScore += Math.floor(50 * delta);
+        }
 
         if (this.slipAngle > DRIFT_THRESHOLD) {
             if (!this.isDrifting) {
@@ -192,6 +218,8 @@ export class DriftCar {
             let angleMult = 1;
             if (this.slipAngle > MEGA_THRESHOLD) angleMult = 3;
             else if (this.slipAngle > 16) angleMult = 2;
+
+            if (this.isTwoWheeling) angleMult *= 2; // 2x multiplier for two-wheel stunt drift!
 
             this.currentDriftScore += this.slipAngle * delta * angleMult * this.driftCombo;
         } else {
@@ -224,6 +252,9 @@ export class DriftCar {
         this.velocityAngle = this.heading;
         this.slipAngle = 0;
         this.isDrifting = false;
+        this.isTwoWheelLeft = false;
+        this.isTwoWheelRight = false;
+        this.isTwoWheeling = false;
         this.currentDriftScore = 0;
         this.totalDriftScore = 0;
         this.driftCombo = 1;

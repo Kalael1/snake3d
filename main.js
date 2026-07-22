@@ -264,13 +264,17 @@ window.addEventListener('touchend', (e) => {
     }
 }, { passive: true });
 
+const keysPressed = {};
+
 window.addEventListener('keydown', (e) => {
     if (document.activeElement === chatInput || document.activeElement === mobileChatInput) return;
+    keysPressed[e.code] = true;
     if (e.code === 'Space') isEmittingTrail = true;
     if (e.code === 'Escape' && isGameRunning) openMenu('Oyun Duraklatıldı');
 });
 
 window.addEventListener('keyup', (e) => {
+    keysPressed[e.code] = false;
     if (e.code === 'Space') isEmittingTrail = false;
 });
 
@@ -400,8 +404,9 @@ function animate() {
         raycaster.setFromCamera(mouse, camera);
         raycaster.ray.intersectPlane(groundPlane, targetPoint);
 
-        // 2. Update local car physics
-        localCar.update(delta, targetPoint);
+        // 2. Update local car physics with Q & E Two-Wheel Stunt Driving
+        const twoWheelState = { left: !!keysPressed['KeyQ'], right: !!keysPressed['KeyE'] };
+        localCar.update(delta, targetPoint, twoWheelState);
         const headPos = localCar.getHeadPosition();
         const driftScore = localCar.getScore();
 
