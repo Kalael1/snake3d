@@ -429,10 +429,16 @@ function animate() {
         // Update Tron Light Trail visuals & animations
         tronTrailManager.update(delta);
 
-        // 4. Check Tron Light Trail Collision!
+        // 4. Check Tron Light Trail & Neon Crash Barrier Collisions!
         const hitSeg = tronTrailManager.checkCollision(headPos.x, headPos.z, localSocketId);
         if (hitSeg) {
             triggerGameOver("⚡ Tron Neon Işıklı Duvara Çarptın ve Patladın!");
+            return;
+        }
+
+        const hitBarrier = arena.checkBarrierCollision(headPos.x, headPos.z);
+        if (hitBarrier) {
+            triggerGameOver("💥 Neon Güvenlik Bariyerine Yüksek Hızla Çarptın ve Patladın!");
             return;
         }
 
