@@ -14,10 +14,10 @@ import { ParticleSystem } from './src/ParticleSystem.js';
 // Setup Socket.io Client
 const socket = io();
 
-// Setup basic scene with sleek midnight theme (comfortable for eyes)
+// Setup basic scene with Slate Gray theme
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x060814);
-scene.fog = new THREE.FogExp2(0x060814, 0.0025);
+scene.background = new THREE.Color(0x475569);
+scene.fog = new THREE.FogExp2(0x475569, 0.002);
 
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 2500);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -26,27 +26,27 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 0.95;
+renderer.toneMappingExposure = 1.0;
 document.getElementById('app').appendChild(renderer.domElement);
 
-// Post-Processing Pipeline (Subtle & Elegant Bloom Glow)
+// Post-Processing Pipeline (Bloom filtered ONLY for bright crystals)
 const composer = new EffectComposer(renderer);
 const renderPass = new RenderPass(scene, camera);
 composer.addPass(renderPass);
 
 const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.28, // Subtle strength - comfortable on eyes
+    0.22, // Subtle strength
     0.2,  // Radius
-    0.85  // High threshold - only glowing crystals & lights pass
+    0.92  // High threshold so gray floor is NEVER affected by bloom
 );
 composer.addPass(bloomPass);
 
 const outputPass = new OutputPass();
 composer.addPass(outputPass);
 
-// Balanced Lighting
-const hemiLight = new THREE.HemisphereLight(0xffffff, 0x1e293b, 0.7);
+// Balanced Soft Lighting
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x475569, 0.8);
 scene.add(hemiLight);
 
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
@@ -141,7 +141,7 @@ window.addEventListener('resize', () => {
     composer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Food rendering materials & geometries (Vibrant & Comfortable)
+// Food rendering materials & geometries
 const foodColors = [0xff0055, 0x00ffcc, 0xffff00, 0xaa00ff, 0xff8800, 0x00ffaa];
 const smallFoodGeo = new THREE.DodecahedronGeometry(0.55, 0);
 const bigFoodGeo = new THREE.DodecahedronGeometry(1.2, 0);
@@ -149,7 +149,7 @@ const bigFoodGeo = new THREE.DodecahedronGeometry(1.2, 0);
 const foodMaterials = foodColors.map(color => new THREE.MeshStandardMaterial({
     color: color,
     emissive: color,
-    emissiveIntensity: 0.45,
+    emissiveIntensity: 0.5,
     roughness: 0.2,
     metalness: 0.8
 }));

@@ -12,12 +12,12 @@ export class Arena {
     init() {
         const halfSize = this.size / 2;
 
-        // Sleek Dark Floor - Comfortable for eyes
+        // Soft Medium Slate Gray Floor (Clean, Matte, Non-glare)
         const floorGeo = new THREE.PlaneGeometry(this.size, this.size);
         const floorMat = new THREE.MeshStandardMaterial({
-            color: 0x0b0f19, // Deep midnight dark slate
-            roughness: 0.8,
-            metalness: 0.2
+            color: 0x64748b, // Slate Gray
+            roughness: 0.9,
+            metalness: 0.1
         });
 
         const floor = new THREE.Mesh(floorGeo, floorMat);
@@ -26,20 +26,18 @@ export class Arena {
         floor.receiveShadow = true;
         this.scene.add(floor);
 
-        // Subtle Arena Grid Lines
-        const gridHelper = new THREE.GridHelper(this.size, 250, 0x00ffcc, 0x1e293b);
+        // Subtle Dark Slate Grid Lines
+        const gridHelper = new THREE.GridHelper(this.size, 250, 0x0f172a, 0x475569);
         gridHelper.position.y = 0.05;
         this.scene.add(gridHelper);
 
-        // Boundary Walls Material - Sleek Slate Indigo with subtle emissive
+        // Boundary Walls - Slate Gray
         const wallMat = new THREE.MeshStandardMaterial({
-            color: 0x1e293b,
-            emissive: 0x0f172a,
-            roughness: 0.4,
-            metalness: 0.6
+            color: 0x334155,
+            roughness: 0.6,
+            metalness: 0.4
         });
 
-        // 4 Boundary Walls
         const wallGeos = [
             new THREE.BoxGeometry(this.size + this.wallThickness * 2, this.wallHeight, this.wallThickness), // North
             new THREE.BoxGeometry(this.size + this.wallThickness * 2, this.wallHeight, this.wallThickness), // South
@@ -62,13 +60,13 @@ export class Arena {
             this.scene.add(wall);
         }
 
-        // Corner Glowing Neon Pillars
+        // Corner Pillars
         const pillarGeo = new THREE.BoxGeometry(3, this.wallHeight + 4, 3);
         const pillarMat = new THREE.MeshStandardMaterial({
             color: 0x00ffcc,
             emissive: 0x00ffcc,
-            emissiveIntensity: 0.6,
-            roughness: 0.2
+            emissiveIntensity: 0.5,
+            roughness: 0.3
         });
 
         const corners = [
