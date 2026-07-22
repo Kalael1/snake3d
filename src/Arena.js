@@ -23,19 +23,19 @@ export class Arena {
         // ================= 3D CITY ROADS & STREET MARKINGS =================
         this.createCityRoads();
 
-        // Center Drift Roundabout
-        const circleOuterGeo = new THREE.RingGeometry(16, 21, 48);
-        const circleOuterMat = new THREE.MeshBasicMaterial({ color: 0xffa500, side: THREE.DoubleSide });
+        // Center Drift Roundabout (Fixed Z-Height + PolygonOffset so zero Z-fighting/flicker happens!)
+        const circleOuterGeo = new THREE.RingGeometry(16, 21, 64);
+        const circleOuterMat = new THREE.MeshBasicMaterial({ color: 0xffa500, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
         const circleOuter = new THREE.Mesh(circleOuterGeo, circleOuterMat);
         circleOuter.rotation.x = -Math.PI / 2;
-        circleOuter.position.y = 0.025;
+        circleOuter.position.y = 0.04;
         this.scene.add(circleOuter);
 
-        const circleInnerGeo = new THREE.CircleGeometry(16, 48);
-        const circleInnerMat = new THREE.MeshBasicMaterial({ color: 0x111622, side: THREE.DoubleSide });
+        const circleInnerGeo = new THREE.CircleGeometry(16, 64);
+        const circleInnerMat = new THREE.MeshBasicMaterial({ color: 0x111622, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
         const circleInner = new THREE.Mesh(circleInnerGeo, circleInnerMat);
         circleInner.rotation.x = -Math.PI / 2;
-        circleInner.position.y = 0.02;
+        circleInner.position.y = 0.035;
         this.scene.add(circleInner);
 
         // ================= 3D CITY BUILDINGS & SKYSCRAPERS =================
@@ -77,68 +77,92 @@ export class Arena {
     }
 
     createCityRoads() {
-        // Main City Avenues (Asphalt Strips)
         const roadMat = new THREE.MeshLambertMaterial({ color: 0x282c34 });
-        
-        // Double Yellow Center Lines
         const yellowLineMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
         const whiteLineMat = new THREE.MeshBasicMaterial({ color: 0xe2e8f0 });
 
-        // City Road Grid Layout
         const roadPositions = [-120, 0, 120];
 
         roadPositions.forEach(offset => {
-            // Vertical City Avenues
+            // Asphalt Road Base
             const vRoad = new THREE.Mesh(new THREE.PlaneGeometry(28, this.size), roadMat);
             vRoad.rotation.x = -Math.PI / 2;
             vRoad.position.set(offset, 0.01, 0);
             this.scene.add(vRoad);
 
-            // Double Yellow Center Line (Vertical)
-            const vYellow1 = new THREE.Mesh(new THREE.PlaneGeometry(0.35, this.size), yellowLineMat);
-            vYellow1.rotation.x = -Math.PI / 2;
-            vYellow1.position.set(offset - 0.3, 0.02, 0);
-            this.scene.add(vYellow1);
-
-            const vYellow2 = new THREE.Mesh(new THREE.PlaneGeometry(0.35, this.size), yellowLineMat);
-            vYellow2.rotation.x = -Math.PI / 2;
-            vYellow2.position.set(offset + 0.3, 0.02, 0);
-            this.scene.add(vYellow2);
-
-            // Horizontal City Avenues
             const hRoad = new THREE.Mesh(new THREE.PlaneGeometry(this.size, 28), roadMat);
             hRoad.rotation.x = -Math.PI / 2;
             hRoad.position.set(0, 0.01, offset);
             this.scene.add(hRoad);
 
-            // Double Yellow Center Line (Horizontal)
-            const hYellow1 = new THREE.Mesh(new THREE.PlaneGeometry(this.size, 0.35), yellowLineMat);
-            hYellow1.rotation.x = -Math.PI / 2;
-            hYellow1.position.set(0, 0.02, offset - 0.3);
-            this.scene.add(hYellow1);
+            // Double Yellow Lines (Natively omitted inside central roundabout radius r=24!)
+            if (offset === 0) {
+                // Split central lines into 2 segments (North/South & East/West) to completely bypass the central drift ring!
+                const segLen = (this.size / 2) - 24; // ~226 units
+                const segCenterPos = 24 + (segLen / 2); // ~137 units
 
-            const hYellow2 = new THREE.Mesh(new THREE.PlaneGeometry(this.size, 0.35), yellowLineMat);
-            hYellow2.rotation.x = -Math.PI / 2;
-            hYellow2.position.set(0, 0.02, offset + 0.3);
-            this.scene.add(hYellow2);
+                // Vertical double lines (North & South segments)
+                [-segCenterPos, segCenterPos].forEach(zPos => {
+                    const y1 = new THREE.Mesh(new THREE.PlaneGeometry(0.35, segLen), yellowLineMat);
+                    y1.rotation.x = -Math.PI / 2;
+                    y1.position.set(-0.3, 0.02, zPos);
+                    this.scene.add(y1);
+
+                    const y2 = new THREE.Mesh(new THREE.PlaneGeometry(0.35, segLen), yellowLineMat);
+                    y2.rotation.x = -Math.PI / 2;
+                    y2.position.set(0.3, 0.02, zPos);
+                    this.scene.add(y2);
+                });
+
+                // Horizontal double lines (East & West segments)
+                [-segCenterPos, segCenterPos].forEach(xPos => {
+                    const x1 = new THREE.Mesh(new THREE.PlaneGeometry(segLen, 0.35), yellowLineMat);
+                    x1.rotation.x = -Math.PI / 2;
+                    x1.position.set(xPos, 0.02, -0.3);
+                    this.scene.add(x1);
+
+                    const x2 = new THREE.Mesh(new THREE.PlaneGeometry(segLen, 0.35), yellowLineMat);
+                    x2.rotation.x = -Math.PI / 2;
+                    x2.position.set(xPos, 0.02, 0.3);
+                    this.scene.add(x2);
+                });
+            } else {
+                // Continuous yellow lines for non-center avenues
+                const vYellow1 = new THREE.Mesh(new THREE.PlaneGeometry(0.35, this.size), yellowLineMat);
+                vYellow1.rotation.x = -Math.PI / 2;
+                vYellow1.position.set(offset - 0.3, 0.02, 0);
+                this.scene.add(vYellow1);
+
+                const vYellow2 = new THREE.Mesh(new THREE.PlaneGeometry(0.35, this.size), yellowLineMat);
+                vYellow2.rotation.x = -Math.PI / 2;
+                vYellow2.position.set(offset + 0.3, 0.02, 0);
+                this.scene.add(vYellow2);
+
+                const hYellow1 = new THREE.Mesh(new THREE.PlaneGeometry(this.size, 0.35), yellowLineMat);
+                hYellow1.rotation.x = -Math.PI / 2;
+                hYellow1.position.set(0, 0.02, offset - 0.3);
+                this.scene.add(hYellow1);
+
+                const hYellow2 = new THREE.Mesh(new THREE.PlaneGeometry(this.size, 0.35), yellowLineMat);
+                hYellow2.rotation.x = -Math.PI / 2;
+                hYellow2.position.set(0, 0.02, offset + 0.3);
+                this.scene.add(hYellow2);
+            }
         });
 
-        // Zebra Crossings (Pedestrian Crosswalks) at intersections
+        // Zebra Crossings (Pedestrian Crosswalks) at outer intersections
         const zebraStripGeo = new THREE.PlaneGeometry(1.2, 8.0);
 
         roadPositions.forEach(x => {
             roadPositions.forEach(z => {
                 if (x === 0 && z === 0) return; // Skip roundabout center
 
-                // Crosswalks around intersection
                 for (let i = -10; i <= 10; i += 2.5) {
-                    // North crosswalk
                     const zNorth = new THREE.Mesh(zebraStripGeo, whiteLineMat);
                     zNorth.rotation.x = -Math.PI / 2;
                     zNorth.position.set(x + i * 0.7, 0.022, z - 16);
                     this.scene.add(zNorth);
 
-                    // South crosswalk
                     const zSouth = new THREE.Mesh(zebraStripGeo, whiteLineMat);
                     zSouth.rotation.x = -Math.PI / 2;
                     zSouth.position.set(x + i * 0.7, 0.022, z + 16);
@@ -154,7 +178,6 @@ export class Arena {
 
         const windowMat = new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.85 });
 
-        // Outer City Perimeter Skyscrapers & City Block Towers
         const buildingLocations = [];
 
         // Outer Perimeter Sky-scraping Towers
@@ -165,11 +188,11 @@ export class Arena {
             buildingLocations.push({ x: 225, z: i, w: 45, d: 45, h: 30 + Math.random() * 35 });
         }
 
-        // Inner City Block Buildings (Corner plazas)
+        // Inner City Block Buildings
         const innerBlocks = [-170, -60, 60, 170];
         innerBlocks.forEach(bx => {
             innerBlocks.forEach(bz => {
-                if (Math.abs(bx) === 60 && Math.abs(bz) === 60) return; // Keep central drift arena open!
+                if (Math.abs(bx) === 60 && Math.abs(bz) === 60) return;
                 buildingLocations.push({ x: bx, z: bz, w: 38, d: 38, h: 20 + Math.random() * 25 });
             });
         });
@@ -181,14 +204,12 @@ export class Arena {
             bMesh.position.set(b.x, b.h / 2, b.z);
             this.scene.add(bMesh);
 
-            // Glowing Neon Roof Trim
             const trimMat = new THREE.MeshBasicMaterial({ color: neonTrimColors[idx % neonTrimColors.length] });
             const trimGeo = new THREE.BoxGeometry(b.w + 0.8, 0.8, b.d + 0.8);
             const trimMesh = new THREE.Mesh(trimGeo, trimMat);
             trimMesh.position.set(b.x, b.h + 0.4, b.z);
             this.scene.add(trimMesh);
 
-            // Illuminated Window Rows
             const winRowGeo = new THREE.PlaneGeometry(b.w * 0.7, 0.8);
             for (let y = 4; y < b.h - 2; y += 4) {
                 if (Math.random() > 0.25) {
@@ -219,7 +240,7 @@ export class Arena {
             positions.push({ x: Math.cos(angle) * ringRadius, z: Math.sin(angle) * ringRadius });
         }
 
-        // 2. Slalom cone courses (Straight slalom lines along avenues)
+        // 2. Slalom cone courses
         for (let i = -160; i <= 160; i += 40) {
             if (Math.abs(i) > 40) {
                 positions.push({ x: i, z: -120 });
@@ -232,19 +253,16 @@ export class Arena {
         positions.forEach(pos => {
             const coneGroup = new THREE.Group();
 
-            // Square Base
             const baseGeo = new THREE.BoxGeometry(1.2, 0.15, 1.2);
             const baseMesh = new THREE.Mesh(baseGeo, baseMat);
             baseMesh.position.y = 0.075;
             coneGroup.add(baseMesh);
 
-            // Orange Cone Body
             const coneGeo = new THREE.CylinderGeometry(0.08, 0.48, 1.4, 12);
             const coneMesh = new THREE.Mesh(coneGeo, coneMatOrange);
             coneMesh.position.y = 0.75;
             coneGroup.add(coneMesh);
 
-            // White Reflective Stripe
             const stripeGeo = new THREE.CylinderGeometry(0.2, 0.34, 0.32, 12);
             const stripeMesh = new THREE.Mesh(stripeGeo, coneMatWhite);
             stripeMesh.position.y = 0.8;
