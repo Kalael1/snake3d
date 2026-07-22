@@ -226,10 +226,10 @@ export class Arena {
         const hazardMatYellow = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
 
         const barrierConfigs = [
-            { x: -35, z: 0, w: 1.5, h: 2.8, d: 10 },
-            { x: 35, z: 0, w: 1.5, h: 2.8, d: 10 },
-            { x: 0, z: -35, w: 10, h: 2.8, d: 1.5 },
-            { x: 0, z: 35, w: 10, h: 2.8, d: 1.5 },
+            { x: -60, z: -60, w: 10, h: 2.8, d: 1.5 },
+            { x: 60, z: -60, w: 10, h: 2.8, d: 1.5 },
+            { x: -60, z: 60, w: 10, h: 2.8, d: 1.5 },
+            { x: 60, z: 60, w: 10, h: 2.8, d: 1.5 },
             { x: -120, z: -60, w: 1.5, h: 2.8, d: 14 },
             { x: -120, z: 60, w: 1.5, h: 2.8, d: 14 },
             { x: 120, z: -60, w: 1.5, h: 2.8, d: 14 },
