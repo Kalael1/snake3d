@@ -417,6 +417,9 @@ function animate() {
         const headPos = localCar.getHeadPosition();
         const driftScore = localCar.getScore();
 
+        // Update traffic cones physics (Kukaları devirme & fırlatma)
+        arena.updateCones(delta, headPos);
+
         // 3. Emit Tron Light Trail if left-click / touch / space is held down!
         if (isEmittingTrail && now - lastTrailEmitTime > 60) {
             lastTrailEmitTime = now;
