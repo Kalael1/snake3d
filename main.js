@@ -21,7 +21,7 @@ const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
 const progressionManager = new ProgressionManager();
 const audioManager = new AudioManager();
 
-// ============== SCENE & AAA CYBERPUNK LIGHTING ==============
+// ============== SCENE & STABLE HIGH-PERFORMANCE LIGHTING ==============
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0f172a);
 scene.fog = new THREE.FogExp2(0x1e293b, 0.0022);
@@ -31,47 +31,35 @@ const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerH
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled = false; // Disable GPU shadow map crashes for 100% stability across all devices!
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.3;
+renderer.toneMappingExposure = 1.35;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 document.getElementById('app').appendChild(renderer.domElement);
 
 const nameTagManager = new NameTagManager(camera, document.getElementById('nametag-container'));
 
-// 1. Ambient Hemisphere Light
-const hemiLight = new THREE.HemisphereLight(0x00f3ff, 0x334155, 1.3);
+// 1. Bright Ambient Hemisphere Light
+const hemiLight = new THREE.HemisphereLight(0x00f3ff, 0x334155, 1.4);
 scene.add(hemiLight);
 
-// 2. Primary Cyber Moonlight (Soft Shadows)
-const dirLight = new THREE.DirectionalLight(0x7dd3fc, 2.5);
+// 2. Primary Cyber Moonlight
+const dirLight = new THREE.DirectionalLight(0x7dd3fc, 2.6);
 dirLight.position.set(100, 180, 80);
-dirLight.castShadow = true;
-dirLight.shadow.mapSize.width = 2048;
-dirLight.shadow.mapSize.height = 2048;
-dirLight.shadow.camera.near = 10;
-dirLight.shadow.camera.far = 400;
-dirLight.shadow.camera.left = -250;
-dirLight.shadow.camera.right = 250;
-dirLight.shadow.camera.top = 250;
-dirLight.shadow.camera.bottom = -250;
-dirLight.shadow.bias = -0.0001;
 scene.add(dirLight);
 
 // 3. Pink / Magenta Rim Accent Light
-const rimLight = new THREE.DirectionalLight(0xff0077, 2.0);
+const rimLight = new THREE.DirectionalLight(0xff0077, 2.2);
 rimLight.position.set(-120, 100, -100);
 scene.add(rimLight);
 
 // 4. Dynamic Car Underglow PointLight
-const carUnderglowLight = new THREE.PointLight(0x00f3ff, 12.0, 20);
+const carUnderglowLight = new THREE.PointLight(0x00f3ff, 12.0, 22);
 scene.add(carUnderglowLight);
 
 // 5. Dedicated Car Key Spotlight (Follows car directly from above!)
-const carKeySpotlight = new THREE.SpotLight(0xffffff, 16.0, 40, Math.PI / 3, 0.4);
-carKeySpotlight.castShadow = false;
+const carKeySpotlight = new THREE.SpotLight(0xffffff, 16.0, 45, Math.PI / 3, 0.4);
 scene.add(carKeySpotlight);
 
 // ============== GAME ENTITIES ==============
@@ -140,7 +128,7 @@ const driftAngleEl = document.getElementById('drift-angle');
 
 highScoreElement.innerText = progressionManager.highScore;
 
-// ============== CONTROL SCHEME SELECTOR (Klavye vs Fare) ==============
+// ============== CONTROL SCHEME SELECTOR ==============
 let selectedControlScheme = localStorage.getItem('drift_control_scheme') || 'keyboard';
 
 function updateControlSchemeUI() {
@@ -209,13 +197,17 @@ soundBtn.addEventListener('click', () => {
 });
 
 function toggleFullscreen() {
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-        requestLandscapeAndFullscreen();
-        fullscreenBtn.innerText = '🗗';
-    } else {
-        (document.exitFullscreen || document.webkitExitFullscreen).call(document).catch(() => {});
-        fullscreenBtn.innerText = '⛶';
-    }
+    try {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+            const docEl = document.documentElement;
+            if (docEl.requestFullscreen) docEl.requestFullscreen().catch(() => {});
+            else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen().catch(() => {});
+            fullscreenBtn.innerText = '🗗';
+        } else {
+            (document.exitFullscreen || document.webkitExitFullscreen).call(document).catch(() => {});
+            fullscreenBtn.innerText = '⛶';
+        }
+    } catch (e) {}
 }
 fullscreenBtn.addEventListener('click', toggleFullscreen);
 
@@ -371,14 +363,18 @@ const targetPoint = new THREE.Vector3(0, 0, 0);
 const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
 window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    const w = Math.max(10, window.innerWidth);
+    const h = Math.max(10, window.innerHeight);
+    camera.aspect = w / h;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(w, h);
 });
 
 window.addEventListener('mousemove', (e) => {
-    mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    const w = Math.max(1, window.innerWidth);
+    const h = Math.max(1, window.innerHeight);
+    mouse.x = (e.clientX / w) * 2 - 1;
+    mouse.y = -(e.clientY / h) * 2 + 1;
 });
 
 window.addEventListener('mousedown', (e) => {
@@ -403,8 +399,10 @@ window.addEventListener('touchstart', (e) => {
 
     if (e.touches.length === 1) {
         const t = e.touches[0];
-        mouse.x = (t.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(t.clientY / window.innerHeight) * 2 + 1;
+        const w = Math.max(1, window.innerWidth);
+        const h = Math.max(1, window.innerHeight);
+        mouse.x = (t.clientX / w) * 2 - 1;
+        mouse.y = -(t.clientY / h) * 2 + 1;
         isEmittingTrail = true;
     } else if (e.touches.length === 2) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
@@ -417,8 +415,10 @@ window.addEventListener('touchmove', (e) => {
     if (!isGameRunning) return;
     if (e.touches.length === 1) {
         const t = e.touches[0];
-        mouse.x = (t.clientX / window.innerWidth) * 2 - 1;
-        mouse.y = -(t.clientY / window.innerHeight) * 2 + 1;
+        const w = Math.max(1, window.innerWidth);
+        const h = Math.max(1, window.innerHeight);
+        mouse.x = (t.clientX / w) * 2 - 1;
+        mouse.y = -(t.clientY / h) * 2 + 1;
     } else if (e.touches.length === 2 && initialPinchDist) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
@@ -474,7 +474,6 @@ function triggerGameOver(reasonText) {
     const hp = localCar.getHeadPosition();
     localCar.group.visible = false; // Hide car instantly on crash
 
-    // Trigger 3D Particle Explosion effect before Game Over Modal!
     explosionManager.triggerExplosion(hp.x, 0.5, hp.z, () => {
         showGameOverModal(reasonText);
     });
@@ -521,19 +520,9 @@ function openMenu(reasonText) {
     overlay.classList.remove('hidden');
 }
 
-function requestLandscapeAndFullscreen() {
-    try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) {}
-    const docEl = document.documentElement;
-    try {
-        if (docEl.requestFullscreen) docEl.requestFullscreen().catch(() => {});
-        else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen().catch(() => {});
-    } catch (e) {}
-}
-
 function startGame() {
     try {
         audioManager.init();
-        requestLandscapeAndFullscreen();
         const playerName = playerNameInput ? (playerNameInput.value.trim() || 'DriftPilotu') : 'DriftPilotu';
         isEngineOn = true;
         isEmittingTrail = false;
@@ -544,7 +533,7 @@ function startGame() {
         tronTrailManager.clear();
         gameStartTime = Date.now();
 
-        // INSTANTLY SNAP CAMERA TO CAR POSITION (0,0,0) — NO DELAY / NO HIGH OVERHEAD STUCK!
+        // INSTANTLY SNAP CAMERA TO CAR POSITION (0,0,0)
         const hp = localCar.getHeadPosition();
         if (isTPSMode) {
             camera.position.set(hp.x - Math.sin(localCar.heading) * 14, 5.5, hp.z - Math.cos(localCar.heading) * 14);
@@ -579,7 +568,6 @@ function animate() {
     const delta = Math.min(clock.getDelta(), 0.05);
     const now = Date.now();
 
-    // Always update 3D crash particle explosion animation!
     explosionManager.update(delta);
 
     if (isGameRunning) {
@@ -603,10 +591,8 @@ function animate() {
         };
 
         if (selectedControlScheme === 'keyboard') {
-            // Keyboard / Touch steering: Ignore mouse target
             localCar.update(delta, null, controlState);
         } else {
-            // Mouse target steering
             localCar.update(delta, targetPoint, controlState);
         }
 
@@ -624,7 +610,7 @@ function animate() {
         // Update traffic cones physics
         arena.updateCones(delta, headPos);
 
-        // 3. Emit Tron Light Trail if engine is ON or left-click held
+        // 3. Emit Tron Light Trail if engine is ON
         if (isEmittingTrail && now - lastTrailEmitTime > 60) {
             lastTrailEmitTime = now;
             tronTrailManager.addSegment(localSocketId, headPos.x, headPos.z, localCar.heading);
@@ -712,7 +698,7 @@ function animate() {
             });
         }
 
-        // Camera follow (With NaN protection)
+        // Camera follow
         currentZoom += (targetZoom - currentZoom) * 0.1;
 
         if (isTPSMode) {
