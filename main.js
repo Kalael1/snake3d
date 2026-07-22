@@ -30,10 +30,9 @@ const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerH
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
 renderer.setSize(window.innerWidth, window.innerHeight);
 
-// Optimized Ceiling Pixel Ratio to prevent GPU lag on high-DPI / 4K mobile displays
+// Optimized Ceiling Pixel Ratio
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled = false; // Shadows disabled for maximum performance
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 document.getElementById('app').appendChild(renderer.domElement);
@@ -58,20 +57,12 @@ const outputPass = new OutputPass();
 composer.addPass(outputPass);
 
 // Balanced Soft Lighting
-const hemiLight = new THREE.HemisphereLight(0xffffff, 0x475569, 0.8);
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x475569, 0.9);
 scene.add(hemiLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.1);
 dirLight.position.set(120, 200, 100);
-dirLight.castShadow = true;
-dirLight.shadow.mapSize.width = 1024;
-dirLight.shadow.mapSize.height = 1024;
-dirLight.shadow.camera.near = 0.5;
-dirLight.shadow.camera.far = 1000;
-dirLight.shadow.camera.left = -400;
-dirLight.shadow.camera.right = 400;
-dirLight.shadow.camera.top = 400;
-dirLight.shadow.camera.bottom = -400;
+dirLight.castShadow = false; // Shadows disabled
 scene.add(dirLight);
 
 const particleSystem = new ParticleSystem(scene);
@@ -481,7 +472,6 @@ function addFoodMesh(f) {
         const geo = f.isBig ? bigFoodGeo : smallFoodGeo;
         const mesh = new THREE.Mesh(geo, mat);
         mesh.position.set(f.x, 0.8, f.z);
-        mesh.castShadow = true;
         mesh.userData.rotSpeed = (Math.random() - 0.5) * 3;
         mesh.userData.foodValue = f.value || 2;
         scene.add(mesh);
