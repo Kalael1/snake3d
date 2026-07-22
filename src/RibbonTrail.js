@@ -3,13 +3,13 @@ import * as THREE from 'three';
 export class RibbonTrail {
     constructor(scene, options = {}) {
         this.scene = scene;
-        this.maxPoints = options.maxPoints || 400;
-        this.width = options.width || 0.6;
+        this.maxPoints = options.maxPoints || 250;
+        this.width = options.width || 0.35;
         this.heightOffset = options.heightOffset || 0.08;
         this.color = options.color || 0x050505;
         this.opacity = options.opacity || 0.85;
 
-        this.points = []; // Stores { x, z, heading, age }
+        this.points = []; // Stores { x, z, heading }
 
         // Dynamic BufferGeometry for a single continuous 3D Ribbon Mesh
         this.geometry = new THREE.BufferGeometry();
@@ -48,7 +48,7 @@ export class RibbonTrail {
     }
 
     addPoint(x, z, heading) {
-        this.points.push({ x, z, heading, age: 0 });
+        this.points.push({ x, z, heading });
         if (this.points.length > this.maxPoints) {
             this.points.shift();
         }
@@ -56,7 +56,7 @@ export class RibbonTrail {
     }
 
     updateMesh() {
-        const count = this.points.length;
+        const count = Math.min(this.points.length, this.maxPoints);
         if (count < 2) {
             this.geometry.setDrawRange(0, 0);
             return;
@@ -77,14 +77,16 @@ export class RibbonTrail {
             const rx = pt.x + cosH * halfW;
             const rz = pt.z - sinH * halfW;
 
-            const idx = i * 6;
-            this.positions[idx] = lx;
-            this.positions[idx + 1] = this.heightOffset;
-            this.positions[idx + 2] = lz;
+            const idx = i * 6; // i * 2 * 3
+            if (idx + 5 < this.positions.length) {
+                this.positions[idx] = lx;
+                this.positions[idx + 1] = this.heightOffset;
+                this.positions[idx + 2] = lz;
 
-            this.positions[idx + 3] = rx;
-            this.positions[idx + 4] = this.heightOffset;
-            this.positions[idx + 5] = rz;
+                this.positions[idx + 3] = rx;
+                this.positions[idx + 4] = this.heightOffset;
+                this.positions[idx + 5] = rz;
+            }
         }
 
         this.geometry.attributes.position.needsUpdate = true;
