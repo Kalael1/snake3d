@@ -10,7 +10,7 @@ import { Snake } from './src/Snake.js';
 import { OtherSnake } from './src/OtherSnake.js';
 import { AudioManager } from './src/AudioManager.js';
 import { ParticleSystem } from './src/ParticleSystem.js';
-import { SKINS, getSkinById } from './src/SkinRegistry.js';
+import { SKINS } from './src/SkinRegistry.js';
 import { ProgressionManager } from './src/ProgressionManager.js';
 import { NameTagManager } from './src/NameTagManager.js';
 
@@ -267,7 +267,7 @@ window.addEventListener('touchmove', (e) => {
 
         const dx = touch.clientX - touchStartOrigin.x;
         const dy = touch.clientY - touchStartOrigin.y;
-        const dist = Math.sqrt(dx * dx + dz * dz);
+        const dist = Math.sqrt(dx * dx + dy * dy);
         const maxDist = 45;
         const angle = Math.atan2(dy, dx);
 
@@ -408,7 +408,6 @@ socket.on('gameState', (state) => {
             }
         }
 
-        // Live Direct 60 FPS Head Position Reference for Local Player
         nameTagManager.createOrUpdateTag(
             localSocketId,
             pData.name,
@@ -431,7 +430,6 @@ socket.on('gameState', (state) => {
         const remoteSnake = otherSnakes[id];
         const skinIcon = remoteSnake.activeSkin ? remoteSnake.activeSkin.icon : '🐍';
 
-        // Live Direct 60 FPS Head Position Reference for Remote Players
         nameTagManager.createOrUpdateTag(
             id,
             playerData.name,
@@ -532,8 +530,25 @@ function openMenu(reasonText) {
     overlay.classList.remove('hidden');
 }
 
+function requestLandscapeAndFullscreen() {
+    try {
+        if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(() => {});
+        }
+    } catch (e) {}
+
+    const docEl = document.documentElement;
+    if (docEl.requestFullscreen) {
+        docEl.requestFullscreen().catch(() => {});
+    } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen().catch(() => {});
+    }
+}
+
 function startGame() {
     audioManager.init();
+    requestLandscapeAndFullscreen();
+
     const playerName = playerNameInput.value.trim() || 'YılanOyuncusu';
     currentScore = 0;
     scoreElement.innerText = '0';

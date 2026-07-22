@@ -4,12 +4,23 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="screen-orientation" content="landscape">
+    <meta name="orientation" content="landscape">
     <title>Snake.io 3D Multiplayer</title>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Outfit:wght@500;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./style.css">
   </head>
   <body>
     <div id="app"></div>
+
+    <!-- Portrait Mode Landscape Orientation Warning Screen for Mobile -->
+    <div id="rotate-device-overlay" class="hidden">
+      <div class="rotate-card">
+        <div class="phone-rotate-icon">📱🔄</div>
+        <h2>Lütfen Cihazınızı Yatay Döndürün</h2>
+        <p>Snake.io 3D en iyi deneyim için yatay (Landscape) modda çalışır.</p>
+      </div>
+    </div>
 
     <!-- 3D Overhead Name Tags & Floating Emoji/Speech Bubbles Layer -->
     <div id="nametag-container"></div>
