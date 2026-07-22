@@ -6,42 +6,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="screen-orientation" content="landscape">
     <meta name="orientation" content="landscape">
-    <title>Snake.io 3D Multiplayer</title>
+    <title>Drift.io — 3D Multiplayer Drift Arena</title>
+    <meta name="description" content="Drift.io — Gerçek zamanlı 3D çok oyunculu drift yarışı. Drift yap, skor topla, lider ol!">
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Outfit:wght@500;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./style.css">
   </head>
   <body>
     <div id="app"></div>
 
-    <!-- Portrait Mode Landscape Orientation Warning Screen for Mobile -->
+    <!-- Portrait Warning -->
     <div id="rotate-device-overlay" class="hidden">
       <div class="rotate-card">
         <div class="phone-rotate-icon">📱🔄</div>
         <h2>Lütfen Cihazınızı Yatay Döndürün</h2>
-        <p>Snake.io 3D en iyi deneyim için yatay (Landscape) modda çalışır.</p>
+        <p>Drift.io en iyi yatay (Landscape) modda çalışır.</p>
       </div>
     </div>
 
-    <!-- 3D Overhead Name Tags & Floating Emoji/Speech Bubbles Layer -->
+    <!-- 3D Name Tags -->
     <div id="nametag-container"></div>
 
-    <!-- Mobile Virtual Joystick & Touch Controls -->
+    <!-- Virtual Joystick -->
     <div id="virtual-joystick" class="hidden">
       <div id="joystick-ring">
         <div id="joystick-knob"></div>
       </div>
     </div>
 
-    <!-- Mobile Touch Boost Button -->
-    <button id="mobile-boost-btn" class="mobile-only-btn">⚡ HIZLAN</button>
+    <!-- Mobile Boost (hidden in drift mode) -->
+    <button id="mobile-boost-btn" class="mobile-only-btn" style="display:none">⚡ HIZLAN</button>
+
+    <!-- DRIFT COMBO DISPLAY (Center Screen) -->
+    <div id="drift-combo" class="hidden">
+      <span class="combo-score">+0</span>
+      <span class="combo-label">DRİFT!</span>
+    </div>
 
     <!-- HUD Layer -->
     <div id="ui-layer">
       <div id="top-left-hud">
         <div id="score-card" class="hud-pill">
-          <span class="hud-icon">⚡</span>
+          <span class="hud-icon">🏎️</span>
           <div class="hud-info">
-            <span class="hud-label">SKOR</span>
+            <span class="hud-label">DRİFT SKORU</span>
             <span id="score" class="hud-value">0</span>
           </div>
         </div>
@@ -53,36 +60,42 @@
             <span id="high-score" class="hud-value">0</span>
           </div>
         </div>
+
+        <!-- Drift Angle Indicator -->
+        <div class="hud-pill angle-pill">
+          <span class="hud-icon">📐</span>
+          <div class="hud-info">
+            <span class="hud-label">KAYMA AÇISI</span>
+            <span id="drift-angle" class="hud-value">0°</span>
+          </div>
+        </div>
       </div>
 
-      <!-- Online Leaderboard, Fullscreen & Audio Controls -->
+      <!-- Leaderboard & Controls -->
       <div id="top-right-bar">
-        <button id="fullscreen-btn" class="icon-btn" title="Tam Ekran Yap">⛶</button>
-        <button id="sound-btn" class="icon-btn" title="Ses Aç/Kapat">🔊</button>
+        <button id="fullscreen-btn" class="icon-btn" title="Tam Ekran">⛶</button>
+        <button id="sound-btn" class="icon-btn" title="Ses">🔊</button>
         <div id="leaderboard">
-          <div class="lb-header">👑 LİDERLİK TABLOSU</div>
+          <div class="lb-header">🏎️ DRİFT LİDERLERİ</div>
           <ul id="lb-list">
             <li>1. Bekleniyor...</li>
           </ul>
         </div>
       </div>
 
-      <!-- Interactive Social Chatbox & Quick Emoji Bar (Bottom Left) -->
+      <!-- Chat -->
       <div id="chat-container">
         <div id="chat-messages">
-          <div class="chat-msg system-msg">💬 Sohbet alanına hoş geldiniz!</div>
+          <div class="chat-msg system-msg">🏎️ Drift.io arenasına hoş geldiniz!</div>
         </div>
-
-        <!-- Quick Reaction Emoji Bar -->
         <div id="quick-emoji-bar">
           <button class="emoji-btn" data-emoji="😂">😂</button>
           <button class="emoji-btn" data-emoji="😈">😈</button>
           <button class="emoji-btn" data-emoji="🔥">🔥</button>
           <button class="emoji-btn" data-emoji="💀">💀</button>
           <button class="emoji-btn" data-emoji="👑">👑</button>
-          <button class="emoji-btn" data-emoji="👋">👋</button>
+          <button class="emoji-btn" data-emoji="🏎️">🏎️</button>
         </div>
-
         <div id="chat-input-wrapper">
           <input type="text" id="chat-input" placeholder="Mesaj yazın... (Enter)" maxlength="50" autocomplete="off">
           <button id="send-chat-btn">Gönder</button>
@@ -90,11 +103,11 @@
       </div>
 
       <div id="controls-hint">
-        <span>🎮 Dokun / Fare: Yönlendir</span> • <span>⚡ Sol Tık / Buton: Hızlan</span> • <span>🔍 Çift Parmak: Zoom</span>
+        <span>🏎️ Fare: Direksiyon</span> • <span>🔥 Drift yap, skor topla!</span> • <span>🔍 Scroll: Zoom</span>
       </div>
     </div>
 
-    <!-- Dedicated Mobile Chat Modal Drawer -->
+    <!-- Mobile Chat Modal -->
     <div id="mobile-chat-modal" class="hidden">
       <div class="mobile-chat-card">
         <div class="mobile-chat-header">
@@ -103,22 +116,21 @@
         </div>
         <div id="mobile-chat-messages"></div>
         <div class="mobile-chat-input-row">
-          <input type="text" id="mobile-chat-input" placeholder="Sohbet mesajınızı buraya yazın..." maxlength="50" autocomplete="off">
+          <input type="text" id="mobile-chat-input" placeholder="Mesajınızı yazın..." maxlength="50" autocomplete="off">
           <button id="mobile-send-chat-btn">Gönder</button>
         </div>
       </div>
     </div>
 
-    <!-- Dedicated GAME OVER Statistics Popup Modal -->
+    <!-- Game Over Modal -->
     <div id="gameover-modal-overlay" class="hidden">
       <div class="gameover-modal">
         <div class="gameover-header">
-          <div class="skull-badge">☠️ GAME OVER</div>
+          <div class="skull-badge">💥 ÇARPIŞMA</div>
           <h1 class="gameover-title">OYUN BİTTİ</h1>
-          <p id="gameover-reason-text" class="gameover-reason">💥 Harita duvarına çarptın!</p>
+          <p id="gameover-reason-text" class="gameover-reason">💥 Duvara çarptın!</p>
         </div>
 
-        <!-- 4-Card Gamified Summary Statistics Grid -->
         <div class="summary-stats-container">
           <div class="summary-card rank-card">
             <span class="card-icon">👑</span>
@@ -127,23 +139,20 @@
               <span id="stat-rank" class="card-value">#1</span>
             </div>
           </div>
-
           <div class="summary-card score-card">
-            <span class="card-icon">⚡</span>
+            <span class="card-icon">🏎️</span>
             <div class="card-content">
-              <span class="card-title">TOPLANAN SKOR</span>
+              <span class="card-title">DRİFT SKORU</span>
               <span id="stat-score" class="card-value">0</span>
             </div>
           </div>
-
           <div class="summary-card time-card">
             <span class="card-icon">⏱️</span>
             <div class="card-content">
-              <span class="card-title">HAYATTA KALMA</span>
+              <span class="card-title">SÜRÜŞ SÜRESİ</span>
               <span id="stat-time" class="card-value">00:00</span>
             </div>
           </div>
-
           <div class="summary-card highscore-card">
             <span class="card-icon">🏆</span>
             <div class="card-content">
@@ -155,47 +164,42 @@
 
         <div class="gameover-action-row">
           <button id="restart-game-btn" class="action-btn primary-action">
-            <span class="btn-icon">🔄</span> TEKRAR OYNA
+            <span class="btn-icon">🔄</span> TEKRAR SÜR
           </button>
           <button id="open-skins-btn" class="action-btn secondary-action">
-            <span class="btn-icon">🐉</span> GARAZ & KOSTÜMLER
+            <span class="btn-icon">🏎️</span> GARAJ & ARABALAR
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Start / Skin Gallery Stylized Modal -->
+    <!-- Start / Garage Modal -->
     <div id="overlay">
       <div class="stylized-modal">
         <div class="modal-header">
-          <div class="brand-badge">🎮 3D MULTIPLAYER ARENA</div>
-          <h1 class="game-title">SNAKE<span class="dot">.</span>IO <span class="accent-badge">3D</span></h1>
-          <p class="subtitle" id="overlay-desc">Arenaya katıl, rakipleri avla ve özel 3D kostümleri aç!</p>
+          <div class="brand-badge">🏎️ 3D MULTIPLAYER ARENA</div>
+          <h1 class="game-title">DRIFT<span class="dot">.</span>IO <span class="accent-badge">3D</span></h1>
+          <p class="subtitle" id="overlay-desc">Arenaya katıl, drift yap ve en yüksek skoru kır!</p>
         </div>
         
         <div class="player-input-wrapper">
           <span class="input-icon">👤</span>
-          <input type="text" id="player-name" placeholder="Oyuncu Adınız..." maxlength="12" value="YılanOyuncusu">
+          <input type="text" id="player-name" placeholder="Sürücü Adınız..." maxlength="12" value="DriftPilotu">
         </div>
 
-        <!-- Skins Showcase Carousel / Grid -->
         <div id="skin-gallery-container">
           <div class="gallery-title-bar">
-            <span class="gallery-title">🐉 KOSTÜM GARAZI</span>
-            <span id="skin-progress-text" class="progress-badge">0 / 50 Puan</span>
+            <span class="gallery-title">🏎️ ARABA GARAJI</span>
+            <span id="skin-progress-text" class="progress-badge">0 / 200 Pn</span>
           </div>
-
           <div id="skin-progress-bar-bg">
             <div id="skin-progress-bar-fill"></div>
           </div>
-
-          <div id="skin-cards-grid">
-            <!-- Dynamically populated via JS -->
-          </div>
+          <div id="skin-cards-grid"></div>
         </div>
 
         <button id="start-btn" class="play-btn">
-          <span class="play-icon">▶</span> OYUNA BAŞLA
+          <span class="play-icon">▶</span> SÜRE BAŞLAT
         </button>
       </div>
     </div>

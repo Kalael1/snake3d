@@ -4,61 +4,78 @@ export class Arena {
     constructor(scene, size = 500) {
         this.scene = scene;
         this.size = size;
-        this.wallHeight = 8;
-        this.wallThickness = 2;
+        this.wallHeight = 6;
         this.init();
     }
 
     init() {
         const halfSize = this.size / 2;
 
-        // Simple flat floor — single draw call
+        // Dark asphalt floor
         const floorGeo = new THREE.PlaneGeometry(this.size, this.size);
-        const floorMat = new THREE.MeshLambertMaterial({ color: 0x64748b });
+        const floorMat = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
         floor.position.y = 0;
         this.scene.add(floor);
 
-        // Lightweight grid — 50 divisions instead of 250
-        const gridHelper = new THREE.GridHelper(this.size, 50, 0x334155, 0x475569);
-        gridHelper.position.y = 0.05;
-        this.scene.add(gridHelper);
+        // Road lane markings (dashed white lines)
+        const lineGeo = new THREE.PlaneGeometry(0.3, this.size);
+        const lineMat = new THREE.MeshBasicMaterial({ color: 0x666666 });
 
-        // Boundary Walls — Lambert material (no PBR overhead)
-        const wallMat = new THREE.MeshLambertMaterial({ color: 0x334155 });
+        for (let i = -200; i <= 200; i += 50) {
+            const vLine = new THREE.Mesh(lineGeo, lineMat);
+            vLine.rotation.x = -Math.PI / 2;
+            vLine.position.set(i, 0.01, 0);
+            this.scene.add(vLine);
 
-        const wallGeos = [
-            new THREE.BoxGeometry(this.size + this.wallThickness * 2, this.wallHeight, this.wallThickness),
-            new THREE.BoxGeometry(this.size + this.wallThickness * 2, this.wallHeight, this.wallThickness),
-            new THREE.BoxGeometry(this.wallThickness, this.wallHeight, this.size),
-            new THREE.BoxGeometry(this.wallThickness, this.wallHeight, this.size)
-        ];
-
-        const wallPositions = [
-            [0, this.wallHeight / 2, -halfSize - this.wallThickness / 2],
-            [0, this.wallHeight / 2, halfSize + this.wallThickness / 2],
-            [halfSize + this.wallThickness / 2, this.wallHeight / 2, 0],
-            [-halfSize - this.wallThickness / 2, this.wallHeight / 2, 0]
-        ];
-
-        for (let i = 0; i < 4; i++) {
-            const wall = new THREE.Mesh(wallGeos[i], wallMat);
-            wall.position.set(...wallPositions[i]);
-            this.scene.add(wall);
+            const hLine = new THREE.Mesh(new THREE.PlaneGeometry(this.size, 0.3), lineMat);
+            hLine.rotation.x = -Math.PI / 2;
+            hLine.position.set(0, 0.01, i);
+            this.scene.add(hLine);
         }
 
-        // Corner Pillars — Basic material
-        const pillarGeo = new THREE.BoxGeometry(3, this.wallHeight + 4, 3);
-        const pillarMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
+        // Center circle (drift roundabout)
+        const circleGeo = new THREE.RingGeometry(18, 20, 32);
+        const circleMat = new THREE.MeshBasicMaterial({ color: 0xffa500, side: THREE.DoubleSide });
+        const circle = new THREE.Mesh(circleGeo, circleMat);
+        circle.rotation.x = -Math.PI / 2;
+        circle.position.y = 0.02;
+        this.scene.add(circle);
 
+        // Center island (solid cylinder)
+        const islandGeo = new THREE.CylinderGeometry(17, 17, 1.5, 24);
+        const islandMat = new THREE.MeshLambertMaterial({ color: 0x3a3a3a });
+        const island = new THREE.Mesh(islandGeo, islandMat);
+        island.position.y = 0.75;
+        this.scene.add(island);
+
+        // Neon boundary walls
+        const wallMat = new THREE.MeshBasicMaterial({ color: 0xff0044 });
+
+        const wallConfigs = [
+            { size: [this.size, this.wallHeight, 1.5], pos: [0, this.wallHeight / 2, -halfSize] },
+            { size: [this.size, this.wallHeight, 1.5], pos: [0, this.wallHeight / 2, halfSize] },
+            { size: [1.5, this.wallHeight, this.size], pos: [halfSize, this.wallHeight / 2, 0] },
+            { size: [1.5, this.wallHeight, this.size], pos: [-halfSize, this.wallHeight / 2, 0] }
+        ];
+
+        wallConfigs.forEach(cfg => {
+            const geo = new THREE.BoxGeometry(...cfg.size);
+            const wall = new THREE.Mesh(geo, wallMat);
+            wall.position.set(...cfg.pos);
+            this.scene.add(wall);
+        });
+
+        // Corner neon pillars
+        const pillarGeo = new THREE.CylinderGeometry(2, 2, this.wallHeight + 4, 8);
+        const pillarMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
         const corners = [
             [-halfSize, (this.wallHeight + 4) / 2, -halfSize],
             [halfSize, (this.wallHeight + 4) / 2, -halfSize],
             [-halfSize, (this.wallHeight + 4) / 2, halfSize],
             [halfSize, (this.wallHeight + 4) / 2, halfSize]
         ];
-
         corners.forEach(pos => {
             const pillar = new THREE.Mesh(pillarGeo, pillarMat);
             pillar.position.set(...pos);

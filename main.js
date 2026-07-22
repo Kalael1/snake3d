@@ -2,138 +2,51 @@ import * as THREE from 'three';
 import { io } from 'socket.io-client';
 
 import { Arena } from './src/Arena.js';
-import { Snake } from './src/Snake.js';
-import { OtherSnake } from './src/OtherSnake.js';
+import { DriftCar } from './src/DriftCar.js';
+import { OtherCar } from './src/OtherCar.js';
 import { AudioManager } from './src/AudioManager.js';
 import { SKINS } from './src/SkinRegistry.js';
 import { ProgressionManager } from './src/ProgressionManager.js';
 import { NameTagManager } from './src/NameTagManager.js';
 
-// ============== SOCKET CONNECTION ==============
+// ============== SOCKET ==============
 const SOCKET_URL = window.location.hostname.includes('github.io') || window.location.hostname.includes('vercel.app') || window.location.hostname.includes('netlify.app')
     ? 'https://boutique-mainly-being-succeed.trycloudflare.com'
     : window.location.origin;
 
 const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
 
-// ============== MANAGERS ==============
 const progressionManager = new ProgressionManager();
 const audioManager = new AudioManager();
 
-// ============== THREE.JS SCENE (Minimal, Fast) ==============
+// ============== SCENE ==============
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x475569);
-// NO fog — fog causes per-object GPU overhead
+scene.background = new THREE.Color(0x1a1a2e);
 
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 800);
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(1.0); // Force 1x — biggest single perf win on mobile/retina
+renderer.setPixelRatio(1.0);
 renderer.shadowMap.enabled = false;
-renderer.toneMapping = THREE.NoToneMapping; // Skip tone mapping
 document.getElementById('app').appendChild(renderer.domElement);
 
 const nameTagManager = new NameTagManager(camera, document.getElementById('nametag-container'));
 
-// Simple lighting — no shadows
-const hemiLight = new THREE.HemisphereLight(0xffffff, 0x475569, 1.2);
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x1a1a2e, 1.2);
 scene.add(hemiLight);
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
 dirLight.position.set(120, 200, 100);
 scene.add(dirLight);
 
 // ============== GAME ENTITIES ==============
-const arenaSize = 500;
-const arena = new Arena(scene, arenaSize);
-const localSnake = new Snake(scene);
-localSnake.applySkin(progressionManager.selectedSkinId);
+const arena = new Arena(scene, 500);
+const localCar = new DriftCar(scene);
+localCar.applySkin(progressionManager.selectedSkinId);
 
-const otherSnakes = {};
+const otherCars = {};
 
-// ============== FOOD SYSTEM (InstancedMesh — 1 draw call!) ==============
-const MAX_FOOD_INSTANCES = 200;
-const foodGeo = new THREE.CircleGeometry(0.7, 8);
-foodGeo.rotateX(-Math.PI / 2); // Pre-rotate to lie flat on ground
-const foodMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
-const foodInstancedMesh = new THREE.InstancedMesh(foodGeo, foodMat, MAX_FOOD_INSTANCES);
-foodInstancedMesh.frustumCulled = false; // CRITICAL: instances span entire arena, don't cull by tiny geometry bounds
-scene.add(foodInstancedMesh);
-
-// Food data stored in arrays (zero GC)
-const foodIds = new Array(MAX_FOOD_INSTANCES).fill(null);
-const foodX = new Float32Array(MAX_FOOD_INSTANCES);
-const foodZ = new Float32Array(MAX_FOOD_INSTANCES);
-const foodValues = new Uint8Array(MAX_FOOD_INSTANCES);
-let foodCount = 0;
-
-const foodColorPalette = [
-    new THREE.Color(0xff0055), new THREE.Color(0x00ffcc), new THREE.Color(0xffff00),
-    new THREE.Color(0xaa00ff), new THREE.Color(0xff8800), new THREE.Color(0x00ffaa)
-];
-const _tempMatrix = new THREE.Matrix4();
-const _tempColor = new THREE.Color();
-
-const localEatenFoods = new Set();
-
-function rebuildFoodInstances() {
-    for (let i = 0; i < foodCount; i++) {
-        _tempMatrix.makeTranslation(foodX[i], 0.2, foodZ[i]); // Direct world-space XYZ
-        foodInstancedMesh.setMatrixAt(i, _tempMatrix);
-        foodInstancedMesh.setColorAt(i, foodColorPalette[i % foodColorPalette.length]);
-    }
-    foodInstancedMesh.count = foodCount;
-    foodInstancedMesh.instanceMatrix.needsUpdate = true;
-    if (foodInstancedMesh.instanceColor) foodInstancedMesh.instanceColor.needsUpdate = true;
-}
-
-function addFoodData(f) {
-    if (foodCount >= MAX_FOOD_INSTANCES || localEatenFoods.has(f.id)) return;
-    // Check duplicate
-    for (let i = 0; i < foodCount; i++) {
-        if (foodIds[i] === f.id) return;
-    }
-    const idx = foodCount;
-    foodIds[idx] = f.id;
-    foodX[idx] = f.x;
-    foodZ[idx] = f.z;
-    foodValues[idx] = f.value || 2;
-    foodCount++;
-}
-
-function removeFoodData(foodId) {
-    for (let i = 0; i < foodCount; i++) {
-        if (foodIds[i] === foodId) {
-            // Swap with last element
-            const last = foodCount - 1;
-            foodIds[i] = foodIds[last];
-            foodX[i] = foodX[last];
-            foodZ[i] = foodZ[last];
-            foodValues[i] = foodValues[last];
-            foodIds[last] = null;
-            foodCount--;
-            return;
-        }
-    }
-}
-
-function syncFoods(foodList) {
-    foodCount = 0;
-    for (let i = 0; i < foodList.length && i < MAX_FOOD_INSTANCES; i++) {
-        const f = foodList[i];
-        foodIds[i] = f.id;
-        foodX[i] = f.x;
-        foodZ[i] = f.z;
-        foodValues[i] = f.value || 2;
-        foodCount++;
-    }
-    rebuildFoodInstances();
-}
-
-// ============== GAME STATE ==============
 let isGameRunning = false;
-let isBoosting = false;
 let localSocketId = null;
-let currentScore = 0;
 let gameStartTime = 0;
 let currentPlayersList = [];
 let lastNetworkEmitTime = 0;
@@ -143,10 +56,10 @@ let currentZoom = 1.0;
 
 window.addEventListener('wheel', (e) => {
     targetZoom += e.deltaY * 0.0015;
-    targetZoom = Math.max(0.35, Math.min(3.0, targetZoom));
+    targetZoom = Math.max(0.4, Math.min(2.5, targetZoom));
 }, { passive: true });
 
-// ============== DOM ELEMENTS ==============
+// ============== DOM ==============
 const scoreElement = document.getElementById('score');
 const highScoreElement = document.getElementById('high-score');
 const overlay = document.getElementById('overlay');
@@ -181,6 +94,10 @@ const mobileChatInput = document.getElementById('mobile-chat-input');
 const mobileSendChatBtn = document.getElementById('mobile-send-chat-btn');
 const closeMobileChatBtn = document.getElementById('close-mobile-chat-btn');
 
+// Drift combo display
+const driftComboEl = document.getElementById('drift-combo');
+const driftAngleEl = document.getElementById('drift-angle');
+
 highScoreElement.innerText = progressionManager.highScore;
 
 soundBtn.addEventListener('click', () => {
@@ -210,7 +127,7 @@ function renderSkinGallery() {
         skinProgressText.innerText = `${highScore} / ${nextUnlock.reqScore} Pn (${nextUnlock.name})`;
         skinProgressFill.style.width = `${pct}%`;
     } else {
-        skinProgressText.innerText = `👑 TÜM KOSTÜMLER AÇILDI! (${highScore} Rekor)`;
+        skinProgressText.innerText = `👑 TÜM ARABALAR AÇILDI! (${highScore} Rekor)`;
         skinProgressFill.style.width = '100%';
     }
 
@@ -226,11 +143,10 @@ function renderSkinGallery() {
         else badgeHtml = `<span class="skin-badge locked-badge">🔒 ${skin.reqScore} Pn</span>`;
 
         card.innerHTML = `<span class="skin-icon">${skin.icon}</span><span class="skin-title">${skin.name}</span>${badgeHtml}`;
-
         if (isUnlocked) {
             card.addEventListener('click', () => {
                 progressionManager.setSelectedSkin(skin.id);
-                localSnake.applySkin(skin.id);
+                localCar.applySkin(skin.id);
                 audioManager.playEat();
                 renderSkinGallery();
             });
@@ -242,14 +158,12 @@ renderSkinGallery();
 
 // ============== CHAT ==============
 function sendChatMessage(text, isEmoji = false) {
-    const cleanText = text.trim();
-    if (!cleanText) return;
-    socket.emit('chatMessage', { text: cleanText, isEmoji: isEmoji });
+    const t = text.trim();
+    if (!t) return;
+    socket.emit('chatMessage', { text: t, isEmoji });
 }
-
 sendChatBtn.addEventListener('click', () => { sendChatMessage(chatInput.value); chatInput.value = ''; });
 chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { sendChatMessage(chatInput.value); chatInput.value = ''; chatInput.blur(); } });
-
 chatInput.addEventListener('focus', () => {
     if (window.innerWidth <= 768 || 'ontouchstart' in window) {
         chatInput.blur();
@@ -260,11 +174,9 @@ chatInput.addEventListener('focus', () => {
 closeMobileChatBtn.addEventListener('click', () => mobileChatModal.classList.add('hidden'));
 mobileSendChatBtn.addEventListener('click', () => { sendChatMessage(mobileChatInput.value); mobileChatInput.value = ''; mobileChatModal.classList.add('hidden'); });
 mobileChatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { sendChatMessage(mobileChatInput.value); mobileChatInput.value = ''; mobileChatInput.blur(); mobileChatModal.classList.add('hidden'); } });
-
 document.querySelectorAll('.emoji-btn').forEach(btn => {
     btn.addEventListener('click', () => { const emoji = btn.getAttribute('data-emoji'); if (emoji) sendChatMessage(emoji, true); });
 });
-
 socket.on('chatReceived', (data) => {
     if (!data) return;
     const html = `<div class="chat-msg"><span class="sender">${data.name}:</span> ${data.text}</div>`;
@@ -322,10 +234,10 @@ window.addEventListener('touchmove', (e) => {
     } else if (e.touches.length === 2 && initialPinchDist) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
-        const currentDist = Math.sqrt(dx * dx + dy * dy);
-        targetZoom += (initialPinchDist - currentDist) * 0.005;
-        targetZoom = Math.max(0.35, Math.min(3.0, targetZoom));
-        initialPinchDist = currentDist;
+        const cd = Math.sqrt(dx * dx + dy * dy);
+        targetZoom += (initialPinchDist - cd) * 0.005;
+        targetZoom = Math.max(0.4, Math.min(2.5, targetZoom));
+        initialPinchDist = cd;
     }
 }, { passive: true });
 
@@ -337,32 +249,12 @@ window.addEventListener('touchend', (e) => {
     }
 }, { passive: true });
 
-// Boost controls
-function setBoostState(state) {
-    if (isBoosting !== state) {
-        isBoosting = state;
-        if (isBoosting) audioManager.startBoost(); else audioManager.stopBoost();
-    }
-}
+// Hide mobile boost button (no boost in drift game)
+if (mobileBoostBtn) mobileBoostBtn.style.display = 'none';
 
-mobileBoostBtn.addEventListener('touchstart', (e) => { e.preventDefault(); setBoostState(true); });
-mobileBoostBtn.addEventListener('touchend', (e) => { e.preventDefault(); setBoostState(false); });
-mobileBoostBtn.addEventListener('mousedown', (e) => { e.preventDefault(); setBoostState(true); });
-mobileBoostBtn.addEventListener('mouseup', (e) => { e.preventDefault(); setBoostState(false); });
-
-window.addEventListener('mousedown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.closest('#mobile-boost-btn,#mobile-chat-modal')) return;
-    if (e.button === 0 && isGameRunning) setBoostState(true);
-});
-window.addEventListener('mouseup', (e) => { if (e.button === 0) setBoostState(false); });
 window.addEventListener('keydown', (e) => {
     if (document.activeElement === chatInput || document.activeElement === mobileChatInput) return;
-    if (e.code === 'Space' && isGameRunning) setBoostState(true);
-    else if (e.code === 'Escape' && isGameRunning) { setBoostState(false); openMenu('Oyun Duraklatıldı'); }
-});
-window.addEventListener('keyup', (e) => {
-    if (document.activeElement === chatInput || document.activeElement === mobileChatInput) return;
-    if (e.code === 'Space') setBoostState(false);
+    if (e.code === 'Escape' && isGameRunning) openMenu('Oyun Duraklatıldı');
 });
 
 window.addEventListener('resize', () => {
@@ -372,64 +264,35 @@ window.addEventListener('resize', () => {
 });
 
 // ============== SOCKET EVENTS ==============
-socket.on('init', (data) => {
-    localSocketId = data.id;
-    syncFoods(data.foods || []);
-});
-
-socket.on('foodRemoved', (data) => {
-    if (data && data.foodId) {
-        localEatenFoods.add(data.foodId);
-        removeFoodData(data.foodId);
-    }
-    if (data && data.newFood) addFoodData(data.newFood);
-    rebuildFoodInstances(); // Immediately update visuals
-});
+socket.on('init', (data) => { localSocketId = data.id; });
 
 socket.on('gameState', (state) => {
     if (!state) return;
-    const serverPlayers = state.players || {};
-    currentPlayersList = Object.values(serverPlayers);
+    const sp = state.players || {};
+    currentPlayersList = Object.values(sp);
 
-    if (localSocketId && serverPlayers[localSocketId]) {
-        const pData = serverPlayers[localSocketId];
-        const serverScore = pData.score || 0;
-        if (serverScore > currentScore) {
-            currentScore = serverScore;
-            scoreElement.innerText = currentScore;
-            localSnake.updateGrowth(currentScore);
-            if (currentScore > progressionManager.highScore) {
-                progressionManager.saveHighScore(currentScore);
-                highScoreElement.innerText = currentScore;
-            }
-        }
-        nameTagManager.createOrUpdateTag(localSocketId, pData.name, localSnake.activeSkin.icon, () => localSnake.getHeadPosition(), true);
+    if (localSocketId && sp[localSocketId]) {
+        const pd = sp[localSocketId];
+        nameTagManager.createOrUpdateTag(localSocketId, pd.name, localCar.activeSkin.icon, () => localCar.getHeadPosition(), true);
     }
 
-    for (const id in serverPlayers) {
+    for (const id in sp) {
         if (id === localSocketId) continue;
-        const pd = serverPlayers[id];
-
-        if (!otherSnakes[id]) {
-            otherSnakes[id] = new OtherSnake(scene, pd);
-        }
-
-        // Direct smooth update — no intermediate buffer
-        otherSnakes[id].updateFromServer(pd);
-
-        const skinIcon = otherSnakes[id].activeSkin ? otherSnakes[id].activeSkin.icon : '🐍';
-        nameTagManager.createOrUpdateTag(id, pd.name, skinIcon, () => otherSnakes[id].segments[0] ? otherSnakes[id].segments[0].position : null, false);
+        const pd = sp[id];
+        if (!otherCars[id]) otherCars[id] = new OtherCar(scene, pd);
+        otherCars[id].updateFromServer(pd);
+        nameTagManager.createOrUpdateTag(id, pd.name, otherCars[id].activeSkin.icon, () => otherCars[id].group.position, false);
     }
 
-    for (const id in otherSnakes) {
-        if (!serverPlayers[id]) {
-            otherSnakes[id].destroy();
-            delete otherSnakes[id];
+    for (const id in otherCars) {
+        if (!sp[id]) {
+            otherCars[id].destroy();
+            delete otherCars[id];
             nameTagManager.removeTag(id);
         }
     }
 
-    updateLeaderboard(serverPlayers);
+    updateLeaderboard(sp);
 });
 
 socket.on('gameOver', (data) => { triggerGameOver(data ? data.reason : 'Oyun Bitti!'); });
@@ -437,42 +300,44 @@ socket.on('gameOver', (data) => { triggerGameOver(data ? data.reason : 'Oyun Bit
 function triggerGameOver(reasonText) {
     if (!isGameRunning) return;
     isGameRunning = false;
-    setBoostState(false);
-    virtualJoystick.classList.add('hidden');
     audioManager.playDeath();
-    progressionManager.saveHighScore(currentScore);
+
+    const finalScore = localCar.getScore();
+    progressionManager.saveHighScore(finalScore);
     highScoreElement.innerText = progressionManager.highScore;
 
-    const secondsSurvived = Math.floor((Date.now() - gameStartTime) / 1000);
-    const mins = String(Math.floor(secondsSurvived / 60)).padStart(2, '0');
-    const secs = String(secondsSurvived % 60).padStart(2, '0');
+    const sec = Math.floor((Date.now() - gameStartTime) / 1000);
+    const mins = String(Math.floor(sec / 60)).padStart(2, '0');
+    const secs = String(sec % 60).padStart(2, '0');
 
-    const sorted = currentPlayersList.slice().sort((a, b) => (b.score || 0) - (a.score || 0));
-    const rankIndex = sorted.findIndex(p => p.id === localSocketId);
+    const sorted = currentPlayersList.slice().sort((a, b) => (b.driftScore || 0) - (a.driftScore || 0));
+    const rank = sorted.findIndex(p => p.id === localSocketId);
 
-    gameoverReasonText.innerText = reasonText || 'Oyun Bitti!';
-    statRank.innerText = rankIndex !== -1 ? `#${rankIndex + 1}` : '#1';
-    statScore.innerText = currentScore;
+    gameoverReasonText.innerText = reasonText;
+    statRank.innerText = rank !== -1 ? `#${rank + 1}` : '#1';
+    statScore.innerText = finalScore;
     statTime.innerText = `${mins}:${secs}`;
     statHighscore.innerText = progressionManager.highScore;
     gameoverModalOverlay.classList.remove('hidden');
+
+    // Hide drift combo
+    if (driftComboEl) driftComboEl.classList.add('hidden');
 }
 
 restartGameBtn.addEventListener('click', () => { gameoverModalOverlay.classList.add('hidden'); startGame(); });
-openSkinsBtn.addEventListener('click', () => { gameoverModalOverlay.classList.add('hidden'); openMenu('Kostüm Garazı'); });
+openSkinsBtn.addEventListener('click', () => { gameoverModalOverlay.classList.add('hidden'); openMenu('Araba Garajı'); });
 
-function updateLeaderboard(serverPlayers) {
-    const sorted = Object.values(serverPlayers).sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 5);
-    lbList.innerHTML = sorted.map((p, idx) => `<li><span>${idx + 1}. ${p.name || 'Oyuncu'}</span><span style="color:#06b6d4">${p.score || 0}</span></li>`).join('') || '<li>Bekleniyor...</li>';
+function updateLeaderboard(sp) {
+    const sorted = Object.values(sp).sort((a, b) => (b.driftScore || 0) - (a.driftScore || 0)).slice(0, 5);
+    lbList.innerHTML = sorted.map((p, idx) => `<li><span>${idx + 1}. ${p.name || 'Sürücü'}</span><span style="color:#f59e0b">${p.driftScore || 0}</span></li>`).join('') || '<li>Bekleniyor...</li>';
 }
 
 function openMenu(reasonText) {
     isGameRunning = false;
-    setBoostState(false);
     virtualJoystick.classList.add('hidden');
     renderSkinGallery();
     overlayDesc.innerText = reasonText;
-    startBtn.innerHTML = '<span class="play-icon">▶</span> OYUNA BAŞLA';
+    startBtn.innerHTML = '<span class="play-icon">▶</span> SÜRE BAŞLAT';
     overlay.classList.remove('hidden');
 }
 
@@ -486,11 +351,8 @@ function requestLandscapeAndFullscreen() {
 function startGame() {
     audioManager.init();
     requestLandscapeAndFullscreen();
-    const playerName = playerNameInput.value.trim() || 'YılanOyuncusu';
-    currentScore = 0;
-    scoreElement.innerText = '0';
-    localEatenFoods.clear();
-    localSnake.reset();
+    const playerName = playerNameInput.value.trim() || 'DriftPilotu';
+    localCar.reset();
     gameStartTime = Date.now();
     socket.emit('join', { name: playerName, skinId: progressionManager.selectedSkinId });
     isGameRunning = true;
@@ -500,7 +362,7 @@ function startGame() {
 
 startBtn.addEventListener('click', startGame);
 
-// ============== MAIN RENDER LOOP (Ultra-Optimized) ==============
+// ============== RENDER LOOP ==============
 const clock = new THREE.Clock();
 
 function animate() {
@@ -509,97 +371,92 @@ function animate() {
     const now = Date.now();
 
     if (isGameRunning) {
-        // 1. Raycast
+        // 1. Raycast for mouse target
         raycaster.setFromCamera(mouse, camera);
         raycaster.ray.intersectPlane(groundPlane, targetPoint);
 
-        // 2. Local snake
-        localSnake.update(delta, targetPoint, isBoosting);
-        const headPos = localSnake.getHeadPosition();
+        // 2. Update local car physics
+        localCar.update(delta, targetPoint);
+        const headPos = localCar.getHeadPosition();
+        const driftScore = localCar.getScore();
 
-        // 3. Wall collision
+        // 3. Update score display
+        scoreElement.innerText = driftScore;
+        if (driftScore > progressionManager.highScore) {
+            progressionManager.saveHighScore(driftScore);
+            highScoreElement.innerText = driftScore;
+        }
+
+        // 4. Drift combo display
+        if (driftComboEl) {
+            if (localCar.isDrifting) {
+                driftComboEl.classList.remove('hidden');
+                const comboText = localCar.driftCombo > 1 ? ` x${localCar.driftCombo}` : '';
+                driftComboEl.innerHTML = `<span class="combo-score">+${Math.floor(localCar.currentDriftScore)}</span><span class="combo-label">DRİFT!${comboText}</span>`;
+            } else {
+                driftComboEl.classList.add('hidden');
+            }
+        }
+
+        // 5. Drift angle indicator
+        if (driftAngleEl) {
+            driftAngleEl.innerText = `${Math.floor(localCar.slipAngle)}°`;
+            driftAngleEl.style.color = localCar.slipAngle > 30 ? '#ef4444' : localCar.slipAngle > 10 ? '#f59e0b' : '#6b7280';
+        }
+
+        // 6. Wall collision (client-side)
         const wallThreshold = 240;
         if (Math.abs(headPos.x) >= wallThreshold || Math.abs(headPos.z) >= wallThreshold) {
-            triggerGameOver('💥 Harita duvarına çarptın!');
-            socket.emit('playerInput', { x: headPos.x, z: headPos.z, dead: true });
+            triggerGameOver('💥 Duvara çarptın!');
             return;
         }
 
-        // 4. Snake vs snake collision
-        for (const otherId in otherSnakes) {
-            const rs = otherSnakes[otherId];
-            if (!rs || !rs.segments) continue;
-            for (let i = 1; i < rs.segments.length; i++) {
-                const sp = rs.segments[i].position;
-                const dx = headPos.x - sp.x;
-                const dz = headPos.z - sp.z;
-                if (dx * dx + dz * dz < 4.0) {
-                    triggerGameOver(`💥 ${rs.name} oyuncusuna çarptın!`);
-                    socket.emit('playerInput', { x: headPos.x, z: headPos.z, dead: true });
-                    return;
-                }
+        // 7. Car vs car collision
+        for (const otherId in otherCars) {
+            const rc = otherCars[otherId];
+            if (!rc) continue;
+            const dx = headPos.x - rc.group.position.x;
+            const dz = headPos.z - rc.group.position.z;
+            if (dx * dx + dz * dz < 10.0) {
+                triggerGameOver(`💥 ${rc.name} ile çarpıştın!`);
+                return;
             }
         }
 
-        // 5. Smooth body follow for remote snakes
-        for (const id in otherSnakes) {
-            otherSnakes[id].animateBody(delta);
-        }
+        // 8. Remote car animation
+        for (const id in otherCars) otherCars[id].animate(delta);
 
-        // 6. Food eating check (array-based, zero GC)
-        for (let i = 0; i < foodCount; i++) {
-            if (localEatenFoods.has(foodIds[i])) continue;
-            const dx = headPos.x - foodX[i];
-            const dz = headPos.z - foodZ[i];
-            if (dx * dx + dz * dz < 8.0) {
-                const fId = foodIds[i];
-                const fVal = foodValues[i];
-                localEatenFoods.add(fId);
-                removeFoodData(fId);
-                rebuildFoodInstances(); // Immediately update visuals
-                audioManager.playEat();
-                currentScore += fVal;
-                scoreElement.innerText = currentScore;
-                localSnake.updateGrowth(currentScore);
-                if (currentScore > progressionManager.highScore) {
-                    progressionManager.saveHighScore(currentScore);
-                    highScoreElement.innerText = currentScore;
-                }
-                socket.emit('eatFood', { foodId: fId });
-                break;
-            }
-        }
-
-        // 7. Network emit (20 ticks/sec)
+        // 9. Network emit (20 ticks/sec)
         if (now - lastNetworkEmitTime > 50) {
             lastNetworkEmitTime = now;
             socket.volatile.emit('playerInput', {
                 x: Math.round(headPos.x * 10) / 10,
                 z: Math.round(headPos.z * 10) / 10,
-                angle: Math.round(localSnake.currentAngle * 10) / 10,
-                isBoosting: isBoosting,
+                angle: Math.round(localCar.currentAngle * 10) / 10,
+                driftScore: driftScore,
                 skinId: progressionManager.selectedSkinId
             });
         }
     } else {
-        const time = now * 0.004;
-        targetPoint.set(Math.cos(time) * 20, 0, Math.sin(time) * 20);
-        localSnake.update(delta, targetPoint, false);
+        // Menu idle animation
+        const time = now * 0.003;
+        targetPoint.set(Math.cos(time) * 30, 0, Math.sin(time) * 30);
+        localCar.update(delta, targetPoint);
     }
 
-    // 8. (Food instances are rebuilt immediately on add/remove events)
-
-    // 9. Camera
+    // Camera follow
     currentZoom += (targetZoom - currentZoom) * 0.1;
-    const hp = localSnake.getHeadPosition();
-    camera.position.x += (hp.x - camera.position.x) * 0.15;
-    camera.position.y += (hp.y + 26 * currentZoom - camera.position.y) * 0.15;
-    camera.position.z += (hp.z + 20 * currentZoom - camera.position.z) * 0.15;
-    camera.lookAt(hp.x, hp.y, hp.z - 2);
+    const hp = localCar.getHeadPosition();
+    const camX = hp.x - Math.sin(localCar.heading) * 8 * currentZoom;
+    const camZ = hp.z - Math.cos(localCar.heading) * 8 * currentZoom;
+    const camY = 15 * currentZoom;
 
-    // 10. Name tags
+    camera.position.x += (camX - camera.position.x) * 0.08;
+    camera.position.y += (camY - camera.position.y) * 0.08;
+    camera.position.z += (camZ - camera.position.z) * 0.08;
+    camera.lookAt(hp.x, 0, hp.z);
+
     nameTagManager.updatePositions();
-
     renderer.render(scene, camera);
 }
 
