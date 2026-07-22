@@ -1,83 +1,88 @@
 import * as THREE from 'three';
 
 export class Arena {
-    constructor(scene, size) {
+    constructor(scene, size = 500) {
+        this.scene = scene;
         this.size = size;
-        
-        // Clean White Ground
-        const floorGeo = new THREE.PlaneGeometry(size, size);
-        const solidMaterial = new THREE.MeshStandardMaterial({
-            color: 0xffffff,
-            roughness: 0.2,
-            metalness: 0.1
+        this.wallHeight = 8;
+        this.wallThickness = 2;
+        this.init();
+    }
+
+    init() {
+        const halfSize = this.size / 2;
+
+        // Sleek Dark Floor - Comfortable for eyes
+        const floorGeo = new THREE.PlaneGeometry(this.size, this.size);
+        const floorMat = new THREE.MeshStandardMaterial({
+            color: 0x0b0f19, // Deep midnight dark slate
+            roughness: 0.8,
+            metalness: 0.2
         });
 
-        const ground = new THREE.Mesh(floorGeo, solidMaterial);
-        ground.rotation.x = -Math.PI / 2;
-        ground.receiveShadow = true;
-        scene.add(ground);
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = 0;
+        floor.receiveShadow = true;
+        this.scene.add(floor);
 
-        // Elegant Slate Grid lines over white ground
-        const gridHelper = new THREE.GridHelper(size, 250, 0x475569, 0xc0c6d4);
+        // Subtle Arena Grid Lines
+        const gridHelper = new THREE.GridHelper(this.size, 250, 0x00ffcc, 0x1e293b);
         gridHelper.position.y = 0.05;
-        if (gridHelper.material) {
-            gridHelper.material.opacity = 0.5;
-            gridHelper.material.transparent = true;
-        }
-        scene.add(gridHelper);
+        this.scene.add(gridHelper);
 
-        // Sleek Gray Boundary Walls
+        // Boundary Walls Material - Sleek Slate Indigo with subtle emissive
         const wallMat = new THREE.MeshStandardMaterial({
-            color: 0x64748b, // Modern Slate Gray
-            emissive: 0x334155,
-            emissiveIntensity: 0.3,
-            roughness: 0.3,
-            metalness: 0.5
+            color: 0x1e293b,
+            emissive: 0x0f172a,
+            roughness: 0.4,
+            metalness: 0.6
         });
-        
-        const wallGeo = new THREE.BoxGeometry(size, 6, 2);
-        
-        const wallN = new THREE.Mesh(wallGeo, wallMat);
-        wallN.position.set(0, 3, -size/2);
-        scene.add(wallN);
 
-        const wallS = new THREE.Mesh(wallGeo, wallMat);
-        wallS.position.set(0, 3, size/2);
-        scene.add(wallS);
+        // 4 Boundary Walls
+        const wallGeos = [
+            new THREE.BoxGeometry(this.size + this.wallThickness * 2, this.wallHeight, this.wallThickness), // North
+            new THREE.BoxGeometry(this.size + this.wallThickness * 2, this.wallHeight, this.wallThickness), // South
+            new THREE.BoxGeometry(this.wallThickness, this.wallHeight, this.size), // East
+            new THREE.BoxGeometry(this.wallThickness, this.wallHeight, this.size)  // West
+        ];
 
-        const wallE = new THREE.Mesh(wallGeo, wallMat);
-        wallE.rotation.y = Math.PI / 2;
-        wallE.position.set(size/2, 3, 0);
-        scene.add(wallE);
+        const wallPositions = [
+            [0, this.wallHeight / 2, -halfSize - this.wallThickness / 2],
+            [0, this.wallHeight / 2, halfSize + this.wallThickness / 2],
+            [halfSize + this.wallThickness / 2, this.wallHeight / 2, 0],
+            [-halfSize - this.wallThickness / 2, this.wallHeight / 2, 0]
+        ];
 
-        const wallW = new THREE.Mesh(wallGeo, wallMat);
-        wallW.rotation.y = Math.PI / 2;
-        wallW.position.set(-size/2, 3, 0);
-        scene.add(wallW);
+        for (let i = 0; i < 4; i++) {
+            const wall = new THREE.Mesh(wallGeos[i], wallMat);
+            wall.position.set(...wallPositions[i]);
+            wall.castShadow = true;
+            wall.receiveShadow = true;
+            this.scene.add(wall);
+        }
 
-        // Corner Pillars in Slate Gray
-        const pillarGeo = new THREE.CylinderGeometry(2.5, 2.5, 12, 16);
+        // Corner Glowing Neon Pillars
+        const pillarGeo = new THREE.BoxGeometry(3, this.wallHeight + 4, 3);
         const pillarMat = new THREE.MeshStandardMaterial({
-            color: 0x334155,
-            roughness: 0.2,
-            metalness: 0.8
+            color: 0x00ffcc,
+            emissive: 0x00ffcc,
+            emissiveIntensity: 0.6,
+            roughness: 0.2
         });
 
         const corners = [
-            [-size/2, -size/2],
-            [size/2, -size/2],
-            [-size/2, size/2],
-            [size/2, size/2]
+            [-halfSize, (this.wallHeight + 4) / 2, -halfSize],
+            [halfSize, (this.wallHeight + 4) / 2, -halfSize],
+            [-halfSize, (this.wallHeight + 4) / 2, halfSize],
+            [halfSize, (this.wallHeight + 4) / 2, halfSize]
         ];
 
-        corners.forEach(([x, z]) => {
+        corners.forEach(pos => {
             const pillar = new THREE.Mesh(pillarGeo, pillarMat);
-            pillar.position.set(x, 6, z);
-            scene.add(pillar);
-
-            const light = new THREE.PointLight(0x64748b, 2, 60);
-            light.position.set(x, 8, z);
-            scene.add(light);
+            pillar.position.set(...pos);
+            pillar.castShadow = true;
+            this.scene.add(pillar);
         });
     }
 }

@@ -14,10 +14,10 @@ import { ParticleSystem } from './src/ParticleSystem.js';
 // Setup Socket.io Client
 const socket = io();
 
-// Setup basic scene with bright light background
+// Setup basic scene with sleek midnight theme (comfortable for eyes)
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xe2e8f0);
-scene.fog = new THREE.FogExp2(0xe2e8f0, 0.003);
+scene.background = new THREE.Color(0x060814);
+scene.fog = new THREE.FogExp2(0x060814, 0.0025);
 
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 2500);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -26,30 +26,30 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
+renderer.toneMappingExposure = 0.95;
 document.getElementById('app').appendChild(renderer.domElement);
 
-// Post-Processing Pipeline (Unreal Bloom Glow)
+// Post-Processing Pipeline (Subtle & Elegant Bloom Glow)
 const composer = new EffectComposer(renderer);
 const renderPass = new RenderPass(scene, camera);
 composer.addPass(renderPass);
 
 const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.55, // Strength of glow
-    0.4,  // Radius
-    0.82  // Threshold
+    0.28, // Subtle strength - comfortable on eyes
+    0.2,  // Radius
+    0.85  // High threshold - only glowing crystals & lights pass
 );
 composer.addPass(bloomPass);
 
 const outputPass = new OutputPass();
 composer.addPass(outputPass);
 
-// Lighting
-const hemiLight = new THREE.HemisphereLight(0xffffff, 0x94a3b8, 0.85);
+// Balanced Lighting
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x1e293b, 0.7);
 scene.add(hemiLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.4);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
 dirLight.position.set(120, 200, 100);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.width = 2048;
@@ -141,7 +141,7 @@ window.addEventListener('resize', () => {
     composer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// Food rendering materials & geometries
+// Food rendering materials & geometries (Vibrant & Comfortable)
 const foodColors = [0xff0055, 0x00ffcc, 0xffff00, 0xaa00ff, 0xff8800, 0x00ffaa];
 const smallFoodGeo = new THREE.DodecahedronGeometry(0.55, 0);
 const bigFoodGeo = new THREE.DodecahedronGeometry(1.2, 0);
@@ -149,9 +149,9 @@ const bigFoodGeo = new THREE.DodecahedronGeometry(1.2, 0);
 const foodMaterials = foodColors.map(color => new THREE.MeshStandardMaterial({
     color: color,
     emissive: color,
-    emissiveIntensity: 1.2,
-    roughness: 0.1,
-    metalness: 0.9
+    emissiveIntensity: 0.45,
+    roughness: 0.2,
+    metalness: 0.8
 }));
 
 // SOCKET EVENTS
@@ -214,7 +214,6 @@ socket.on('gameOver', (data) => {
     isGameRunning = false;
     isBoosting = false;
 
-    // Trigger death explosion SFX & Particles
     audioManager.playDeath();
     particleSystem.createDeathExplosion(localSnake.getHeadPosition());
 
@@ -344,20 +343,16 @@ function animate() {
                 if (dist < 2.8) {
                     localEatenFoods.add(foodId);
 
-                    // Play Eating SFX & Sparkle Particles
                     audioManager.playEat();
                     particleSystem.createEatBurst(foodMesh.position);
 
-                    // Remove food mesh
                     removeFoodMesh(foodId);
 
-                    // Add mass/score & update growth
                     const gainedVal = foodMesh.userData.foodValue || 2;
                     currentScore += gainedVal;
                     scoreElement.innerText = currentScore;
                     localSnake.updateGrowth(currentScore);
 
-                    // Emit to server
                     socket.emit('eatFood', { foodId: foodId });
                     break;
                 }
@@ -398,7 +393,6 @@ function animate() {
     camera.position.z += (camTargetZ - camera.position.z) * 0.1;
     camera.lookAt(headPos.x, headPos.y, headPos.z - 2);
 
-    // Render through Post-Processing Composer (Bloom Glow Effect)
     composer.render();
 }
 
