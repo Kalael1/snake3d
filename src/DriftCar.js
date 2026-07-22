@@ -16,8 +16,10 @@ export class DriftCar {
         this.heading = 0;         // Heading angle (radians)
         this.velocityAngle = 0;   // Velocity direction angle (radians)
         this.speed = 30;          // Constant forward movement speed
-        this.steerSpeed = 5.5;    // Smooth mouse steering responsiveness
-        this.gripFactor = 3.8;    // Grip level (lower = more drift slide)
+        
+        // Rate-Limited Steering Physics (Stops Endless Spinning!)
+        this.maxTurnRate = 2.4;   // Max ~135 degrees/sec turn limit
+        this.gripFactor = 3.6;    // Grip level (lower = more drift slide)
 
         // Suspension & Handling Lean Physics
         this.currentRoll = 0;     // Side-to-side body roll (Z-axis)
@@ -144,7 +146,7 @@ export class DriftCar {
     }
 
     update(delta, targetPoint) {
-        // 1. PURE MOUSE STEERING (Direct, Smooth & Natural Pointer Following)
+        // 1. RATE-LIMITED MOUSE STEERING (STOPS ENDLESS SPINNING!)
         if (targetPoint) {
             const dx = targetPoint.x - this.position.x;
             const dz = targetPoint.z - this.position.z;
@@ -154,8 +156,9 @@ export class DriftCar {
             while (steerDiff < -Math.PI) steerDiff += Math.PI * 2;
             while (steerDiff > Math.PI) steerDiff -= Math.PI * 2;
 
-            // Smooth heading rotation towards mouse direction
-            this.heading += steerDiff * Math.min(1.0, this.steerSpeed * delta);
+            // Clamped turn rate: car turns smoothly up to maxTurnRate, never wild spinning!
+            const turnStep = Math.max(-this.maxTurnRate * delta, Math.min(this.maxTurnRate * delta, steerDiff * 4.0 * delta));
+            this.heading += turnStep;
         }
 
         // 2. Velocity direction with realistic drift lag
