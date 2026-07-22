@@ -32,11 +32,15 @@ app.use((req, res) => {
     }
 });
 
-// Game Constants
+// Game Constants & Bot Matchmaking System
 const ARENA_SIZE = 500;
 const MAX_FOODS = 500;
+const DESIRED_ROOM_SIZE = 8; // Target total players (Humans + Bots)
 
-const players = {};
+const botNames = ['CyberViper', 'ShadowSnake', 'Bot Efe', 'Bot Can', 'AlphaCobra', 'MegaPython', 'NeonDragon', 'Viper3D'];
+const botSkins = ['classic', 'neon', 'fire', 'golden', 'shadow'];
+
+const players = {}; // Human & Bot player objects
 let foods = [];
 const foodColors = [0xff0055, 0x00ffcc, 0xffff00, 0xaa00ff, 0xff8800, 0x00ffaa];
 
@@ -60,6 +64,58 @@ for (let i = 0; i < MAX_FOODS; i++) {
     foods.push(spawnFood());
 }
 
+// BOT MANAGEMENT LOGIC
+function getRealPlayersCount() {
+    return Object.values(players).filter(p => !p.isBot).length;
+}
+
+function getBotPlayersCount() {
+    return Object.values(players).filter(p => p.isBot).length;
+}
+
+function spawnBot() {
+    const botId = 'bot_' + Math.random().toString(36).substring(2, 7);
+    const halfSize = (ARENA_SIZE / 2) - 30;
+    const name = botNames[Math.floor(Math.random() * botNames.length)];
+    const skinId = botSkins[Math.floor(Math.random() * botSkins.length)];
+
+    players[botId] = {
+        id: botId,
+        isBot: true,
+        name: `🤖 ${name}`,
+        skinId: skinId,
+        x: round1((Math.random() - 0.5) * 2 * halfSize),
+        z: round1((Math.random() - 0.5) * 2 * halfSize),
+        angle: Math.random() * Math.PI * 2,
+        isBoosting: false,
+        score: Math.floor(Math.random() * 40),
+        targetAngleTimer: 0
+    };
+}
+
+function removeOneBot() {
+    const botId = Object.keys(players).find(id => players[id].isBot);
+    if (botId) {
+        delete players[botId];
+    }
+}
+
+function balanceBots() {
+    const realCount = getRealPlayersCount();
+    const neededBots = Math.max(0, DESIRED_ROOM_SIZE - realCount);
+    const currentBots = getBotPlayersCount();
+
+    if (currentBots < neededBots) {
+        for (let i = 0; i < neededBots - currentBots; i++) {
+            spawnBot();
+        }
+    } else if (currentBots > neededBots) {
+        for (let i = 0; i < currentBots - neededBots; i++) {
+            removeOneBot();
+        }
+    }
+}
+
 io.on('connection', (socket) => {
     console.log(`[+] Player connected: ${socket.id}`);
 
@@ -73,6 +129,7 @@ io.on('connection', (socket) => {
 
         players[socket.id] = {
             id: socket.id,
+            isBot: false,
             name: name || 'Yılan #' + socket.id.substring(0, 4),
             skinId: skinId,
             x: spawnX,
@@ -81,6 +138,9 @@ io.on('connection', (socket) => {
             isBoosting: false,
             score: 0
         };
+
+        // Balance bots whenever a real player joins!
+        balanceBots();
 
         socket.emit('init', {
             id: socket.id,
@@ -136,7 +196,7 @@ io.on('connection', (socket) => {
         console.log(`[-] Player disconnected: ${socket.id}`);
         const player = players[socket.id];
         if (player) {
-            // Drop food on death
+            // Drop food burst on death
             const dropCount = Math.min(20, 8 + Math.floor((player.score || 0) / 35));
             for (let i = 0; i < dropCount; i++) {
                 const drop = {
@@ -152,27 +212,76 @@ io.on('connection', (socket) => {
             }
             delete players[socket.id];
         }
+
+        // Re-balance bots on disconnect!
+        balanceBots();
     });
 });
+
+// INITIAL BOT BALANCE ON STARTUP
+balanceBots();
 
 // High-Frequency Ultra-Light Volatile Network Tick (30 Ticks/sec)
 const TICK_RATE = 30;
 
 setInterval(() => {
-    const playerIds = Object.keys(players);
+    // 1. UPDATE AI BOT MOVEMENT & FOOD EATING
+    const botIds = Object.keys(players).filter(id => players[id].isBot);
+    botIds.forEach(botId => {
+        const bot = players[botId];
+        if (!bot) return;
 
+        // Bot AI movement logic
+        bot.targetAngleTimer = (bot.targetAngleTimer || 0) + 1;
+        if (bot.targetAngleTimer > 60) {
+            bot.targetAngleTimer = 0;
+            // Wander towards center if near boundary, else random angle
+            const distFromCenter = Math.sqrt(bot.x * bot.x + bot.z * bot.z);
+            if (distFromCenter > 200) {
+                bot.angle = Math.atan2(-bot.x, -bot.z);
+            } else {
+                bot.angle += (Math.random() - 0.5) * 1.5;
+            }
+        }
+
+        const speed = bot.isBoosting ? 30 : 18;
+        bot.x = round1(bot.x + Math.sin(bot.angle) * speed * 0.033);
+        bot.z = round1(bot.z + Math.cos(bot.angle) * speed * 0.033);
+
+        // Bot food eating check
+        for (let i = 0; i < foods.length; i++) {
+            const f = foods[i];
+            const dx = bot.x - f.x;
+            const dz = bot.z - f.z;
+            if (dx * dx + dz * dz < 9.0) {
+                bot.score += f.value || 2;
+                const newFood = spawnFood();
+                const eatenId = f.id;
+                foods.splice(i, 1);
+                foods.push(newFood);
+                io.emit('foodRemoved', { foodId: eatenId, newFood: newFood });
+                break;
+            }
+        }
+    });
+
+    // 2. WALL COLLISION CHECK
+    const playerIds = Object.keys(players);
     playerIds.forEach(id => {
         const p = players[id];
         if (!p) return;
 
-        const limit = ARENA_SIZE / 2 - 2.0;
+        const limit = ARENA_SIZE / 2 - 5.0;
         if (Math.abs(p.x) > limit || Math.abs(p.z) > limit) {
-            io.to(id).emit('gameOver', { reason: 'Harita sınırına çarptın!' });
+            if (!p.isBot) {
+                io.to(id).emit('gameOver', { reason: 'Harita sınırına çarptın!' });
+            }
             delete players[id];
+            balanceBots();
         }
     });
 
-    // Snake vs Snake Collision
+    // 3. SNAKE VS SNAKE COLLISION CHECK
     const aliveIds = Object.keys(players);
     aliveIds.forEach(idA => {
         const pA = players[idA];
@@ -185,14 +294,17 @@ setInterval(() => {
 
             const dx = pA.x - pB.x;
             const dz = pA.z - pB.z;
-            if (Math.sqrt(dx * dx + dz * dz) < 2.0) {
-                io.to(idA).emit('gameOver', { reason: `${pB.name} oyuncusuna çarptın!` });
+            if (Math.sqrt(dx * dx + dz * dz) < 2.2) {
+                if (!pA.isBot) {
+                    io.to(idA).emit('gameOver', { reason: `${pB.name} oyuncusuna çarptın!` });
+                }
                 delete players[idA];
+                balanceBots();
             }
         });
     });
 
-    // Ultra-light snapshot (skips body segments entirely, saving 95% payload overhead!)
+    // Ultra-light snapshot emit (30 FPS)
     io.volatile.emit('gameState', {
         players: players
     });
@@ -201,7 +313,7 @@ setInterval(() => {
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
     console.log(`================================================`);
-    console.log(`🚀 Snake.io 3D Slither-Style Ultra-Light Sunucu Hazır!`);
-    console.log(`🌐 Bağlantı adresi: http://localhost:${PORT}`);
+    console.log(`🚀 Snake.io 3D Matchmaking Bot Server Active!`);
+    console.log(`🌐 Listening on port: ${PORT}`);
     console.log(`================================================`);
 });
