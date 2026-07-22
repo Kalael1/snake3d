@@ -6,7 +6,8 @@ export class Arena {
         this.size = size;
         this.wallHeight = 8;
         this.cones = [];
-        this.barriers = []; // Solid neon crash barriers with bounding boxes
+        this.barriers = [];
+        this.buildings = []; // Solid building collision boxes
         this.init();
     }
 
@@ -56,13 +57,13 @@ export class Arena {
         circleInner.position.y = 0.035;
         this.scene.add(circleInner);
 
-        // ================= TRON CYBERPUNK BUILDINGS =================
+        // ================= TRON CYBERPUNK BUILDINGS & NEON SHOPS =================
         this.createTronBuildings();
 
         // ================= SOLID NEON CRASH BARRIERS =================
         this.createCrashBarriers();
 
-        // Outer Tron Perimeter Wall (Glowing Magenta / Cyan Wall)
+        // Outer Tron Perimeter Wall
         const wallMat = new THREE.MeshBasicMaterial({ color: 0xff0055, transparent: true, opacity: 0.95 });
         const wallConfigs = [
             { size: [this.size, this.wallHeight, 1.5], pos: [0, this.wallHeight / 2, -halfSize] },
@@ -78,7 +79,7 @@ export class Arena {
             this.scene.add(wall);
         });
 
-        // Corner Glowing Tron Pillars
+        // Corner Glowing Pillars
         const pillarGeo = new THREE.CylinderGeometry(3, 3, this.wallHeight + 10, 12);
         const pillarMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff });
         const corners = [
@@ -105,7 +106,6 @@ export class Arena {
         const roadPositions = [-120, 0, 120];
 
         roadPositions.forEach(offset => {
-            // Dark Highway Base
             const vRoad = new THREE.Mesh(new THREE.PlaneGeometry(28, this.size), roadMat);
             vRoad.rotation.x = -Math.PI / 2;
             vRoad.position.set(offset, 0.015, 0);
@@ -116,7 +116,6 @@ export class Arena {
             hRoad.position.set(0, 0.015, offset);
             this.scene.add(hRoad);
 
-            // Glowing Tron Highway Stripes
             if (offset === 0) {
                 const segLen = (this.size / 2) - 25;
                 const segCenterPos = 25 + (segLen / 2);
@@ -162,22 +161,24 @@ export class Arena {
         const buildingMat = new THREE.MeshLambertMaterial({ color: 0x060c18 });
         const neonTrimColors = [0x00f3ff, 0xff0055, 0x00ff88, 0xffaa00];
 
+        const shopNames = ['🛒 24/7 NEON MARKET', '🔧 CYBER GARAGE', '🍜 NEON RAMEN', '🎮 ARCADE 2099', '⚡ NITRO STATION'];
+
         const buildingLocations = [];
 
         // Outer Perimeter Tron Skyscrapers
         for (let i = -210; i <= 210; i += 60) {
-            buildingLocations.push({ x: i, z: -225, w: 45, d: 45, h: 35 + Math.random() * 35 });
-            buildingLocations.push({ x: i, z: 225, w: 45, d: 45, h: 35 + Math.random() * 35 });
-            buildingLocations.push({ x: -225, z: i, w: 45, d: 45, h: 35 + Math.random() * 35 });
-            buildingLocations.push({ x: 225, z: i, w: 45, d: 45, h: 35 + Math.random() * 35 });
+            buildingLocations.push({ x: i, z: -225, w: 45, d: 45, h: 35 });
+            buildingLocations.push({ x: i, z: 225, w: 45, d: 45, h: 35 });
+            buildingLocations.push({ x: -225, z: i, w: 45, d: 45, h: 35 });
+            buildingLocations.push({ x: 225, z: i, w: 45, d: 45, h: 35 });
         }
 
-        // Inner City Block Monoliths
+        // Inner City Block Monoliths (Shops & Businesses)
         const innerBlocks = [-170, -60, 60, 170];
         innerBlocks.forEach(bx => {
             innerBlocks.forEach(bz => {
                 if (Math.abs(bx) === 60 && Math.abs(bz) === 60) return;
-                buildingLocations.push({ x: bx, z: bz, w: 38, d: 38, h: 25 + Math.random() * 25 });
+                buildingLocations.push({ x: bx, z: bz, w: 38, d: 38, h: 25, isShop: true });
             });
         });
 
@@ -187,7 +188,15 @@ export class Arena {
             bMesh.position.set(b.x, b.h / 2, b.z);
             this.scene.add(bMesh);
 
-            // Glowing Wireframe Edges (Tron Aesthetic!)
+            // Save Building Collision Box
+            this.buildings.push({
+                minX: b.x - (b.w / 2) - 1.2,
+                maxX: b.x + (b.w / 2) + 1.2,
+                minZ: b.z - (b.d / 2) - 1.2,
+                maxZ: b.z + (b.d / 2) + 1.2
+            });
+
+            // Glowing Wireframe Edges
             const wireGeo = new THREE.WireframeGeometry(bGeo);
             const wireMat = new THREE.LineBasicMaterial({ color: neonTrimColors[idx % neonTrimColors.length], linewidth: 2 });
             const wireLine = new THREE.LineSegments(wireGeo, wireMat);
@@ -200,6 +209,18 @@ export class Arena {
             const trimMesh = new THREE.Mesh(trimGeo, trimMat);
             trimMesh.position.set(b.x, b.h + 0.5, b.z);
             this.scene.add(trimMesh);
+
+            // 3D Glowing Neon Storefront Signboards along Roadside!
+            if (b.isShop) {
+                const signColor = neonTrimColors[idx % neonTrimColors.length];
+                const signMat = new THREE.MeshBasicMaterial({ color: signColor });
+
+                // Billboard Signboard structure
+                const signGeo = new THREE.BoxGeometry(16, 4, 0.8);
+                const signMesh = new THREE.Mesh(signGeo, signMat);
+                signMesh.position.set(b.x, 6, b.z + (b.d / 2) + 0.5);
+                this.scene.add(signMesh);
+            }
         });
     }
 
@@ -208,15 +229,11 @@ export class Arena {
         const barrierMatNeon = new THREE.MeshBasicMaterial({ color: 0xff0055 });
         const hazardMatYellow = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
 
-        // Barrier Placements (Dangerous chicanes, intersection blocks, and street barriers!)
         const barrierConfigs = [
-            // Center Roundabout Entrance Barriers (High risk drift chicanes!)
             { x: -35, z: 0, w: 1.5, h: 2.8, d: 10 },
             { x: 35, z: 0, w: 1.5, h: 2.8, d: 10 },
             { x: 0, z: -35, w: 10, h: 2.8, d: 1.5 },
             { x: 0, z: 35, w: 10, h: 2.8, d: 1.5 },
-
-            // Highway Mid-Street Barriers
             { x: -120, z: -60, w: 1.5, h: 2.8, d: 14 },
             { x: -120, z: 60, w: 1.5, h: 2.8, d: 14 },
             { x: 120, z: -60, w: 1.5, h: 2.8, d: 14 },
@@ -225,8 +242,6 @@ export class Arena {
             { x: 60, z: -120, w: 14, h: 2.8, d: 1.5 },
             { x: -60, z: 120, w: 14, h: 2.8, d: 1.5 },
             { x: 60, z: 120, w: 14, h: 2.8, d: 1.5 },
-
-            // Corner Chicane Obstructive Barriers
             { x: -100, z: -100, w: 8, h: 2.8, d: 8 },
             { x: 100, z: -100, w: 8, h: 2.8, d: 8 },
             { x: -100, z: 100, w: 8, h: 2.8, d: 8 },
@@ -236,19 +251,16 @@ export class Arena {
         barrierConfigs.forEach(b => {
             const group = new THREE.Group();
 
-            // Heavy Concrete Base
             const baseGeo = new THREE.BoxGeometry(b.w, b.h, b.d);
             const baseMesh = new THREE.Mesh(baseGeo, barrierMatConcrete);
             baseMesh.position.y = b.h / 2;
             group.add(baseMesh);
 
-            // Glowing Neon Edge Strip
             const neonGeo = new THREE.BoxGeometry(b.w + 0.2, 0.4, b.d + 0.2);
             const neonMesh = new THREE.Mesh(neonGeo, barrierMatNeon);
             neonMesh.position.y = b.h + 0.2;
             group.add(neonMesh);
 
-            // Flashing Yellow Warning Beacons
             const beaconGeo = new THREE.CylinderGeometry(0.4, 0.4, 0.6, 8);
             const beaconMesh1 = new THREE.Mesh(beaconGeo, hazardMatYellow);
             beaconMesh1.position.set(-b.w / 3, b.h + 0.6, 0);
@@ -261,7 +273,6 @@ export class Arena {
             group.position.set(b.x, 0, b.z);
             this.scene.add(group);
 
-            // Save barrier collision bounding box
             this.barriers.push({
                 x: b.x,
                 z: b.z,
@@ -280,14 +291,12 @@ export class Arena {
 
         const positions = [];
 
-        // Roundabout circle ring cones
         const ringRadius = 23;
         for (let i = 0; i < 12; i++) {
             const angle = (i / 12) * Math.PI * 2;
             positions.push({ x: Math.cos(angle) * ringRadius, z: Math.sin(angle) * ringRadius });
         }
 
-        // Slalom cone courses
         for (let i = -160; i <= 160; i += 40) {
             if (Math.abs(i) > 40) {
                 positions.push({ x: i, z: -120 });
@@ -358,6 +367,16 @@ export class Arena {
     checkBarrierCollision(carX, carZ) {
         for (let i = 0; i < this.barriers.length; i++) {
             const b = this.barriers[i];
+            if (carX >= b.minX && carX <= b.maxX && carZ >= b.minZ && carZ <= b.maxZ) {
+                return b;
+            }
+        }
+        return null;
+    }
+
+    checkBuildingCollision(carX, carZ) {
+        for (let i = 0; i < this.buildings.length; i++) {
+            const b = this.buildings[i];
             if (carX >= b.minX && carX <= b.maxX && carZ >= b.minZ && carZ <= b.maxZ) {
                 return b;
             }

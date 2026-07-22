@@ -268,11 +268,13 @@ window.addEventListener('touchend', (e) => {
     }
 }, { passive: true });
 
+let isTPSMode = false;
 const keysPressed = {};
 
 window.addEventListener('keydown', (e) => {
     if (document.activeElement === chatInput || document.activeElement === mobileChatInput) return;
     keysPressed[e.code] = true;
+    if (e.code === 'KeyV') isTPSMode = !isTPSMode;
     if (e.code === 'Space') isEmittingTrail = true;
     if (e.code === 'Escape' && isGameRunning) openMenu('Oyun Duraklatıldı');
 });
@@ -442,14 +444,23 @@ function animate() {
             return;
         }
 
-        // 5. Update score display
+        const hitBuilding = arena.checkBuildingCollision(headPos.x, headPos.z);
+        if (hitBuilding) {
+            triggerGameOver("💥 Binaya Yüksek Hızla Çarptın ve Patladın!");
+            return;
+        }
+
+        // 5. Update Minimap Radar HUD
+        updateMinimap();
+
+        // 6. Update score display
         scoreElement.innerText = driftScore;
         if (driftScore > progressionManager.highScore) {
             progressionManager.saveHighScore(driftScore);
             highScoreElement.innerText = driftScore;
         }
 
-        // 6. Drift combo display
+        // 7. Drift combo display
         if (driftComboEl) {
             if (localCar.isDrifting) {
                 driftComboEl.classList.remove('hidden');
@@ -460,20 +471,20 @@ function animate() {
             }
         }
 
-        // 7. Drift angle indicator
+        // 8. Drift angle indicator
         if (driftAngleEl) {
             driftAngleEl.innerText = `${Math.floor(localCar.slipAngle)}°`;
             driftAngleEl.style.color = localCar.slipAngle > 30 ? '#ef4444' : localCar.slipAngle > 10 ? '#f59e0b' : '#6b7280';
         }
 
-        // 8. Wall collision (client-side)
+        // 9. Wall collision (client-side)
         const wallThreshold = 240;
         if (Math.abs(headPos.x) >= wallThreshold || Math.abs(headPos.z) >= wallThreshold) {
             triggerGameOver('💥 Duvara çarptın!');
             return;
         }
 
-        // 9. Car vs car collision
+        // 10. Car vs car collision
         for (const otherId in otherCars) {
             const rc = otherCars[otherId];
             if (!rc) continue;
@@ -485,10 +496,10 @@ function animate() {
             }
         }
 
-        // 10. Remote car animation
+        // 11. Remote car animation
         for (const id in otherCars) otherCars[id].animate(delta);
 
-        // 11. Network emit (20 ticks/sec)
+        // 12. Network emit (20 ticks/sec)
         if (now - lastNetworkEmitTime > 50) {
             lastNetworkEmitTime = now;
             socket.volatile.emit('playerInput', {
@@ -501,26 +512,76 @@ function animate() {
             });
         }
     } else {
-        // Menu idle animation
         const time = now * 0.003;
         targetPoint.set(Math.cos(time) * 30, 0, Math.sin(time) * 30);
         localCar.update(delta, targetPoint);
     }
 
-    // Camera follow
-    currentZoom += (targetZoom - currentZoom) * 0.1;
+    // Camera follow (TPS Chase Cam vs Top-Down Cam)
     const hp = localCar.getHeadPosition();
-    const camX = hp.x - Math.sin(localCar.heading) * 8 * currentZoom;
-    const camZ = hp.z - Math.cos(localCar.heading) * 8 * currentZoom;
-    const camY = 15 * currentZoom;
 
-    camera.position.x += (camX - camera.position.x) * 0.08;
-    camera.position.y += (camY - camera.position.y) * 0.08;
-    camera.position.z += (camZ - camera.position.z) * 0.08;
-    camera.lookAt(hp.x, 0, hp.z);
+    if (isTPSMode) {
+        // TPS Mode (Third-Person Follow Camera behind car)
+        const camX = hp.x - Math.sin(localCar.heading) * 14;
+        const camZ = hp.z - Math.cos(localCar.heading) * 14;
+        const camY = 5.5;
+
+        camera.position.x += (camX - camera.position.x) * 0.15;
+        camera.position.y += (camY - camera.position.y) * 0.15;
+        camera.position.z += (camZ - camera.position.z) * 0.15;
+        camera.lookAt(hp.x + Math.sin(localCar.heading) * 8, 2.0, hp.z + Math.cos(localCar.heading) * 8);
+    } else {
+        // Classic Top-Down Isometric Camera
+        currentZoom += (targetZoom - currentZoom) * 0.1;
+        const camX = hp.x - Math.sin(localCar.heading) * 8 * currentZoom;
+        const camZ = hp.z - Math.cos(localCar.heading) * 8 * currentZoom;
+        const camY = 15 * currentZoom;
+
+        camera.position.x += (camX - camera.position.x) * 0.08;
+        camera.position.y += (camY - camera.position.y) * 0.08;
+        camera.position.z += (camZ - camera.position.z) * 0.08;
+        camera.lookAt(hp.x, 0, hp.z);
+    }
 
     nameTagManager.updatePositions();
     renderer.render(scene, camera);
+}
+
+function updateMinimap() {
+    const canvas = document.getElementById('minimap-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 140, 140);
+
+    // Dark Radar Base
+    ctx.fillStyle = '#050c18';
+    ctx.beginPath();
+    ctx.arc(70, 70, 70, 0, Math.PI * 2);
+    ctx.fill();
+
+    const hp = localCar.getHeadPosition();
+    const mapScale = 140 / arena.size;
+
+    // Draw arena boundary
+    ctx.strokeStyle = '#ff0055';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(70 - 250 * mapScale, 70 - 250 * mapScale, 500 * mapScale, 500 * mapScale);
+
+    // Draw player icon (Cyan Arrow)
+    const px = 70 + hp.x * mapScale;
+    const pz = 70 + hp.z * mapScale;
+
+    ctx.save();
+    ctx.translate(px, pz);
+    ctx.rotate(localCar.heading);
+    ctx.fillStyle = '#00f3ff';
+    ctx.beginPath();
+    ctx.moveTo(0, -6);
+    ctx.lineTo(4, 5);
+    ctx.lineTo(-4, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
 }
 
 animate();
