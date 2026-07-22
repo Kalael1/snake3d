@@ -15,22 +15,15 @@ export class DriftCar {
         this.position = new THREE.Vector3(0, 0, 0);
         this.heading = 0;         // Heading angle (radians)
         this.velocityAngle = 0;   // Velocity direction angle (radians)
-        this.targetSpeed = 30;    // Target forward speed
-        this.currentSpeed = 30;   // Current active speed
-
-        // Smooth responsive steering
-        this.maxTurnRate = 4.5;   // High responsiveness for natural mouse control!
-        this.gripFactor = 3.8;    // Balanced grip for natural drift feel
-
-        // Spinout & Stall Mechanics (Only on extreme donut circles)
-        this.isSpinningOut = false;
-        this.spinoutTimer = 0;
-        this.continuousTurnTime = 0;
-        this.spinDir = 1;
+        this.speed = 32;          // Constant cruising speed
+        
+        // PURE, SMOOTH & ULTRA-RESPONSIVE MOUSE DRIFT CONTROLS
+        this.steerSpeed = 6.0;    // Smooth mouse steering responsiveness
+        this.gripFactor = 3.6;    // Balanced grip for natural drift sliding
 
         // Suspension & Handling Lean Physics
-        this.currentRoll = 0;
-        this.currentPitch = 0;
+        this.currentRoll = 0;     // Side-to-side body roll (Z-axis)
+        this.currentPitch = 0;    // Front-to-back nose dip (X-axis)
 
         // Drift tracking
         this.slipAngle = 0;
@@ -51,7 +44,7 @@ export class DriftCar {
         this.buildFallbackModel();
         this.loadCarModel(this.activeSkin.modelUrl);
 
-        // Tire marks system
+        // Tire marks system (InstancedMesh - High Visibility y=0.08)
         this.MAX_MARKS = 1000;
         this.markIndex = 0;
         this.markTimer = 0;
@@ -145,116 +138,61 @@ export class DriftCar {
         this.loadCarModel(this.activeSkin.modelUrl);
     }
 
-    triggerSpinout(spinDirection = 1) {
-        if (this.isSpinningOut) return;
-
-        this.isSpinningOut = true;
-        this.spinoutTimer = 0.8;
-        this.currentSpeed = 0; // Speed drops to 0 on spinout
-        this.spinDir = spinDirection;
-
-        // Reset drift combo
-        this.currentDriftScore = 0;
-        this.isDrifting = false;
-        this.driftCombo = 1;
-        this.driftTimer = 0;
-        this.continuousTurnTime = 0;
-    }
-
     update(delta, targetPoint) {
-        if (this.isSpinningOut) {
-            this.spinoutTimer -= delta;
+        // 1. PURE SMOOTH MOUSE STEERING
+        if (targetPoint) {
+            const dx = targetPoint.x - this.position.x;
+            const dz = targetPoint.z - this.position.z;
+            const targetAngle = Math.atan2(dx, dz);
 
-            // Donut spin in place
-            this.heading += this.spinDir * 8.0 * delta;
-            this.velocityAngle = this.heading;
-            this.currentSpeed = 0;
+            let steerDiff = targetAngle - this.heading;
+            while (steerDiff < -Math.PI) steerDiff += Math.PI * 2;
+            while (steerDiff > Math.PI) steerDiff -= Math.PI * 2;
 
-            this.markTimer += delta;
-            if (this.markTimer > 0.02) {
-                this.markTimer = 0;
-                this.addTireMark(this.position.x - 0.8, this.position.z, this.heading);
-                this.addTireMark(this.position.x + 0.8, this.position.z, this.heading);
-            }
-
-            if (this.spinoutTimer <= 0) {
-                this.isSpinningOut = false;
-            }
-        } else {
-            // PURE SMOOTH MOUSE STEERING
-            if (targetPoint) {
-                const dx = targetPoint.x - this.position.x;
-                const dz = targetPoint.z - this.position.z;
-                const targetAngle = Math.atan2(dx, dz);
-
-                let steerDiff = targetAngle - this.heading;
-                while (steerDiff < -Math.PI) steerDiff += Math.PI * 2;
-                while (steerDiff > Math.PI) steerDiff -= Math.PI * 2;
-
-                // Detect ONLY EXTREME continuous donut spinning (turning in tight circles > 1.2s)
-                if (Math.abs(steerDiff) > 2.2) {
-                    this.continuousTurnTime += delta;
-                    if (this.continuousTurnTime > 1.2) {
-                        this.triggerSpinout(steerDiff > 0 ? 1 : -1);
-                        return;
-                    }
-                } else {
-                    this.continuousTurnTime = Math.max(0, this.continuousTurnTime - delta * 2);
-                }
-
-                // Smooth natural heading rotation
-                const turnStep = Math.max(-this.maxTurnRate * delta, Math.min(this.maxTurnRate * delta, steerDiff * 6.0 * delta));
-                this.heading += turnStep;
-            }
-
-            // Velocity direction with realistic drift lag
-            let velDiff = this.heading - this.velocityAngle;
-            while (velDiff < -Math.PI) velDiff += Math.PI * 2;
-            while (velDiff > Math.PI) velDiff -= Math.PI * 2;
-            this.velocityAngle += velDiff * this.gripFactor * delta;
-
-            // Slip angle (drift magnitude)
-            this.slipAngle = Math.abs(velDiff) * (180 / Math.PI);
-
-            // Re-acceleration to 30
-            this.currentSpeed += (this.targetSpeed - this.currentSpeed) * Math.min(1.0, 4.0 * delta);
-
-            // Position update
-            this.position.x += Math.sin(this.velocityAngle) * this.currentSpeed * delta;
-            this.position.z += Math.cos(this.velocityAngle) * this.currentSpeed * delta;
-
-            // Leave tire marks on all drifts
-            this.markTimer += delta;
-            if ((this.isDrifting || this.slipAngle > 10) && this.markTimer > 0.02) {
-                this.markTimer = 0;
-                const cosH = Math.cos(this.heading);
-                const sinH = Math.sin(this.heading);
-
-                const rlX = this.position.x + (-1.1 * cosH) + (-1.3 * sinH);
-                const rlZ = this.position.z + (1.1 * sinH) + (-1.3 * cosH);
-                this.addTireMark(rlX, rlZ, this.heading);
-
-                const rrX = this.position.x + (1.1 * cosH) + (-1.3 * sinH);
-                const rrZ = this.position.z + (-1.1 * sinH) + (-1.3 * cosH);
-                this.addTireMark(rrX, rrZ, this.heading);
-            }
-
-            this.updateDriftScore(delta);
+            // Smooth natural heading rotation towards mouse direction
+            this.heading += steerDiff * Math.min(1.0, this.steerSpeed * delta);
         }
 
-        this.currentAngle = this.heading;
-
-        // Group position & heading rotation
-        this.group.position.set(this.position.x, 0, this.position.z);
-        this.group.rotation.y = this.heading;
-
-        // Handling lean physics
+        // 2. Velocity direction with realistic drift lag
         let velDiff = this.heading - this.velocityAngle;
         while (velDiff < -Math.PI) velDiff += Math.PI * 2;
         while (velDiff > Math.PI) velDiff -= Math.PI * 2;
+        this.velocityAngle += velDiff * this.gripFactor * delta;
 
-        const targetRoll = this.isSpinningOut ? (this.spinDir * 0.45) : Math.max(-0.35, Math.min(0.35, velDiff * 0.45));
-        const targetPitch = this.isSpinningOut ? 0.2 : Math.min(0.12, Math.abs(velDiff) * 0.15);
+        // 3. Slip angle (drift magnitude)
+        this.slipAngle = Math.abs(velDiff) * (180 / Math.PI);
+        this.currentAngle = this.heading;
+
+        // 4. Position update
+        this.position.x += Math.sin(this.velocityAngle) * this.speed * delta;
+        this.position.z += Math.cos(this.velocityAngle) * this.speed * delta;
+
+        // 5. Leave tire marks on all drifts
+        this.markTimer += delta;
+        if ((this.isDrifting || this.slipAngle > 10) && this.markTimer > 0.02) {
+            this.markTimer = 0;
+            const cosH = Math.cos(this.heading);
+            const sinH = Math.sin(this.heading);
+
+            const rlX = this.position.x + (-1.1 * cosH) + (-1.3 * sinH);
+            const rlZ = this.position.z + (1.1 * sinH) + (-1.3 * cosH);
+            this.addTireMark(rlX, rlZ, this.heading);
+
+            const rrX = this.position.x + (1.1 * cosH) + (-1.3 * sinH);
+            const rrZ = this.position.z + (-1.1 * sinH) + (-1.3 * cosH);
+            this.addTireMark(rrX, rrZ, this.heading);
+        }
+
+        // 6. Drift score update
+        this.updateDriftScore(delta);
+
+        // 7. Group position & heading rotation
+        this.group.position.set(this.position.x, 0, this.position.z);
+        this.group.rotation.y = this.heading;
+
+        // 8. REALISTIC HANDLING & SUSPENSION TILT MECHANIC (Roll & Pitch)
+        const targetRoll = Math.max(-0.35, Math.min(0.35, velDiff * 0.45));
+        const targetPitch = Math.min(0.12, Math.abs(velDiff) * 0.15);
 
         this.currentRoll += (targetRoll - this.currentRoll) * Math.min(1.0, 12.0 * delta);
         this.currentPitch += (targetPitch - this.currentPitch) * Math.min(1.0, 10.0 * delta);
@@ -316,16 +254,12 @@ export class DriftCar {
         this.velocityAngle = this.heading;
         this.slipAngle = 0;
         this.isDrifting = false;
-        this.isSpinningOut = false;
-        this.spinoutTimer = 0;
-        this.continuousTurnTime = 0;
         this.currentDriftScore = 0;
         this.totalDriftScore = 0;
         this.driftCombo = 1;
         this.driftTimer = 0;
         this.currentRoll = 0;
         this.currentPitch = 0;
-        this.currentSpeed = this.targetSpeed;
         this.group.position.set(this.position.x, 0, this.position.z);
         this.group.rotation.set(0, this.heading, 0);
     }
