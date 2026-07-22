@@ -19,7 +19,7 @@ export class DriftCar {
         this.baseSpeed = 32;      // Cruising speed when engine is ON
         this.currentSpeed = 32;   // Dynamic speed
         
-        // PURE, SMOOTH & ULTRA-RESPONSIVE CONTROLS
+        // PURE, SMOOTH & ULTRA-RESPONSIVE HYBRID CONTROLS
         this.steerSpeed = 6.0;        // Smooth mouse steering responsiveness
         this.keySteerVelocity = 0.0;  // Damped keyboard steering velocity for buttery smooth turning
         this.gripFactor = 3.6;        // Balanced grip for natural drift sliding
@@ -164,18 +164,18 @@ export class DriftCar {
         const targetSpeed = isEngineOn ? this.baseSpeed : 0.0;
         this.currentSpeed += (targetSpeed - this.currentSpeed) * Math.min(1.0, 4.0 * delta);
 
-        // 2. KEYBOARD & MOUSE STEERING (With Strict NaN Guards)
+        // 2. HYBRID STEERING SYSTEM: A/D KEYBOARD + MOUSE CURSOR BOTH WORK TOGETHER 100%!
         const targetSteerVel = steerDir * 2.2;
         this.keySteerVelocity += (targetSteerVel - this.keySteerVelocity) * Math.min(1.0, 7.5 * delta);
 
-        if (Math.abs(this.keySteerVelocity) > 0.05) {
+        if (steerDir !== 0 || Math.abs(this.keySteerVelocity) > 0.08) {
+            // A/D Keyboard or Mobile Touch steering
             this.heading += this.keySteerVelocity * delta;
         } else if (targetPoint && targetPoint.x !== undefined && targetPoint.z !== undefined && !isNaN(targetPoint.x) && !isNaN(targetPoint.z) && this.currentSpeed > 0.5) {
+            // Mouse target steering when keyboard A/D is not pressed
             const dx = targetPoint.x - this.position.x;
             const dz = targetPoint.z - this.position.z;
-            
-            // Only steer towards mouse target if distance > 1.5 units (prevents jitter at origin)
-            if (dx * dx + dz * dz > 2.2) {
+            if (dx * dx + dz * dz > 2.0) {
                 const targetAngle = Math.atan2(dx, dz);
                 if (!isNaN(targetAngle)) {
                     let steerDiff = targetAngle - this.heading;
@@ -313,7 +313,7 @@ export class DriftCar {
     }
 
     reset() {
-        this.position.set(0, 0, 0); // Always spawn safely in center avenue!
+        this.position.set(0, 0, 0); // Safe center spawn!
         this.heading = 0;
         this.velocityAngle = 0;
         this.slipAngle = 0;
@@ -334,7 +334,7 @@ export class DriftCar {
         this.pitchVelocity = 0;
         if (this.leftTireTrail) this.leftTireTrail.clear();
         if (this.rightTireTrail) this.rightTireTrail.clear();
-        this.group.visible = true; // Ensure 3D car model is visible!
+        this.group.visible = true; // Guaranteed visible 3D car!
         this.group.position.set(0, 0, 0);
         this.group.rotation.set(0, 0, 0);
     }

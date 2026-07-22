@@ -590,11 +590,8 @@ function animate() {
             isEngineOn
         };
 
-        if (selectedControlScheme === 'keyboard') {
-            localCar.update(delta, null, controlState);
-        } else {
-            localCar.update(delta, targetPoint, controlState);
-        }
+        // Hybrid steering: Both Mouse Target & Keyboard A/D steer seamlessly!
+        localCar.update(delta, targetPoint, controlState);
 
         const headPos = localCar.getHeadPosition();
         const driftScore = localCar.getScore();
