@@ -11,13 +11,17 @@ export class DriftCar {
         this.skinId = 'sport';
         this.activeSkin = getSkinById(this.skinId);
 
-        // Physics parameters
+        // Physics parameters & handling
         this.position = new THREE.Vector3(0, 0, 0);
         this.heading = 0;         // Heading angle (radians)
         this.velocityAngle = 0;   // Velocity direction angle (radians)
-        this.speed = 28;          // Constant forward movement speed
-        this.steerSpeed = 5.0;    // Smooth steering responsiveness
-        this.gripFactor = 4.5;    // Grip level (lower = more drift slide)
+        this.speed = 30;          // Constant forward movement speed
+        this.steerSpeed = 5.5;    // Smooth steering responsiveness
+        this.gripFactor = 4.2;    // Grip level (lower = more drift slide)
+
+        // Suspension & Handling Lean Physics
+        this.currentRoll = 0;     // Side-to-side body roll (Z-axis)
+        this.currentPitch = 0;    // Front-to-back nose dip (X-axis)
 
         // Drift tracking
         this.slipAngle = 0;
@@ -76,7 +80,6 @@ export class DriftCar {
             const model = gltf.scene;
             modelCache[url] = model;
 
-            // Auto-center & auto-scale GLB model
             const box = new THREE.Box3().setFromObject(model);
             const size = box.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z);
@@ -101,8 +104,7 @@ export class DriftCar {
             this.group.remove(this.fallbackGroup);
         }
 
-        // Rotate GLB model by 90° (Math.PI/2) so car front points straight forward along movement heading!
-        const rotY = this.activeSkin.rotationY !== undefined ? this.activeSkin.rotationY : Math.PI / 2;
+        const rotY = this.activeSkin.rotationY !== undefined ? this.activeSkin.rotationY : -Math.PI / 2;
         model.rotation.y = rotY;
 
         this.loadedMesh = model;
@@ -170,13 +172,21 @@ export class DriftCar {
         // 6. Drift score update
         this.updateDriftScore(delta);
 
-        // 7. Group position & rotation
+        // 7. Group position & heading rotation
         this.group.position.set(this.position.x, 0, this.position.z);
         this.group.rotation.y = this.heading;
 
-        // 8. Dynamic drift tilt
-        const tiltAmount = Math.max(-0.18, Math.min(0.18, velDiff * 0.25));
-        this.group.rotation.z = -tiltAmount;
+        // 8. REALISTIC HANDLING & SUSPENSION TILT MECHANIC (Roll & Pitch)
+        // Target Body Roll (leaning outwards/inwards based on centrifugal drift force)
+        const targetRoll = Math.max(-0.35, Math.min(0.35, velDiff * 0.45));
+        const targetPitch = Math.min(0.12, Math.abs(velDiff) * 0.15); // Nose dips slightly during sharp turns
+
+        // Smooth spring lerp for suspension feel
+        this.currentRoll += (targetRoll - this.currentRoll) * Math.min(1.0, 12.0 * delta);
+        this.currentPitch += (targetPitch - this.currentPitch) * Math.min(1.0, 10.0 * delta);
+
+        this.group.rotation.z = -this.currentRoll;
+        this.group.rotation.x = this.currentPitch;
 
         // 9. Tire marks during drift
         this.markTimer += delta;
@@ -252,6 +262,8 @@ export class DriftCar {
         this.totalDriftScore = 0;
         this.driftCombo = 1;
         this.driftTimer = 0;
+        this.currentRoll = 0;
+        this.currentPitch = 0;
         this.group.position.set(this.position.x, 0, this.position.z);
         this.group.rotation.set(0, this.heading, 0);
     }

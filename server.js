@@ -28,56 +28,24 @@ app.use((req, res) => {
 // ============== CONSTANTS ==============
 const ARENA_SIZE = 500;
 const TICK_RATE = 15;
-const DESIRED_ROOM_SIZE = 5;
-const BOT_SPEED = 25;
-
-const botNames = ['DriftKing', 'TurboBot', 'Bot Efe', 'Bot Can', 'AlphaDrift'];
-const botSkins = ['red_classic', 'neon_blue', 'sunset_orange', 'toxic_green', 'cyberpunk_purple'];
+const DESIRED_ROOM_SIZE = 0; // Bots removed per user request!
 
 const players = {};
 
 function round1(n) { return Math.round(n * 10) / 10; }
 
-// ============== BOT MANAGEMENT ==============
-function getRealCount() { let c = 0; for (const id in players) if (!players[id].isBot) c++; return c; }
-function getBotCount() { let c = 0; for (const id in players) if (players[id].isBot) c++; return c; }
-
-function spawnBot() {
-    const id = 'bot_' + Math.random().toString(36).substring(2, 7);
-    const half = (ARENA_SIZE / 2) - 30;
-    players[id] = {
-        id, isBot: true,
-        name: `🤖 ${botNames[Math.floor(Math.random() * botNames.length)]}`,
-        skinId: botSkins[Math.floor(Math.random() * botSkins.length)],
-        x: round1((Math.random() - 0.5) * 2 * half),
-        z: round1((Math.random() - 0.5) * 2 * half),
-        angle: Math.random() * Math.PI * 2,
-        driftScore: Math.floor(Math.random() * 100),
-        _botTimer: 0,
-        _botTurnTarget: Math.random() * Math.PI * 2
-    };
-}
-
-function removeOneBot() { for (const id in players) if (players[id].isBot) { delete players[id]; return; } }
-
-function balanceBots() {
-    const needed = Math.max(0, DESIRED_ROOM_SIZE - getRealCount());
-    const current = getBotCount();
-    if (current < needed) for (let i = 0; i < needed - current; i++) spawnBot();
-    else if (current > needed) for (let i = 0; i < current - needed; i++) removeOneBot();
-}
-
 // ============== SOCKET ==============
 io.on('connection', (socket) => {
-    console.log(`[+] ${socket.id}`);
+    console.log(`[+] Player connected: ${socket.id}`);
 
     socket.on('join', (data) => {
         const name = typeof data === 'string' ? data : (data.name || 'Oyuncu');
-        const skinId = typeof data === 'object' && data.skinId ? data.skinId : 'red_classic';
+        const skinId = typeof data === 'object' && data.skinId ? data.skinId : 'sport';
         const half = (ARENA_SIZE / 2) - 30;
 
         players[socket.id] = {
-            id: socket.id, isBot: false,
+            id: socket.id,
+            isBot: false,
             name: name || 'Driver #' + socket.id.substring(0, 4),
             skinId,
             x: round1((Math.random() - 0.5) * 2 * half),
@@ -85,7 +53,7 @@ io.on('connection', (socket) => {
             angle: Math.random() * Math.PI * 2,
             driftScore: 0
         };
-        balanceBots();
+
         socket.emit('init', { id: socket.id, arenaSize: ARENA_SIZE });
     });
 
@@ -108,62 +76,26 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        console.log(`[-] ${socket.id}`);
+        console.log(`[-] Player disconnected: ${socket.id}`);
         delete players[socket.id];
-        balanceBots();
     });
 });
-
-balanceBots();
 
 // ============== GAME LOOP ==============
 const TICK_MS = 1000 / TICK_RATE;
 const limit = ARENA_SIZE / 2 - 5;
 
 setInterval(() => {
-    // 1. BOT AI — simple driving + random turns
-    for (const id in players) {
-        const bot = players[id];
-        if (!bot.isBot) continue;
-
-        bot._botTimer = (bot._botTimer || 0) + 1;
-
-        // Change direction periodically
-        if (bot._botTimer > 20 + Math.random() * 40) {
-            bot._botTimer = 0;
-            const distFromCenter = Math.sqrt(bot.x * bot.x + bot.z * bot.z);
-            if (distFromCenter > 180) {
-                bot._botTurnTarget = Math.atan2(-bot.x, -bot.z);
-            } else {
-                bot._botTurnTarget = bot.angle + (Math.random() - 0.5) * 2.5;
-            }
-        }
-
-        // Smooth steer toward target
-        let diff = bot._botTurnTarget - bot.angle;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        bot.angle += diff * 0.15;
-
-        const dt = TICK_MS / 1000;
-        bot.x = round1(bot.x + Math.sin(bot.angle) * BOT_SPEED * dt);
-        bot.z = round1(bot.z + Math.cos(bot.angle) * BOT_SPEED * dt);
-
-        // Bot drift score simulation
-        if (Math.abs(diff) > 0.15) bot.driftScore += Math.floor(Math.abs(diff) * 10);
-    }
-
-    // 2. WALL DEATH
+    // 1. WALL DEATH
     for (const id in players) {
         const p = players[id];
         if (Math.abs(p.x) > limit || Math.abs(p.z) > limit) {
-            if (!p.isBot) io.to(id).emit('gameOver', { reason: '💥 Duvara çarptın!' });
+            io.to(id).emit('gameOver', { reason: '💥 Duvara çarptın!' });
             delete players[id];
-            balanceBots();
         }
     }
 
-    // 3. CAR VS CAR COLLISION
+    // 2. CAR VS CAR COLLISION
     const ids = Object.keys(players);
     for (let a = 0; a < ids.length; a++) {
         const pA = players[ids[a]];
@@ -174,28 +106,26 @@ setInterval(() => {
             const dx = pA.x - pB.x;
             const dz = pA.z - pB.z;
             if (dx * dx + dz * dz < 10.0) {
-                // Lower scorer dies
                 const dieA = pA.driftScore <= pB.driftScore;
                 const dieB = pB.driftScore <= pA.driftScore;
 
                 if (dieA) {
-                    if (!pA.isBot) io.to(ids[a]).emit('gameOver', { reason: `💥 ${pB.name} ile çarpıştın!` });
+                    io.to(ids[a]).emit('gameOver', { reason: `💥 ${pB.name} ile çarpıştın!` });
                     delete players[ids[a]];
                 }
-                if (dieB && !dieA) { // Only if A didn't die (avoid double death when equal)
-                    if (!pB.isBot) io.to(ids[b]).emit('gameOver', { reason: `💥 ${pA.name} ile çarpıştın!` });
+                if (dieB && !dieA) {
+                    io.to(ids[b]).emit('gameOver', { reason: `💥 ${pA.name} ile çarpıştın!` });
                     delete players[ids[b]];
                 }
-                balanceBots();
             }
         }
     }
 
-    // 4. BROADCAST
+    // 3. BROADCAST SNAPSHOT
     io.volatile.emit('gameState', { players });
 }, TICK_MS);
 
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
-    console.log(`🏎️ Drift.io Server Active on port ${PORT} (${TICK_RATE} ticks/sec)`);
+    console.log(`🏎️ Drift.io Server Active (No Bots) on port ${PORT}`);
 });
