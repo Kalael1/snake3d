@@ -67,6 +67,10 @@ export class OtherCar {
         if (this.loadedMesh) this.group.remove(this.loadedMesh);
         if (this.fallbackGroup) this.group.remove(this.fallbackGroup);
 
+        // Rotate GLB model by 90° (Math.PI/2) so car front points straight forward along movement heading!
+        const rotY = this.activeSkin.rotationY !== undefined ? this.activeSkin.rotationY : Math.PI / 2;
+        model.rotation.y = rotY;
+
         this.loadedMesh = model;
         this.group.add(this.loadedMesh);
     }

@@ -3,7 +3,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { getSkinById } from './SkinRegistry.js';
 
 const gltfLoader = new GLTFLoader();
-const modelCache = {}; // Cache loaded GLB models for fast skin swapping!
+const modelCache = {};
 
 export class DriftCar {
     constructor(scene) {
@@ -49,7 +49,6 @@ export class DriftCar {
     buildFallbackModel() {
         this.fallbackGroup = new THREE.Group();
 
-        // Simple box car body fallback while GLB loads
         const bodyGeo = new THREE.BoxGeometry(2.4, 0.7, 4.2);
         const bodyMat = new THREE.MeshLambertMaterial({ color: 0xef4444 });
         const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
@@ -84,8 +83,7 @@ export class DriftCar {
             const targetScale = 4.2 / maxDim;
 
             model.scale.set(targetScale, targetScale, targetScale);
-            
-            // Adjust elevation
+
             const newBox = new THREE.Box3().setFromObject(model);
             model.position.y = -newBox.min.y;
 
@@ -102,6 +100,10 @@ export class DriftCar {
         if (this.fallbackGroup) {
             this.group.remove(this.fallbackGroup);
         }
+
+        // Rotate GLB model by 90° (Math.PI/2) so car front points straight forward along movement heading!
+        const rotY = this.activeSkin.rotationY !== undefined ? this.activeSkin.rotationY : Math.PI / 2;
+        model.rotation.y = rotY;
 
         this.loadedMesh = model;
         this.group.add(this.loadedMesh);
