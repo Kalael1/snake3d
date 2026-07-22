@@ -41,9 +41,9 @@ scene.add(dirLight);
 const arenaSize = 500;
 const arena = new Arena(scene, arenaSize);
 const localSnake = new Snake(scene);
-const otherSnakes = {}; // { socketId: OtherSnake instance }
-const foodMeshes = {}; // { foodId: THREE.Mesh }
-const localEatenFoods = new Set(); // Prevents eaten food from resurrecting
+const otherSnakes = {};
+const foodMeshes = {};
+const localEatenFoods = new Set();
 
 let isGameRunning = false;
 let isBoosting = false;
@@ -125,11 +125,10 @@ socket.on('init', (data) => {
 socket.on('foodRemoved', (data) => {
     if (data && data.foodId) {
         localEatenFoods.add(data.foodId);
-        if (foodMeshes[data.foodId]) {
-            scene.remove(foodMeshes[data.foodId]);
-            if (foodMeshes[data.foodId].geometry) foodMeshes[data.foodId].geometry.dispose();
-            delete foodMeshes[data.foodId];
-        }
+        removeFoodMesh(data.foodId);
+    }
+    if (data && data.newFood) {
+        addFoodMesh(data.newFood);
     }
 });
 
@@ -182,29 +181,39 @@ socket.on('gameOver', (data) => {
     overlay.classList.remove('hidden');
 });
 
+function removeFoodMesh(foodId) {
+    if (foodMeshes[foodId]) {
+        scene.remove(foodMeshes[foodId]);
+        if (foodMeshes[foodId].geometry) foodMeshes[foodId].geometry.dispose();
+        delete foodMeshes[foodId];
+    }
+}
+
+function addFoodMesh(f) {
+    if (!foodMeshes[f.id] && !localEatenFoods.has(f.id)) {
+        const mat = foodMaterials[Math.floor(Math.random() * foodMaterials.length)];
+        const mesh = new THREE.Mesh(foodGeo, mat);
+        mesh.position.set(f.x, 0.8, f.z);
+        mesh.castShadow = true;
+        mesh.userData.rotSpeed = (Math.random() - 0.5) * 3;
+        scene.add(mesh);
+        foodMeshes[f.id] = mesh;
+    }
+}
+
 function syncFoods(foodList) {
     const currentFoodIds = new Set(foodList.map(f => f.id));
 
     // Remove missing foods
     Object.keys(foodMeshes).forEach(id => {
         if (!currentFoodIds.has(id)) {
-            scene.remove(foodMeshes[id]);
-            if (foodMeshes[id].geometry) foodMeshes[id].geometry.dispose();
-            delete foodMeshes[id];
+            removeFoodMesh(id);
         }
     });
 
     // Add new foods (skipping locally eaten ones)
     foodList.forEach(f => {
-        if (!foodMeshes[f.id] && !localEatenFoods.has(f.id)) {
-            const mat = foodMaterials[Math.floor(Math.random() * foodMaterials.length)];
-            const mesh = new THREE.Mesh(foodGeo, mat);
-            mesh.position.set(f.x, 0.8, f.z);
-            mesh.castShadow = true;
-            mesh.userData.rotSpeed = (Math.random() - 0.5) * 3;
-            scene.add(mesh);
-            foodMeshes[f.id] = mesh;
-        }
+        addFoodMesh(f);
     });
 }
 
@@ -265,34 +274,37 @@ function animate() {
         // 2. Local Snake Physics Update
         localSnake.update(delta, targetPoint, isBoosting);
 
-        // 3. Instant Head Collision Eating Check
+        // 3. Head Collision Eating Check
         const headPos = localSnake.getHeadPosition();
-        Object.keys(foodMeshes).forEach(foodId => {
+        const foodKeys = Object.keys(foodMeshes);
+        
+        for (let i = 0; i < foodKeys.length; i++) {
+            const foodId = foodKeys[i];
             const foodMesh = foodMeshes[foodId];
+
             if (foodMesh && !localEatenFoods.has(foodId)) {
                 const dx = headPos.x - foodMesh.position.x;
                 const dz = headPos.z - foodMesh.position.z;
                 const dist = Math.sqrt(dx * dx + dz * dz);
 
-                // Generous Head Collision Distance Check (3.2 units)
-                if (dist < 3.2) {
+                // Precise Head Eating Radius (2.6 units)
+                if (dist < 2.6) {
                     localEatenFoods.add(foodId);
 
                     // Remove food mesh locally immediately
-                    scene.remove(foodMesh);
-                    if (foodMesh.geometry) foodMesh.geometry.dispose();
-                    delete foodMeshes[foodId];
+                    removeFoodMesh(foodId);
 
                     // Instantly grow snake & update UI score
                     localSnake.grow();
                     currentScore += 10;
                     scoreElement.innerText = currentScore;
 
-                    // Emit to server to remove globally for all players
+                    // Emit to server to remove globally and spawn new food far away
                     socket.emit('eatFood', { foodId: foodId });
+                    break;
                 }
             }
-        });
+        }
 
         // 4. Prepare Body Segment Positions for Server
         const bodyPositions = localSnake.segments.slice(1).map(seg => ({

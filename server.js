@@ -38,7 +38,7 @@ let foods = [];
 const foodColors = [0xff0055, 0x00ffcc, 0xffff00, 0xaa00ff, 0xff8800, 0x00ffaa];
 
 function spawnFood(id = null) {
-    const halfSize = (ARENA_SIZE / 2) - 8;
+    const halfSize = (ARENA_SIZE / 2) - 10;
     return {
         id: id || 'food_' + Math.random().toString(36).substring(2, 9),
         x: (Math.random() - 0.5) * 2 * halfSize,
@@ -102,7 +102,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Client Instant Food Eat Handler
+    // Single-Source Food Eating Handler
     socket.on('eatFood', (data) => {
         const player = players[socket.id];
         if (!player || !data || !data.foodId) return;
@@ -113,8 +113,8 @@ io.on('connection', (socket) => {
             const newFood = spawnFood();
             foods.splice(idx, 1);
             foods.push(newFood);
-            
-            // Broadcast instant food update to all clients
+
+            // Broadcast food removal and replacement
             io.emit('foodRemoved', { foodId: data.foodId, newFood: newFood });
         }
     });
@@ -144,7 +144,7 @@ const TICK_RATE = 30;
 setInterval(() => {
     const playerIds = Object.keys(players);
 
-    // 1. Boundary & Food Collision Check
+    // 1. Boundary Check for Each Active Player
     playerIds.forEach(id => {
         const p = players[id];
         if (!p) return;
@@ -153,22 +153,6 @@ setInterval(() => {
         if (Math.abs(p.x) > limit || Math.abs(p.z) > limit) {
             io.to(id).emit('gameOver', { reason: 'Harita sınırına çarptın!' });
             delete players[id];
-            return;
-        }
-
-        // Server backup food check
-        for (let i = foods.length - 1; i >= 0; i--) {
-            const f = foods[i];
-            const dx = p.x - f.x;
-            const dz = p.z - f.z;
-            if (Math.sqrt(dx * dx + dz * dz) < 3.0) {
-                p.score += 10;
-                const newFood = spawnFood();
-                const eatenId = f.id;
-                foods.splice(i, 1);
-                foods.push(newFood);
-                io.emit('foodRemoved', { foodId: eatenId, newFood: newFood });
-            }
         }
     });
 
