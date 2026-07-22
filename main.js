@@ -247,6 +247,8 @@ window.addEventListener('touchend', (e) => {
         joystickKnob.style.transform = 'translate(-50%, -50%)';
         initialPinchDist = null;
     }
+}, { passive: true });
+
 // Keyboard Steering & Nitro Boost State
 const keysPressed = {};
 
