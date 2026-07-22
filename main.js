@@ -120,6 +120,13 @@ socket.on('init', (data) => {
     syncFoods(data.foods || []);
 });
 
+socket.on('foodEaten', (data) => {
+    localSnake.grow();
+    if (data && typeof data.score === 'number') {
+        scoreElement.innerText = data.score;
+    }
+});
+
 socket.on('gameState', (state) => {
     if (!state) return;
 
@@ -128,19 +135,18 @@ socket.on('gameState', (state) => {
         syncFoods(state.foods);
     }
 
-    // 2. Sync Players
+    // 2. Sync Other Players
     const serverPlayers = state.players || {};
     const serverIds = Object.keys(serverPlayers);
 
-    // Update Local Player & Score
+    // Update Local Player Score
     if (localSocketId && serverPlayers[localSocketId]) {
-        const localData = serverPlayers[localSocketId];
-        scoreElement.innerText = localData.score || 0;
+        scoreElement.innerText = serverPlayers[localSocketId].score || 0;
     }
 
     // Render Other Snakes
     serverIds.forEach(id => {
-        if (id === localSocketId) return; // Don't create OtherSnake for local player
+        if (id === localSocketId) return;
         const playerData = serverPlayers[id];
 
         if (!otherSnakes[id]) {
@@ -245,30 +251,36 @@ function animate() {
     });
 
     if (isGameRunning) {
-        // 1. Calculate Target Angle from Mouse Raycast
+        // 1. Target Point via Raycast
         raycaster.setFromCamera(mouse, camera);
         raycaster.ray.intersectPlane(groundPlane, targetPoint);
 
-        const headPos = localSnake.getHeadPosition();
-        const diffX = targetPoint.x - headPos.x;
-        const diffZ = targetPoint.z - headPos.z;
-        const targetAngle = Math.atan2(diffX, diffZ);
-
-        // 2. Emit Input to Server
-        socket.emit('playerInput', {
-            targetAngle: targetAngle,
-            isBoosting: isBoosting
-        });
-
-        // 3. Client Local Snake Update (Predictive)
+        // 2. Local Snake Physics Update
         localSnake.update(delta, targetPoint, isBoosting);
+
+        // 3. Prepare Body Segment Positions to Send to Server
+        const headPos = localSnake.getHeadPosition();
+        const bodyPositions = localSnake.segments.slice(1).map(seg => ({
+            x: seg.position.x,
+            z: seg.position.z,
+            angle: seg.rotation.y
+        }));
+
+        // 4. Emit Head & Body Position to Server for Collision & Score Sync
+        socket.emit('playerInput', {
+            x: headPos.x,
+            z: headPos.z,
+            angle: localSnake.currentAngle,
+            isBoosting: isBoosting,
+            body: bodyPositions
+        });
     } else {
         const time = Date.now() * 0.0003;
         targetPoint.set(Math.cos(time) * 20, 0, Math.sin(time) * 20);
         localSnake.update(delta, targetPoint, false);
     }
 
-    // 4. Dynamic Camera Follow
+    // 5. Dynamic Camera Follow & Smooth Zoom
     currentZoom += (targetZoom - currentZoom) * 0.1;
 
     const headPos = localSnake.getHeadPosition();
