@@ -47,6 +47,7 @@ const foodMeshes = {}; // { foodId: THREE.Mesh }
 let isGameRunning = false;
 let isBoosting = false;
 let localSocketId = null;
+let currentScore = 0;
 
 // Camera Zoom
 let targetZoom = 1.0;
@@ -121,30 +122,27 @@ socket.on('init', (data) => {
 });
 
 socket.on('foodEaten', (data) => {
-    localSnake.grow();
     if (data && typeof data.score === 'number') {
-        scoreElement.innerText = data.score;
+        currentScore = data.score;
+        scoreElement.innerText = currentScore;
     }
 });
 
 socket.on('gameState', (state) => {
     if (!state) return;
 
-    // 1. Sync Foods
     if (state.foods) {
         syncFoods(state.foods);
     }
 
-    // 2. Sync Other Players
     const serverPlayers = state.players || {};
     const serverIds = Object.keys(serverPlayers);
 
-    // Update Local Player Score
     if (localSocketId && serverPlayers[localSocketId]) {
-        scoreElement.innerText = serverPlayers[localSocketId].score || 0;
+        currentScore = serverPlayers[localSocketId].score || 0;
+        scoreElement.innerText = currentScore;
     }
 
-    // Render Other Snakes
     serverIds.forEach(id => {
         if (id === localSocketId) return;
         const playerData = serverPlayers[id];
@@ -156,7 +154,6 @@ socket.on('gameState', (state) => {
         }
     });
 
-    // Remove disconnected players
     Object.keys(otherSnakes).forEach(id => {
         if (!serverPlayers[id]) {
             otherSnakes[id].destroy();
@@ -164,7 +161,6 @@ socket.on('gameState', (state) => {
         }
     });
 
-    // 3. Update Leaderboard
     updateLeaderboard(serverPlayers);
 });
 
@@ -181,7 +177,6 @@ socket.on('gameOver', (data) => {
 function syncFoods(foodList) {
     const currentFoodIds = new Set(foodList.map(f => f.id));
 
-    // Remove missing foods
     Object.keys(foodMeshes).forEach(id => {
         if (!currentFoodIds.has(id)) {
             scene.remove(foodMeshes[id]);
@@ -190,7 +185,6 @@ function syncFoods(foodList) {
         }
     });
 
-    // Add new foods
     foodList.forEach(f => {
         if (!foodMeshes[f.id]) {
             const mat = foodMaterials[Math.floor(Math.random() * foodMaterials.length)];
@@ -229,6 +223,8 @@ function openMenu(reasonText) {
 
 function startGame() {
     const playerName = playerNameInput.value.trim() || 'YılanOyuncusu';
+    currentScore = 0;
+    scoreElement.innerText = '0';
     localSnake.reset();
     socket.emit('join', playerName);
     isGameRunning = true;
@@ -258,15 +254,41 @@ function animate() {
         // 2. Local Snake Physics Update
         localSnake.update(delta, targetPoint, isBoosting);
 
-        // 3. Prepare Body Segment Positions to Send to Server
+        // 3. Instant Head Collision Eating Check
         const headPos = localSnake.getHeadPosition();
+        Object.keys(foodMeshes).forEach(foodId => {
+            const foodMesh = foodMeshes[foodId];
+            if (foodMesh) {
+                const dx = headPos.x - foodMesh.position.x;
+                const dz = headPos.z - foodMesh.position.z;
+                const dist = Math.sqrt(dx * dx + dz * dz);
+
+                // Check distance to snake's HEAD specifically (headRadius + foodRadius)
+                if (dist < localSnake.headRadius + 1.1) {
+                    // Remove food mesh locally immediately
+                    scene.remove(foodMesh);
+                    if (foodMesh.geometry) foodMesh.geometry.dispose();
+                    delete foodMeshes[foodId];
+
+                    // Instantly grow snake & update UI
+                    localSnake.grow();
+                    currentScore += 10;
+                    scoreElement.innerText = currentScore;
+
+                    // Emit to server to sync with all other players
+                    socket.emit('eatFood', { foodId: foodId });
+                }
+            }
+        });
+
+        // 4. Prepare Body Segment Positions for Server
         const bodyPositions = localSnake.segments.slice(1).map(seg => ({
             x: seg.position.x,
             z: seg.position.z,
             angle: seg.rotation.y
         }));
 
-        // 4. Emit Head & Body Position to Server for Collision & Score Sync
+        // 5. Emit Head & Body Position to Server
         socket.emit('playerInput', {
             x: headPos.x,
             z: headPos.z,
@@ -280,7 +302,7 @@ function animate() {
         localSnake.update(delta, targetPoint, false);
     }
 
-    // 5. Dynamic Camera Follow & Smooth Zoom
+    // 6. Dynamic Camera Follow & Smooth Zoom
     currentZoom += (targetZoom - currentZoom) * 0.1;
 
     const headPos = localSnake.getHeadPosition();

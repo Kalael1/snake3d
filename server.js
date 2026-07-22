@@ -107,6 +107,19 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Client Instant Food Eat Request
+    socket.on('eatFood', (data) => {
+        const player = players[socket.id];
+        if (!player || !data || !data.foodId) return;
+
+        const idx = foods.findIndex(f => f.id === data.foodId);
+        if (idx !== -1) {
+            player.score += 10;
+            foods.splice(idx, 1);
+            foods.push(spawnFood());
+        }
+    });
+
     socket.on('disconnect', () => {
         console.log(`[-] Player disconnected: ${socket.id}`);
         const player = players[socket.id];
@@ -145,48 +158,41 @@ setInterval(() => {
             return;
         }
 
-        // Food Eating Check
+        // Server-side Backup Food Eating Check
         for (let i = foods.length - 1; i >= 0; i--) {
             const f = foods[i];
             const dx = p.x - f.x;
             const dz = p.z - f.z;
             const dist = Math.sqrt(dx * dx + dz * dz);
 
-            if (dist < 2.5) { // 2.5 radius threshold for eating food
+            if (dist < 2.5) {
                 p.score += 10;
-                
-                // Respawn eaten food
                 foods.splice(i, 1);
                 foods.push(spawnFood());
-                
-                // Notify client to grow local snake
                 io.to(id).emit('foodEaten', { score: p.score });
             }
         }
     });
 
-    // 2. Snake vs Snake Collision (Snake.io mechanic)
+    // 2. Snake vs Snake Collision (Snake.io mechanic: Head of A vs Body of B)
     const aliveIds = Object.keys(players);
     aliveIds.forEach(idA => {
         const pA = players[idA];
         if (!pA) return;
 
         aliveIds.forEach(idB => {
-            if (idA === idB) return; // Skip self collision
+            if (idA === idB) return;
             const pB = players[idB];
             if (!pB || !pB.body) return;
 
-            // Check if head of Player A collides with any body segment of Player B
             for (const segB of pB.body) {
                 const dx = pA.x - segB.x;
                 const dz = pA.z - segB.z;
                 const dist = Math.sqrt(dx * dx + dz * dz);
 
-                if (dist < 2.0) { // Collision threshold
-                    // Player A dies!
+                if (dist < 2.0) {
                     io.to(idA).emit('gameOver', { reason: `${pB.name} oyuncusuna çarptın!` });
                     
-                    // Spawn food where Player A died
                     if (pA.body) {
                         pA.body.forEach(seg => {
                             foods.push({
@@ -205,7 +211,7 @@ setInterval(() => {
         });
     });
 
-    // 3. Broadcast State to All Clients
+    // 3. Broadcast State
     io.emit('gameState', {
         players: players,
         foods: foods
