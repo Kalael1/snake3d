@@ -532,18 +532,31 @@ function requestLandscapeAndFullscreen() {
 }
 
 function startGame() {
-    audioManager.init();
-    requestLandscapeAndFullscreen();
-    const playerName = playerNameInput.value.trim() || 'DriftPilotu';
-    localCar.reset();
-    localCar.group.visible = true;
-    explosionManager.clear();
-    tronTrailManager.clear();
-    gameStartTime = Date.now();
-    socket.emit('join', { name: playerName, skinId: progressionManager.selectedSkinId });
-    isGameRunning = true;
-    overlay.classList.add('hidden');
-    gameoverModalOverlay.classList.add('hidden');
+    try {
+        audioManager.init();
+        requestLandscapeAndFullscreen();
+        const playerName = playerNameInput ? (playerNameInput.value.trim() || 'DriftPilotu') : 'DriftPilotu';
+        isEngineOn = true; // Ensure engine is ON when starting!
+        isEmittingTrail = false;
+        localCar.reset();
+        localCar.group.visible = true;
+        explosionManager.clear();
+        tronTrailManager.clear();
+        gameStartTime = Date.now();
+
+        if (socket && socket.connected) {
+            socket.emit('join', { name: playerName, skinId: progressionManager.selectedSkinId });
+        }
+
+        isGameRunning = true;
+        if (overlay) overlay.classList.add('hidden');
+        if (gameoverModalOverlay) gameoverModalOverlay.classList.add('hidden');
+    } catch (err) {
+        console.error("Start Game Error:", err);
+        isGameRunning = true;
+        if (overlay) overlay.classList.add('hidden');
+        if (gameoverModalOverlay) gameoverModalOverlay.classList.add('hidden');
+    }
 }
 
 startBtn.addEventListener('click', startGame);

@@ -293,14 +293,9 @@ export class DriftCar {
     }
 
     reset() {
-        const halfSize = 220;
-        this.position.set(
-            (Math.random() - 0.5) * halfSize,
-            0,
-            (Math.random() - 0.5) * halfSize
-        );
-        this.heading = Math.random() * Math.PI * 2;
-        this.velocityAngle = this.heading;
+        this.position.set(0, 0, 0); // Always spawn safely in center avenue!
+        this.heading = 0;
+        this.velocityAngle = 0;
         this.slipAngle = 0;
         this.isDrifting = false;
         this.isTwoWheelLeft = false;
@@ -319,7 +314,8 @@ export class DriftCar {
         this.pitchVelocity = 0;
         if (this.leftTireTrail) this.leftTireTrail.clear();
         if (this.rightTireTrail) this.rightTireTrail.clear();
-        this.group.position.set(this.position.x, 0, this.position.z);
-        this.group.rotation.set(0, this.heading, 0);
+        this.group.visible = true; // Ensure 3D car model is visible!
+        this.group.position.set(0, 0, 0);
+        this.group.rotation.set(0, 0, 0);
     }
 }
