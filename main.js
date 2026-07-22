@@ -457,10 +457,10 @@ function animate() {
         raycaster.setFromCamera(mouse, camera);
         raycaster.ray.intersectPlane(groundPlane, targetPoint);
 
-        // 2. Update local car physics with A/D Steering, Q/E Two-Wheel Stunt, and Space Engine Toggle
+        // 2. Update local car physics with A/D Steering (A = Left, D = Right), Q/E Two-Wheel Stunt, and Space Engine Toggle
         let steerDir = 0;
-        if (keysPressed['KeyA'] || keysPressed['ArrowLeft']) steerDir -= 1;
-        if (keysPressed['KeyD'] || keysPressed['ArrowRight']) steerDir += 1;
+        if (keysPressed['KeyA'] || keysPressed['ArrowLeft']) steerDir += 1; // Turn Left
+        if (keysPressed['KeyD'] || keysPressed['ArrowRight']) steerDir -= 1; // Turn Right
 
         const controlState = {
             left: !!keysPressed['KeyQ'],

@@ -219,11 +219,11 @@ export class DriftCar {
         let targetRoll = Math.max(-0.35, Math.min(0.35, velDiff * 0.45));
         let targetPitch = Math.min(0.12, Math.abs(velDiff) * 0.15);
 
-        if (this.isTwoWheelLeft) {
-            targetRoll = -0.78;
-            targetPitch = 0.08;
-        } else if (this.isTwoWheelRight) {
+        if (this.isTwoWheelLeft) { // Q Key: Tilt up onto Left 2 wheels
             targetRoll = 0.78;
+            targetPitch = 0.08;
+        } else if (this.isTwoWheelRight) { // E Key: Tilt up onto Right 2 wheels
+            targetRoll = -0.78;
             targetPitch = 0.08;
         }
 
