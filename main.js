@@ -53,10 +53,10 @@ const otherSnakes = {};
 // ============== FOOD SYSTEM (InstancedMesh — 1 draw call!) ==============
 const MAX_FOOD_INSTANCES = 200;
 const foodGeo = new THREE.CircleGeometry(0.7, 8);
+foodGeo.rotateX(-Math.PI / 2); // Pre-rotate to lie flat on ground
 const foodMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
 const foodInstancedMesh = new THREE.InstancedMesh(foodGeo, foodMat, MAX_FOOD_INSTANCES);
-foodInstancedMesh.rotation.x = -Math.PI / 2;
-foodInstancedMesh.position.y = 0.2;
+// NO parent rotation — geometry is pre-rotated, instances use world coordinates directly
 scene.add(foodInstancedMesh);
 
 // Food data stored in arrays (zero GC)
@@ -77,7 +77,7 @@ const localEatenFoods = new Set();
 
 function rebuildFoodInstances() {
     for (let i = 0; i < foodCount; i++) {
-        _tempMatrix.makeTranslation(foodX[i], foodZ[i], 0); // Note: CircleGeo is rotated, so Y→Z mapping
+        _tempMatrix.makeTranslation(foodX[i], 0.2, foodZ[i]); // Direct world-space XYZ
         foodInstancedMesh.setMatrixAt(i, _tempMatrix);
         foodInstancedMesh.setColorAt(i, foodColorPalette[i % foodColorPalette.length]);
     }
@@ -137,7 +137,6 @@ let currentScore = 0;
 let gameStartTime = 0;
 let currentPlayersList = [];
 let lastNetworkEmitTime = 0;
-let lastFoodRebuildTime = 0;
 
 let targetZoom = 1.0;
 let currentZoom = 1.0;
@@ -384,8 +383,7 @@ socket.on('foodRemoved', (data) => {
         removeFoodData(data.foodId);
     }
     if (data && data.newFood) addFoodData(data.newFood);
-    // Defer instance rebuild to next frame (batch updates)
-    lastFoodRebuildTime = 0;
+    rebuildFoodInstances(); // Immediately update visuals
 });
 
 socket.on('gameState', (state) => {
@@ -558,6 +556,7 @@ function animate() {
                 const fVal = foodValues[i];
                 localEatenFoods.add(fId);
                 removeFoodData(fId);
+                rebuildFoodInstances(); // Immediately update visuals
                 audioManager.playEat();
                 currentScore += fVal;
                 scoreElement.innerText = currentScore;
@@ -567,7 +566,6 @@ function animate() {
                     highScoreElement.innerText = currentScore;
                 }
                 socket.emit('eatFood', { foodId: fId });
-                lastFoodRebuildTime = 0;
                 break;
             }
         }
@@ -589,11 +587,7 @@ function animate() {
         localSnake.update(delta, targetPoint, false);
     }
 
-    // 8. Rebuild food instances (batched, max once per 100ms)
-    if (now - lastFoodRebuildTime > 100) {
-        lastFoodRebuildTime = now;
-        rebuildFoodInstances();
-    }
+    // 8. (Food instances are rebuilt immediately on add/remove events)
 
     // 9. Camera
     currentZoom += (targetZoom - currentZoom) * 0.1;
