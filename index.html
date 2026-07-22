@@ -109,6 +109,61 @@
       </div>
     </div>
 
+    <!-- Dedicated GAME OVER Statistics Popup Modal -->
+    <div id="gameover-modal-overlay" class="hidden">
+      <div class="gameover-modal">
+        <div class="gameover-header">
+          <div class="skull-badge">☠️ GAME OVER</div>
+          <h1 class="gameover-title">OYUN BİTTİ</h1>
+          <p id="gameover-reason-text" class="gameover-reason">💥 Harita duvarına çarptın!</p>
+        </div>
+
+        <!-- 4-Card Gamified Summary Statistics Grid -->
+        <div class="summary-stats-container">
+          <div class="summary-card rank-card">
+            <span class="card-icon">👑</span>
+            <div class="card-content">
+              <span class="card-title">ARENA SIRALAMASI</span>
+              <span id="stat-rank" class="card-value">#1</span>
+            </div>
+          </div>
+
+          <div class="summary-card score-card">
+            <span class="card-icon">⚡</span>
+            <div class="card-content">
+              <span class="card-title">TOPLANAN SKOR</span>
+              <span id="stat-score" class="card-value">0</span>
+            </div>
+          </div>
+
+          <div class="summary-card time-card">
+            <span class="card-icon">⏱️</span>
+            <div class="card-content">
+              <span class="card-title">HAYATTA KALMA</span>
+              <span id="stat-time" class="card-value">00:00</span>
+            </div>
+          </div>
+
+          <div class="summary-card highscore-card">
+            <span class="card-icon">🏆</span>
+            <div class="card-content">
+              <span class="card-title">EN YÜKSEK REKOR</span>
+              <span id="stat-highscore" class="card-value">0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="gameover-action-row">
+          <button id="restart-game-btn" class="action-btn primary-action">
+            <span class="btn-icon">🔄</span> TEKRAR OYNA
+          </button>
+          <button id="open-skins-btn" class="action-btn secondary-action">
+            <span class="btn-icon">🐉</span> GARAZ & KOSTÜMLER
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Start / Skin Gallery Stylized Modal -->
     <div id="overlay">
       <div class="stylized-modal">
@@ -121,43 +176,6 @@
         <div class="player-input-wrapper">
           <span class="input-icon">👤</span>
           <input type="text" id="player-name" placeholder="Oyuncu Adınız..." maxlength="12" value="YılanOyuncusu">
-        </div>
-
-        <!-- Detailed Game Over Summary Modal Statistics -->
-        <div id="final-score-box" class="hidden">
-          <div class="gameover-stats-grid">
-            <div class="stat-card gold-stat">
-              <span class="stat-icon">👑</span>
-              <div class="stat-info">
-                <span class="stat-label">SIRALAMANIZ</span>
-                <span id="final-rank" class="stat-val">#1</span>
-              </div>
-            </div>
-
-            <div class="stat-card cyan-stat">
-              <span class="stat-icon">⚡</span>
-              <div class="stat-info">
-                <span class="stat-label">TOPLANAN SKOR</span>
-                <span id="final-score" class="stat-val">0</span>
-              </div>
-            </div>
-
-            <div class="stat-card purple-stat">
-              <span class="stat-icon">⏱️</span>
-              <div class="stat-info">
-                <span class="stat-label">HAYATTA KALMA</span>
-                <span id="final-survival-time" class="stat-val">00:00</span>
-              </div>
-            </div>
-
-            <div class="stat-card green-stat">
-              <span class="stat-icon">🏆</span>
-              <div class="stat-info">
-                <span class="stat-label">REKORUNUZ</span>
-                <span id="final-high-score" class="stat-val">0</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- Skins Showcase Carousel / Grid -->

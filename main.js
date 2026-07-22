@@ -80,11 +80,6 @@ window.addEventListener('wheel', (event) => {
 // DOM Elements
 const scoreElement = document.getElementById('score');
 const highScoreElement = document.getElementById('high-score');
-const finalScoreElement = document.getElementById('final-score');
-const finalRankElement = document.getElementById('final-rank');
-const finalSurvivalTimeElement = document.getElementById('final-survival-time');
-const finalHighScoreElement = document.getElementById('final-high-score');
-const finalScoreBox = document.getElementById('final-score-box');
 
 const overlay = document.getElementById('overlay');
 const startBtn = document.getElementById('start-btn');
@@ -102,6 +97,16 @@ const chatMessages = document.getElementById('chat-messages');
 const mobileBoostBtn = document.getElementById('mobile-boost-btn');
 const virtualJoystick = document.getElementById('virtual-joystick');
 const joystickKnob = document.getElementById('joystick-knob');
+
+// Dedicated Game Over Statistics Modal Elements
+const gameoverModalOverlay = document.getElementById('gameover-modal-overlay');
+const gameoverReasonText = document.getElementById('gameover-reason-text');
+const statRank = document.getElementById('stat-rank');
+const statScore = document.getElementById('stat-score');
+const statTime = document.getElementById('stat-time');
+const statHighscore = document.getElementById('stat-highscore');
+const restartGameBtn = document.getElementById('restart-game-btn');
+const openSkinsBtn = document.getElementById('open-skins-btn');
 
 // Mobile Chat Drawer Elements
 const mobileChatModal = document.getElementById('mobile-chat-modal');
@@ -499,7 +504,6 @@ function triggerGameOver(reasonText) {
 
     progressionManager.saveHighScore(currentScore);
     highScoreElement.innerText = progressionManager.highScore;
-    renderSkinGallery();
 
     // Calculate survival duration
     const secondsSurvived = Math.floor((Date.now() - gameStartTime) / 1000);
@@ -512,17 +516,26 @@ function triggerGameOver(reasonText) {
     const rankIndex = sorted.findIndex(p => p.id === localSocketId);
     const playerRank = rankIndex !== -1 ? `#${rankIndex + 1}` : `#1`;
 
-    // Populate Detailed Game Over Statistics Modal
-    finalScoreElement.innerText = currentScore;
-    finalRankElement.innerText = playerRank;
-    finalSurvivalTimeElement.innerText = timeStr;
-    finalHighScoreElement.innerText = progressionManager.highScore;
+    // Populate Game Over Modal Fields
+    gameoverReasonText.innerText = reasonText || 'Oyun Bitti!';
+    statRank.innerText = playerRank;
+    statScore.innerText = currentScore;
+    statTime.innerText = timeStr;
+    statHighscore.innerText = progressionManager.highScore;
 
-    finalScoreBox.classList.remove('hidden');
-    overlayDesc.innerText = reasonText || 'Oyun Bitti!';
-    startBtn.innerHTML = '<span class="play-icon">▶</span> TEKRAR OYNA';
-    overlay.classList.remove('hidden');
+    // Show Dedicated Game Over Modal
+    gameoverModalOverlay.classList.remove('hidden');
 }
+
+restartGameBtn.addEventListener('click', () => {
+    gameoverModalOverlay.classList.add('hidden');
+    startGame();
+});
+
+openSkinsBtn.addEventListener('click', () => {
+    gameoverModalOverlay.classList.add('hidden');
+    openMenu('Kostüm Garazı');
+});
 
 function removeFoodMesh(foodId) {
     if (foodMeshes[foodId]) {
@@ -579,9 +592,8 @@ function openMenu(reasonText) {
     setBoostState(false);
     virtualJoystick.classList.add('hidden');
     renderSkinGallery();
-    finalScoreBox.classList.remove('hidden');
     overlayDesc.innerText = reasonText;
-    startBtn.innerHTML = '<span class="play-icon">▶</span> ARENAYA DÖN';
+    startBtn.innerHTML = '<span class="play-icon">▶</span> OYUNA BAŞLA';
     overlay.classList.remove('hidden');
 }
 
@@ -618,6 +630,7 @@ function startGame() {
 
     isGameRunning = true;
     overlay.classList.add('hidden');
+    gameoverModalOverlay.classList.add('hidden');
 }
 
 startBtn.addEventListener('click', startGame);
