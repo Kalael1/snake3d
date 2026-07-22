@@ -303,6 +303,7 @@ window.addEventListener('touchend', (e) => {
 }, { passive: true });
 
 let isTPSMode = false;
+let isEngineOn = true;
 const keysPressed = {};
 
 window.addEventListener('wheel', (e) => {
@@ -314,7 +315,11 @@ window.addEventListener('keydown', (e) => {
     if (document.activeElement === chatInput || document.activeElement === mobileChatInput) return;
     keysPressed[e.code] = true;
     if (e.code === 'KeyV') isTPSMode = !isTPSMode;
-    if (e.code === 'Space') isEmittingTrail = true;
+    if (e.code === 'Space') {
+        isEngineOn = !isEngineOn;
+        isEmittingTrail = isEngineOn;
+        if (!isEngineOn) tronTrailManager.breakPlayerTrail(localSocketId);
+    }
     if (e.code === 'Escape' && isGameRunning) openMenu('Oyun Duraklatıldı');
 });
 
@@ -452,13 +457,25 @@ function animate() {
         raycaster.setFromCamera(mouse, camera);
         raycaster.ray.intersectPlane(groundPlane, targetPoint);
 
-        // 2. Update local car physics with Q & E Two-Wheel Stunt Driving
-        const twoWheelState = { left: !!keysPressed['KeyQ'], right: !!keysPressed['KeyE'] };
-        localCar.update(delta, targetPoint, twoWheelState);
+        // 2. Update local car physics with A/D Steering, Q/E Two-Wheel Stunt, and Space Engine Toggle
+        let steerDir = 0;
+        if (keysPressed['KeyA'] || keysPressed['ArrowLeft']) steerDir -= 1;
+        if (keysPressed['KeyD'] || keysPressed['ArrowRight']) steerDir += 1;
+
+        const controlState = {
+            left: !!keysPressed['KeyQ'],
+            right: !!keysPressed['KeyE'],
+            steerDir,
+            isEngineOn
+        };
+
+        localCar.update(delta, targetPoint, controlState);
         const headPos = localCar.getHeadPosition();
         const driftScore = localCar.getScore();
 
-        // Dynamic Neon Underglow & Overhead Key Spotlight (Car Highlight!)
+        // Dynamic Neon Underglow & Overhead Key Spotlight (Dims when engine is OFF!)
+        const underglowIntensity = isEngineOn ? 12.0 : 2.0;
+        carUnderglowLight.intensity = underglowIntensity;
         carUnderglowLight.position.set(headPos.x, 0.4, headPos.z);
         carKeySpotlight.position.set(headPos.x, 18.0, headPos.z);
         carKeySpotlight.target.position.set(headPos.x, 0.5, headPos.z);

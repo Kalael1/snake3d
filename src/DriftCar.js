@@ -16,9 +16,10 @@ export class DriftCar {
         this.position = new THREE.Vector3(0, 0, 0);
         this.heading = 0;         // Heading angle (radians)
         this.velocityAngle = 0;   // Velocity direction angle (radians)
-        this.speed = 32;          // Constant cruising speed
+        this.baseSpeed = 32;      // Cruising speed when engine is ON
+        this.currentSpeed = 32;   // Dynamic speed (coasts down to 0 when engine is OFF)
         
-        // PURE, SMOOTH & ULTRA-RESPONSIVE MOUSE DRIFT CONTROLS
+        // PURE, SMOOTH & ULTRA-RESPONSIVE MOUSE & A/D KEYBOARD CONTROLS
         this.steerSpeed = 6.0;    // Smooth mouse steering responsiveness
         this.gripFactor = 3.6;    // Balanced grip for natural drift sliding
 
@@ -135,25 +136,33 @@ export class DriftCar {
         this.loadCarModel(this.activeSkin.modelUrl);
     }
 
-    update(delta, targetPoint, twoWheelState = { left: false, right: false }) {
-        this.isTwoWheelLeft = twoWheelState.left;
-        this.isTwoWheelRight = twoWheelState.right;
+    update(delta, targetPoint, controlState = { left: false, right: false, steerDir: 0, isEngineOn: true }) {
+        this.isTwoWheelLeft = controlState.left;
+        this.isTwoWheelRight = controlState.right;
         this.isTwoWheeling = this.isTwoWheelLeft || this.isTwoWheelRight;
+        const isEngineOn = controlState.isEngineOn !== false;
+        const steerDir = controlState.steerDir || 0;
 
         // POP & BOUNCE IMPULSE TRIGGER WHEN PRESSING OR RELEASING Q / E!
         if (this.isTwoWheeling && !this.wasTwoWheeling) {
-            // Impulse pop up!
             this.rollVelocity += this.isTwoWheelLeft ? -3.5 : 3.5;
-            this.pitchVelocity -= 0.8; // Suspension pop
+            this.pitchVelocity -= 0.8;
         } else if (!this.isTwoWheeling && this.wasTwoWheeling) {
-            // Landing bounce impulse when dropping back onto 4 wheels!
             this.rollVelocity += this.currentRoll * 2.0;
-            this.pitchVelocity += 1.2; // Slam bounce
+            this.pitchVelocity += 1.2;
         }
         this.wasTwoWheeling = this.isTwoWheeling;
 
-        // 1. PURE SMOOTH MOUSE STEERING
-        if (targetPoint) {
+        // 1. ENGINE POWER & SPEED CONTROL (Space Key Engine Toggle)
+        const targetSpeed = isEngineOn ? this.baseSpeed : 0.0;
+        this.currentSpeed += (targetSpeed - this.currentSpeed) * Math.min(1.0, 4.0 * delta);
+
+        // 2. A & D KEYBOARD STEERING + SMOOTH MOUSE STEERING
+        if (steerDir !== 0) {
+            // Keyboard A / D steering input
+            this.heading += steerDir * 3.6 * delta;
+        } else if (targetPoint && this.currentSpeed > 0.5) {
+            // Mouse target steering
             const dx = targetPoint.x - this.position.x;
             const dz = targetPoint.z - this.position.z;
             const targetAngle = Math.atan2(dx, dz);
@@ -165,61 +174,62 @@ export class DriftCar {
             this.heading += steerDiff * Math.min(1.0, this.steerSpeed * delta);
         }
 
-        // 2. Velocity direction with realistic drift lag
+        // 3. Velocity direction with realistic drift lag
         let velDiff = this.heading - this.velocityAngle;
         while (velDiff < -Math.PI) velDiff += Math.PI * 2;
         while (velDiff > Math.PI) velDiff -= Math.PI * 2;
         this.velocityAngle += velDiff * this.gripFactor * delta;
 
-        // 3. Slip angle (drift magnitude)
+        // 4. Slip angle (drift magnitude)
         this.slipAngle = Math.abs(velDiff) * (180 / Math.PI);
         this.currentAngle = this.heading;
 
-        // 4. Position update
-        this.position.x += Math.sin(this.velocityAngle) * this.speed * delta;
-        this.position.z += Math.cos(this.velocityAngle) * this.speed * delta;
+        // 5. Position update
+        this.position.x += Math.sin(this.velocityAngle) * this.currentSpeed * delta;
+        this.position.z += Math.cos(this.velocityAngle) * this.currentSpeed * delta;
 
-        // 5. Tire Marks (Only on the grounded wheels when on 2 wheels!)
-        if (this.isDrifting || this.slipAngle > 8 || this.isTwoWheeling) {
+        // 6. Tire Marks (Only when moving & drifting!)
+        if (this.currentSpeed > 2.0 && (this.isDrifting || this.slipAngle > 8 || this.isTwoWheeling)) {
             const cosH = Math.cos(this.heading);
             const sinH = Math.sin(this.heading);
 
-            if (!this.isTwoWheelRight) { // Left wheel stays on ground
+            if (!this.isTwoWheelRight) {
                 const rlX = this.position.x + (-1.1 * cosH) + (-1.3 * sinH);
                 const rlZ = this.position.z + (1.1 * sinH) + (-1.3 * cosH);
                 this.leftTireTrail.addPoint(rlX, rlZ, this.heading);
             }
 
-            if (!this.isTwoWheelLeft) { // Right wheel stays on ground
+            if (!this.isTwoWheelLeft) {
                 const rrX = this.position.x + (1.1 * cosH) + (-1.3 * sinH);
                 const rrZ = this.position.z + (-1.1 * sinH) + (-1.3 * cosH);
                 this.rightTireTrail.addPoint(rrX, rrZ, this.heading);
             }
         }
 
-        // 6. Drift & Two-Wheel Stunt Score Update
-        this.updateDriftScore(delta);
+        // 7. Drift & Two-Wheel Stunt Score Update
+        if (this.currentSpeed > 5.0) {
+            this.updateDriftScore(delta);
+        }
 
-        // 7. Group position & heading rotation
+        // 8. Group position & heading rotation
         this.group.position.set(this.position.x, 0, this.position.z);
         this.group.rotation.y = this.heading;
 
-        // 8. DAMPED SPRING TILT PHYSICS (JUICY ANIMATED POP & LANDING BOUNCE)
+        // 9. DAMPED SPRING TILT PHYSICS (JUICY ANIMATED POP & LANDING BOUNCE)
         let targetRoll = Math.max(-0.35, Math.min(0.35, velDiff * 0.45));
         let targetPitch = Math.min(0.12, Math.abs(velDiff) * 0.15);
 
         if (this.isTwoWheelLeft) {
-            targetRoll = -0.78; // 45° tilt onto left two wheels
+            targetRoll = -0.78;
             targetPitch = 0.08;
         } else if (this.isTwoWheelRight) {
-            targetRoll = 0.78;  // 45° tilt onto right two wheels
+            targetRoll = 0.78;
             targetPitch = 0.08;
         }
 
-        // Spring acceleration for juicy animated pop and bounce!
-        const rollForce = (targetRoll - this.currentRoll) * 35.0; // Spring stiffness
+        const rollForce = (targetRoll - this.currentRoll) * 35.0;
         this.rollVelocity += rollForce * delta;
-        this.rollVelocity *= Math.pow(0.0001, delta); // Damping
+        this.rollVelocity *= Math.pow(0.0001, delta);
         this.currentRoll += this.rollVelocity * delta;
 
         const pitchForce = (targetPitch - this.currentPitch) * 40.0;
@@ -294,6 +304,7 @@ export class DriftCar {
         this.isTwoWheelRight = false;
         this.isTwoWheeling = false;
         this.wasTwoWheeling = false;
+        this.currentSpeed = this.baseSpeed;
         this.currentDriftScore = 0;
         this.totalDriftScore = 0;
         this.driftCombo = 1;
