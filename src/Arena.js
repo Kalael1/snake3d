@@ -12,37 +12,27 @@ export class Arena {
     init() {
         const halfSize = this.size / 2;
 
-        // Soft Medium Slate Gray Floor (Clean, Matte, Non-glare)
+        // Simple flat floor — single draw call
         const floorGeo = new THREE.PlaneGeometry(this.size, this.size);
-        const floorMat = new THREE.MeshStandardMaterial({
-            color: 0x64748b, // Slate Gray
-            roughness: 0.9,
-            metalness: 0.1
-        });
-
+        const floorMat = new THREE.MeshLambertMaterial({ color: 0x64748b });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
         floor.position.y = 0;
-        floor.receiveShadow = true;
         this.scene.add(floor);
 
-        // Subtle Dark Slate Grid Lines
-        const gridHelper = new THREE.GridHelper(this.size, 250, 0x0f172a, 0x475569);
+        // Lightweight grid — 50 divisions instead of 250
+        const gridHelper = new THREE.GridHelper(this.size, 50, 0x334155, 0x475569);
         gridHelper.position.y = 0.05;
         this.scene.add(gridHelper);
 
-        // Boundary Walls - Slate Gray
-        const wallMat = new THREE.MeshStandardMaterial({
-            color: 0x334155,
-            roughness: 0.6,
-            metalness: 0.4
-        });
+        // Boundary Walls — Lambert material (no PBR overhead)
+        const wallMat = new THREE.MeshLambertMaterial({ color: 0x334155 });
 
         const wallGeos = [
-            new THREE.BoxGeometry(this.size + this.wallThickness * 2, this.wallHeight, this.wallThickness), // North
-            new THREE.BoxGeometry(this.size + this.wallThickness * 2, this.wallHeight, this.wallThickness), // South
-            new THREE.BoxGeometry(this.wallThickness, this.wallHeight, this.size), // East
-            new THREE.BoxGeometry(this.wallThickness, this.wallHeight, this.size)  // West
+            new THREE.BoxGeometry(this.size + this.wallThickness * 2, this.wallHeight, this.wallThickness),
+            new THREE.BoxGeometry(this.size + this.wallThickness * 2, this.wallHeight, this.wallThickness),
+            new THREE.BoxGeometry(this.wallThickness, this.wallHeight, this.size),
+            new THREE.BoxGeometry(this.wallThickness, this.wallHeight, this.size)
         ];
 
         const wallPositions = [
@@ -55,19 +45,12 @@ export class Arena {
         for (let i = 0; i < 4; i++) {
             const wall = new THREE.Mesh(wallGeos[i], wallMat);
             wall.position.set(...wallPositions[i]);
-            wall.castShadow = true;
-            wall.receiveShadow = true;
             this.scene.add(wall);
         }
 
-        // Corner Pillars
+        // Corner Pillars — Basic material
         const pillarGeo = new THREE.BoxGeometry(3, this.wallHeight + 4, 3);
-        const pillarMat = new THREE.MeshStandardMaterial({
-            color: 0x00ffcc,
-            emissive: 0x00ffcc,
-            emissiveIntensity: 0.5,
-            roughness: 0.3
-        });
+        const pillarMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc });
 
         const corners = [
             [-halfSize, (this.wallHeight + 4) / 2, -halfSize],
@@ -79,7 +62,6 @@ export class Arena {
         corners.forEach(pos => {
             const pillar = new THREE.Mesh(pillarGeo, pillarMat);
             pillar.position.set(...pos);
-            pillar.castShadow = true;
             this.scene.add(pillar);
         });
     }
