@@ -366,8 +366,8 @@ socket.on('chatBroadcast', (data) => {
 
 // ============== MOUSE & TOUCH CONTROLS ==============
 const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-const targetPoint = new THREE.Vector3();
+const mouse = new THREE.Vector2(0, 0);
+const targetPoint = new THREE.Vector3(0, 0, 0);
 const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
 window.addEventListener('resize', () => {
@@ -395,7 +395,6 @@ window.addEventListener('mouseup', (e) => {
     }
 });
 
-let touchStartOrigin = { x: 0, y: 0 };
 let initialPinchDist = null;
 
 window.addEventListener('touchstart', (e) => {
@@ -404,8 +403,6 @@ window.addEventListener('touchstart', (e) => {
 
     if (e.touches.length === 1) {
         const t = e.touches[0];
-        touchStartOrigin.x = t.clientX;
-        touchStartOrigin.y = t.clientY;
         mouse.x = (t.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(t.clientY / window.innerHeight) * 2 + 1;
         isEmittingTrail = true;
@@ -527,8 +524,10 @@ function openMenu(reasonText) {
 function requestLandscapeAndFullscreen() {
     try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) {}
     const docEl = document.documentElement;
-    if (docEl.requestFullscreen) docEl.requestFullscreen().catch(() => {});
-    else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen().catch(() => {});
+    try {
+        if (docEl.requestFullscreen) docEl.requestFullscreen().catch(() => {});
+        else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen().catch(() => {});
+    } catch (e) {}
 }
 
 function startGame() {
@@ -536,13 +535,24 @@ function startGame() {
         audioManager.init();
         requestLandscapeAndFullscreen();
         const playerName = playerNameInput ? (playerNameInput.value.trim() || 'DriftPilotu') : 'DriftPilotu';
-        isEngineOn = true; // Ensure engine is ON when starting!
+        isEngineOn = true;
         isEmittingTrail = false;
+
         localCar.reset();
         localCar.group.visible = true;
         explosionManager.clear();
         tronTrailManager.clear();
         gameStartTime = Date.now();
+
+        // INSTANTLY SNAP CAMERA TO CAR POSITION (0,0,0) — NO DELAY / NO HIGH OVERHEAD STUCK!
+        const hp = localCar.getHeadPosition();
+        if (isTPSMode) {
+            camera.position.set(hp.x - Math.sin(localCar.heading) * 14, 5.5, hp.z - Math.cos(localCar.heading) * 14);
+            camera.lookAt(hp.x, 2.0, hp.z);
+        } else {
+            camera.position.set(hp.x - Math.sin(localCar.heading) * 12, 22, hp.z - Math.cos(localCar.heading) * 12);
+            camera.lookAt(hp.x, 0, hp.z);
+        }
 
         if (socket && socket.connected) {
             socket.emit('join', { name: playerName, skinId: progressionManager.selectedSkinId });
@@ -573,9 +583,12 @@ function animate() {
     explosionManager.update(delta);
 
     if (isGameRunning) {
-        // 1. Raycast for mouse target
+        // 1. Raycast for mouse target with NaN & null guards
         raycaster.setFromCamera(mouse, camera);
-        raycaster.ray.intersectPlane(groundPlane, targetPoint);
+        const intersectHit = raycaster.ray.intersectPlane(groundPlane, targetPoint);
+        if (!intersectHit || isNaN(targetPoint.x) || isNaN(targetPoint.z)) {
+            targetPoint.set(0, 0, 0);
+        }
 
         // 2. Control Steering & Engine State
         let steerDir = 0;
@@ -699,7 +712,7 @@ function animate() {
             });
         }
 
-        // Camera follow
+        // Camera follow (With NaN protection)
         currentZoom += (targetZoom - currentZoom) * 0.1;
 
         if (isTPSMode) {
@@ -710,18 +723,23 @@ function animate() {
             const camZ = hp.z - Math.cos(localCar.heading) * tpsDist;
             const camY = tpsHeight;
 
+            camera.position.x += (camX - camera.position.x) * 0.2;
+            camera.position.y += (camY - camera.position.y) * 0.2;
+            camera.position.z += (camZ - camera.position.z) * 0.2;
+            camera.lookAt(hp.x + Math.sin(localCar.heading) * (8 * currentZoom), 2.0 * currentZoom, hp.z + Math.cos(localCar.heading) * (8 * currentZoom));
+        } else {
+            const camX = hp.x - Math.sin(localCar.heading) * 12 * currentZoom;
+            const camZ = hp.z - Math.cos(localCar.heading) * 12 * currentZoom;
+            const camY = 22 * currentZoom;
+
             camera.position.x += (camX - camera.position.x) * 0.15;
             camera.position.y += (camY - camera.position.y) * 0.15;
             camera.position.z += (camZ - camera.position.z) * 0.15;
-            camera.lookAt(hp.x + Math.sin(localCar.heading) * (8 * currentZoom), 2.0 * currentZoom, hp.z + Math.cos(localCar.heading) * (8 * currentZoom));
-        } else {
-            const camX = hp.x - Math.sin(localCar.heading) * 8 * currentZoom;
-            const camZ = hp.z - Math.cos(localCar.heading) * 8 * currentZoom;
-            const camY = 15 * currentZoom;
+            camera.lookAt(hp.x, 0, hp.z);
+        }
 
-            camera.position.x += (camX - camera.position.x) * 0.08;
-            camera.position.y += (camY - camera.position.y) * 0.08;
-            camera.position.z += (camZ - camera.position.z) * 0.08;
+        if (isNaN(camera.position.x) || isNaN(camera.position.y) || isNaN(camera.position.z)) {
+            camera.position.set(hp.x, 22, hp.z - 12);
             camera.lookAt(hp.x, 0, hp.z);
         }
     } else {

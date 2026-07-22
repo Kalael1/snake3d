@@ -17,14 +17,14 @@ export class DriftCar {
         this.heading = 0;         // Heading angle (radians)
         this.velocityAngle = 0;   // Velocity direction angle (radians)
         this.baseSpeed = 32;      // Cruising speed when engine is ON
-        this.currentSpeed = 32;   // Dynamic speed (coasts down to 0 when engine is OFF)
+        this.currentSpeed = 32;   // Dynamic speed
         
-        // PURE, SMOOTH & ULTRA-RESPONSIVE MOUSE & A/D KEYBOARD CONTROLS
+        // PURE, SMOOTH & ULTRA-RESPONSIVE CONTROLS
         this.steerSpeed = 6.0;        // Smooth mouse steering responsiveness
         this.keySteerVelocity = 0.0;  // Damped keyboard steering velocity for buttery smooth turning
         this.gripFactor = 3.6;        // Balanced grip for natural drift sliding
 
-        // Q & E TWO-WHEEL STUNT DRIVING MECHANIC + JUICY SPRING ANIMATION
+        // Q & E TWO-WHEEL STUNT DRIVING MECHANIC
         this.isTwoWheelLeft = false;  // Q Key
         this.isTwoWheelRight = false; // E Key
         this.isTwoWheeling = false;
@@ -144,6 +144,12 @@ export class DriftCar {
         const isEngineOn = controlState.isEngineOn !== false;
         const steerDir = controlState.steerDir || 0;
 
+        // SANITIZE NaN SAFETY
+        if (isNaN(this.heading)) this.heading = 0;
+        if (isNaN(this.velocityAngle)) this.velocityAngle = 0;
+        if (isNaN(this.position.x)) this.position.x = 0;
+        if (isNaN(this.position.z)) this.position.z = 0;
+
         // POP & BOUNCE IMPULSE TRIGGER WHEN PRESSING OR RELEASING Q / E!
         if (this.isTwoWheeling && !this.wasTwoWheeling) {
             this.rollVelocity += this.isTwoWheelLeft ? 3.5 : -3.5;
@@ -158,38 +164,49 @@ export class DriftCar {
         const targetSpeed = isEngineOn ? this.baseSpeed : 0.0;
         this.currentSpeed += (targetSpeed - this.currentSpeed) * Math.min(1.0, 4.0 * delta);
 
-        // 2. BUTTERY SMOOTH A & D KEYBOARD STEERING (With Damped Steering Velocity)
-        const targetSteerVel = steerDir * 2.2; // Smooth 2.2 rad/sec turning speed limit
+        // 2. KEYBOARD & MOUSE STEERING (With Strict NaN Guards)
+        const targetSteerVel = steerDir * 2.2;
         this.keySteerVelocity += (targetSteerVel - this.keySteerVelocity) * Math.min(1.0, 7.5 * delta);
 
         if (Math.abs(this.keySteerVelocity) > 0.05) {
             this.heading += this.keySteerVelocity * delta;
-        } else if (targetPoint && this.currentSpeed > 0.5) {
-            // Mouse target steering when keyboard is not active
+        } else if (targetPoint && targetPoint.x !== undefined && targetPoint.z !== undefined && !isNaN(targetPoint.x) && !isNaN(targetPoint.z) && this.currentSpeed > 0.5) {
             const dx = targetPoint.x - this.position.x;
             const dz = targetPoint.z - this.position.z;
-            const targetAngle = Math.atan2(dx, dz);
-
-            let steerDiff = targetAngle - this.heading;
-            while (steerDiff < -Math.PI) steerDiff += Math.PI * 2;
-            while (steerDiff > Math.PI) steerDiff -= Math.PI * 2;
-
-            this.heading += steerDiff * Math.min(1.0, this.steerSpeed * delta);
+            
+            // Only steer towards mouse target if distance > 1.5 units (prevents jitter at origin)
+            if (dx * dx + dz * dz > 2.2) {
+                const targetAngle = Math.atan2(dx, dz);
+                if (!isNaN(targetAngle)) {
+                    let steerDiff = targetAngle - this.heading;
+                    while (steerDiff < -Math.PI) steerDiff += Math.PI * 2;
+                    while (steerDiff > Math.PI) steerDiff -= Math.PI * 2;
+                    this.heading += steerDiff * Math.min(1.0, this.steerSpeed * delta);
+                }
+            }
         }
+
+        // Final NaN sanity check on heading
+        if (isNaN(this.heading)) this.heading = 0;
 
         // 3. Velocity direction with realistic drift lag
         let velDiff = this.heading - this.velocityAngle;
         while (velDiff < -Math.PI) velDiff += Math.PI * 2;
         while (velDiff > Math.PI) velDiff -= Math.PI * 2;
         this.velocityAngle += velDiff * this.gripFactor * delta;
+        if (isNaN(this.velocityAngle)) this.velocityAngle = this.heading;
 
         // 4. Slip angle (drift magnitude)
         this.slipAngle = Math.abs(velDiff) * (180 / Math.PI);
+        if (isNaN(this.slipAngle)) this.slipAngle = 0;
         this.currentAngle = this.heading;
 
         // 5. Position update
         this.position.x += Math.sin(this.velocityAngle) * this.currentSpeed * delta;
         this.position.z += Math.cos(this.velocityAngle) * this.currentSpeed * delta;
+
+        if (isNaN(this.position.x)) this.position.x = 0;
+        if (isNaN(this.position.z)) this.position.z = 0;
 
         // 6. Tire Marks (Only when moving & drifting!)
         if (this.currentSpeed > 2.0 && (this.isDrifting || this.slipAngle > 8 || this.isTwoWheeling)) {
@@ -222,10 +239,10 @@ export class DriftCar {
         let targetRoll = Math.max(-0.35, Math.min(0.35, velDiff * 0.45));
         let targetPitch = Math.min(0.12, Math.abs(velDiff) * 0.15);
 
-        if (this.isTwoWheelLeft) { // Q Key: Tilt up onto Left 2 wheels
+        if (this.isTwoWheelLeft) {
             targetRoll = 0.78;
             targetPitch = 0.08;
-        } else if (this.isTwoWheelRight) { // E Key: Tilt up onto Right 2 wheels
+        } else if (this.isTwoWheelRight) {
             targetRoll = -0.78;
             targetPitch = 0.08;
         }
@@ -239,6 +256,9 @@ export class DriftCar {
         this.pitchVelocity += pitchForce * delta;
         this.pitchVelocity *= Math.pow(0.0001, delta);
         this.currentPitch += this.pitchVelocity * delta;
+
+        if (isNaN(this.currentRoll)) this.currentRoll = 0;
+        if (isNaN(this.currentPitch)) this.currentPitch = 0;
 
         this.group.rotation.z = -this.currentRoll;
         this.group.rotation.x = this.currentPitch;
