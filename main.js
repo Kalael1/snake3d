@@ -20,24 +20,53 @@ const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
 const progressionManager = new ProgressionManager();
 const audioManager = new AudioManager();
 
-// ============== SCENE ==============
+// ============== SCENE & AAA CYBERPUNK LIGHTING ==============
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1a1a2e);
+scene.background = new THREE.Color(0x030611);
+scene.fog = new THREE.FogExp2(0x050a18, 0.0035);
 
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 800);
-const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: "high-performance" });
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(1.0);
-renderer.shadowMap.enabled = false;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.0));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.3;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
 document.getElementById('app').appendChild(renderer.domElement);
 
 const nameTagManager = new NameTagManager(camera, document.getElementById('nametag-container'));
 
-const hemiLight = new THREE.HemisphereLight(0xffffff, 0x1a1a2e, 1.2);
+// 1. Ambient Hemisphere Light (Cyan sky & dark cyber ground)
+const hemiLight = new THREE.HemisphereLight(0x00f3ff, 0x050a18, 0.85);
 scene.add(hemiLight);
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-dirLight.position.set(120, 200, 100);
+
+// 2. Primary Cyber Moonlight (Soft Shadows)
+const dirLight = new THREE.DirectionalLight(0x38bdf8, 2.2);
+dirLight.position.set(100, 180, 80);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.width = 2048;
+dirLight.shadow.mapSize.height = 2048;
+dirLight.shadow.camera.near = 10;
+dirLight.shadow.camera.far = 400;
+dirLight.shadow.camera.left = -250;
+dirLight.shadow.camera.right = 250;
+dirLight.shadow.camera.top = 250;
+dirLight.shadow.camera.bottom = -250;
+dirLight.shadow.bias = -0.0001;
 scene.add(dirLight);
+
+// 3. Pink / Magenta Rim Accent Light
+const rimLight = new THREE.DirectionalLight(0xff0077, 1.8);
+rimLight.position.set(-120, 100, -100);
+scene.add(rimLight);
+
+// 4. Dynamic Car Underglow PointLight
+const carUnderglowLight = new THREE.PointLight(0x00f3ff, 8.0, 16);
+scene.add(carUnderglowLight);
 
 // ============== GAME ENTITIES ==============
 const arena = new Arena(scene, 500);
@@ -423,6 +452,9 @@ function animate() {
         localCar.update(delta, targetPoint, twoWheelState);
         const headPos = localCar.getHeadPosition();
         const driftScore = localCar.getScore();
+
+        // Dynamic Neon Underglow Light under car
+        carUnderglowLight.position.set(headPos.x, 0.4, headPos.z);
 
         // Update traffic cones physics (Kukaları devirme & fırlatma)
         arena.updateCones(delta, headPos);

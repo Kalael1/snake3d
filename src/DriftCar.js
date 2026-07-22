@@ -106,6 +106,13 @@ export class DriftCar {
         if (this.loadedMesh) this.group.remove(this.loadedMesh);
         if (this.fallbackGroup) this.group.remove(this.fallbackGroup);
 
+        model.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+
         const rotY = this.activeSkin.rotationY !== undefined ? this.activeSkin.rotationY : -Math.PI / 2;
         model.rotation.y = rotY;
 

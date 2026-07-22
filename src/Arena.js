@@ -7,23 +7,24 @@ export class Arena {
         this.wallHeight = 8;
         this.cones = [];
         this.barriers = [];
-        this.buildings = []; // Solid building collision boxes
+        this.buildings = [];
         this.init();
     }
 
     init() {
         const halfSize = this.size / 2;
 
-        // Dark Tron Cyber Grid Floor
+        // Dark Tron Cyber Grid Floor with PBR Metalness & Wet Reflections
         const floorGeo = new THREE.PlaneGeometry(this.size, this.size);
-        const floorMat = new THREE.MeshLambertMaterial({ color: 0x050811 });
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x060a14, roughness: 0.35, metalness: 0.25 });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
         floor.position.y = 0;
+        floor.receiveShadow = true;
         this.scene.add(floor);
 
         // Glowing Tron Grid Lines across floor
-        const gridHelper = new THREE.GridHelper(this.size, 50, 0x00f3ff, 0x0f2d4a);
+        const gridHelper = new THREE.GridHelper(this.size, 50, 0x00f3ff, 0x0e2840);
         gridHelper.position.y = 0.01;
         this.scene.add(gridHelper);
 
@@ -99,7 +100,7 @@ export class Arena {
     }
 
     createTronRoads() {
-        const roadMat = new THREE.MeshLambertMaterial({ color: 0x0a101d });
+        const roadMat = new THREE.MeshStandardMaterial({ color: 0x0a101d, roughness: 0.4, metalness: 0.3 });
         const cyanLineMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff });
         const magentaLineMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
 
@@ -109,11 +110,13 @@ export class Arena {
             const vRoad = new THREE.Mesh(new THREE.PlaneGeometry(28, this.size), roadMat);
             vRoad.rotation.x = -Math.PI / 2;
             vRoad.position.set(offset, 0.015, 0);
+            vRoad.receiveShadow = true;
             this.scene.add(vRoad);
 
             const hRoad = new THREE.Mesh(new THREE.PlaneGeometry(this.size, 28), roadMat);
             hRoad.rotation.x = -Math.PI / 2;
             hRoad.position.set(0, 0.015, offset);
+            hRoad.receiveShadow = true;
             this.scene.add(hRoad);
 
             if (offset === 0) {
@@ -158,14 +161,11 @@ export class Arena {
     }
 
     createTronBuildings() {
-        const buildingMat = new THREE.MeshLambertMaterial({ color: 0x060c18 });
+        const buildingMat = new THREE.MeshStandardMaterial({ color: 0x091020, roughness: 0.25, metalness: 0.75 });
         const neonTrimColors = [0x00f3ff, 0xff0055, 0x00ff88, 0xffaa00];
-
-        const shopNames = ['🛒 24/7 NEON MARKET', '🔧 CYBER GARAGE', '🍜 NEON RAMEN', '🎮 ARCADE 2099', '⚡ NITRO STATION'];
 
         const buildingLocations = [];
 
-        // Outer Perimeter Tron Skyscrapers
         for (let i = -210; i <= 210; i += 60) {
             buildingLocations.push({ x: i, z: -225, w: 45, d: 45, h: 35 });
             buildingLocations.push({ x: i, z: 225, w: 45, d: 45, h: 35 });
@@ -173,7 +173,6 @@ export class Arena {
             buildingLocations.push({ x: 225, z: i, w: 45, d: 45, h: 35 });
         }
 
-        // Inner City Block Monoliths (Shops & Businesses)
         const innerBlocks = [-170, -60, 60, 170];
         innerBlocks.forEach(bx => {
             innerBlocks.forEach(bz => {
@@ -186,9 +185,10 @@ export class Arena {
             const bGeo = new THREE.BoxGeometry(b.w, b.h, b.d);
             const bMesh = new THREE.Mesh(bGeo, buildingMat);
             bMesh.position.set(b.x, b.h / 2, b.z);
+            bMesh.castShadow = true;
+            bMesh.receiveShadow = true;
             this.scene.add(bMesh);
 
-            // Save Building Collision Box
             this.buildings.push({
                 minX: b.x - (b.w / 2) - 1.2,
                 maxX: b.x + (b.w / 2) + 1.2,
@@ -196,26 +196,22 @@ export class Arena {
                 maxZ: b.z + (b.d / 2) + 1.2
             });
 
-            // Glowing Wireframe Edges
             const wireGeo = new THREE.WireframeGeometry(bGeo);
             const wireMat = new THREE.LineBasicMaterial({ color: neonTrimColors[idx % neonTrimColors.length], linewidth: 2 });
             const wireLine = new THREE.LineSegments(wireGeo, wireMat);
             wireLine.position.set(b.x, b.h / 2, b.z);
             this.scene.add(wireLine);
 
-            // Glowing Roof Beacon Trim
             const trimMat = new THREE.MeshBasicMaterial({ color: neonTrimColors[idx % neonTrimColors.length] });
             const trimGeo = new THREE.BoxGeometry(b.w + 0.8, 1.0, b.d + 0.8);
             const trimMesh = new THREE.Mesh(trimGeo, trimMat);
             trimMesh.position.set(b.x, b.h + 0.5, b.z);
             this.scene.add(trimMesh);
 
-            // 3D Glowing Neon Storefront Signboards along Roadside!
             if (b.isShop) {
                 const signColor = neonTrimColors[idx % neonTrimColors.length];
                 const signMat = new THREE.MeshBasicMaterial({ color: signColor });
 
-                // Billboard Signboard structure
                 const signGeo = new THREE.BoxGeometry(16, 4, 0.8);
                 const signMesh = new THREE.Mesh(signGeo, signMat);
                 signMesh.position.set(b.x, 6, b.z + (b.d / 2) + 0.5);
@@ -225,7 +221,7 @@ export class Arena {
     }
 
     createCrashBarriers() {
-        const barrierMatConcrete = new THREE.MeshLambertMaterial({ color: 0x1a202c });
+        const barrierMatConcrete = new THREE.MeshStandardMaterial({ color: 0x1a202c, roughness: 0.5, metalness: 0.5 });
         const barrierMatNeon = new THREE.MeshBasicMaterial({ color: 0xff0055 });
         const hazardMatYellow = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
 
@@ -254,6 +250,8 @@ export class Arena {
             const baseGeo = new THREE.BoxGeometry(b.w, b.h, b.d);
             const baseMesh = new THREE.Mesh(baseGeo, barrierMatConcrete);
             baseMesh.position.y = b.h / 2;
+            baseMesh.castShadow = true;
+            baseMesh.receiveShadow = true;
             group.add(baseMesh);
 
             const neonGeo = new THREE.BoxGeometry(b.w + 0.2, 0.4, b.d + 0.2);
@@ -317,6 +315,7 @@ export class Arena {
             const coneGeo = new THREE.CylinderGeometry(0.08, 0.48, 1.4, 12);
             const coneMesh = new THREE.Mesh(coneGeo, coneMatOrange);
             coneMesh.position.y = 0.75;
+            coneMesh.castShadow = true;
             coneGroup.add(coneMesh);
 
             const stripeGeo = new THREE.CylinderGeometry(0.2, 0.34, 0.32, 12);
