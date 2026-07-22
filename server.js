@@ -17,11 +17,9 @@ const io = new Server(httpServer, {
     }
 });
 
-// Serve static built files from 'dist' directory
 const distPath = join(__dirname, 'dist');
 app.use(express.static(distPath));
 
-// Fallback catch-all for SPA routing
 app.use((req, res) => {
     const indexPath = join(distPath, 'index.html');
     if (fs.existsSync(indexPath)) {
@@ -36,10 +34,9 @@ const ARENA_SIZE = 500;
 const MAX_FOODS = 500;
 
 const players = {};
-const foods = [];
+let foods = [];
 const foodColors = [0xff0055, 0x00ffcc, 0xffff00, 0xaa00ff, 0xff8800, 0x00ffaa];
 
-// Spawn Initial Foods
 function spawnFood(id = null) {
     const halfSize = (ARENA_SIZE / 2) - 8;
     return {
@@ -54,7 +51,6 @@ for (let i = 0; i < MAX_FOODS; i++) {
     foods.push(spawnFood());
 }
 
-// Socket.io Connection Logic
 io.on('connection', (socket) => {
     console.log(`[+] Player connected: ${socket.id}`);
 
@@ -90,7 +86,6 @@ io.on('connection', (socket) => {
         });
     });
 
-    // Receive Synced Head Position & Body from Client
     socket.on('playerInput', (data) => {
         const player = players[socket.id];
         if (!player || !data) return;
@@ -107,7 +102,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Client Instant Food Eat Request
+    // Client Instant Food Eat Handler
     socket.on('eatFood', (data) => {
         const player = players[socket.id];
         if (!player || !data || !data.foodId) return;
@@ -115,8 +110,12 @@ io.on('connection', (socket) => {
         const idx = foods.findIndex(f => f.id === data.foodId);
         if (idx !== -1) {
             player.score += 10;
+            const newFood = spawnFood();
             foods.splice(idx, 1);
-            foods.push(spawnFood());
+            foods.push(newFood);
+            
+            // Broadcast instant food update to all clients
+            io.emit('foodRemoved', { foodId: data.foodId, newFood: newFood });
         }
     });
 
@@ -145,12 +144,11 @@ const TICK_RATE = 30;
 setInterval(() => {
     const playerIds = Object.keys(players);
 
-    // 1. Check Food Collisions & Wall Collisions for Each Active Player
+    // 1. Boundary & Food Collision Check
     playerIds.forEach(id => {
         const p = players[id];
         if (!p) return;
 
-        // Boundary Check (Die if hit wall)
         const limit = ARENA_SIZE / 2 - 2.0;
         if (Math.abs(p.x) > limit || Math.abs(p.z) > limit) {
             io.to(id).emit('gameOver', { reason: 'Harita sınırına çarptın!' });
@@ -158,23 +156,23 @@ setInterval(() => {
             return;
         }
 
-        // Server-side Backup Food Eating Check
+        // Server backup food check
         for (let i = foods.length - 1; i >= 0; i--) {
             const f = foods[i];
             const dx = p.x - f.x;
             const dz = p.z - f.z;
-            const dist = Math.sqrt(dx * dx + dz * dz);
-
-            if (dist < 2.5) {
+            if (Math.sqrt(dx * dx + dz * dz) < 3.0) {
                 p.score += 10;
+                const newFood = spawnFood();
+                const eatenId = f.id;
                 foods.splice(i, 1);
-                foods.push(spawnFood());
-                io.to(id).emit('foodEaten', { score: p.score });
+                foods.push(newFood);
+                io.emit('foodRemoved', { foodId: eatenId, newFood: newFood });
             }
         }
     });
 
-    // 2. Snake vs Snake Collision (Snake.io mechanic: Head of A vs Body of B)
+    // 2. Snake vs Snake Collision (Head of A vs Body of B)
     const aliveIds = Object.keys(players);
     aliveIds.forEach(idA => {
         const pA = players[idA];
@@ -188,9 +186,7 @@ setInterval(() => {
             for (const segB of pB.body) {
                 const dx = pA.x - segB.x;
                 const dz = pA.z - segB.z;
-                const dist = Math.sqrt(dx * dx + dz * dz);
-
-                if (dist < 2.0) {
+                if (Math.sqrt(dx * dx + dz * dz) < 2.0) {
                     io.to(idA).emit('gameOver', { reason: `${pB.name} oyuncusuna çarptın!` });
                     
                     if (pA.body) {
