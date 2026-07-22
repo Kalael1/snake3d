@@ -14,9 +14,9 @@ export class Arena {
     init() {
         const halfSize = this.size / 2;
 
-        // Dark Tron Cyber Grid Floor with PBR Metalness & Wet Reflections
+        // Lightened Slate Gray Grid Floor (Roads remain dark asphalt)
         const floorGeo = new THREE.PlaneGeometry(this.size, this.size);
-        const floorMat = new THREE.MeshStandardMaterial({ color: 0x060a14, roughness: 0.35, metalness: 0.25 });
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x384556, roughness: 0.4, metalness: 0.2 });
         const floor = new THREE.Mesh(floorGeo, floorMat);
         floor.rotation.x = -Math.PI / 2;
         floor.position.y = 0;

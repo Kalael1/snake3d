@@ -22,8 +22,8 @@ const audioManager = new AudioManager();
 
 // ============== SCENE & AAA CYBERPUNK LIGHTING ==============
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x030611);
-scene.fog = new THREE.FogExp2(0x050a18, 0.0035);
+scene.background = new THREE.Color(0x0f172a);
+scene.fog = new THREE.FogExp2(0x1e293b, 0.0022);
 
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 800);
 
