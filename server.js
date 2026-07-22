@@ -28,9 +28,9 @@ app.use((req, res) => {
 // ============== CONSTANTS ==============
 const ARENA_SIZE = 500;
 const TICK_RATE = 15;
-const DESIRED_ROOM_SIZE = 0; // Bots removed per user request!
 
 const players = {};
+const activeTrails = []; // { id, playerId, x, z, angle, age }
 
 function round1(n) { return Math.round(n * 10) / 10; }
 
@@ -66,6 +66,20 @@ io.on('connection', (socket) => {
             p.angle = round1(data.angle || 0);
             if (typeof data.driftScore === 'number') p.driftScore = data.driftScore;
             if (data.skinId) p.skinId = data.skinId;
+
+            // Handle Tron trail emission from player
+            if (data.emittingTrail) {
+                const seg = {
+                    id: socket.id + '_' + Date.now(),
+                    playerId: socket.id,
+                    x: p.x,
+                    z: p.z,
+                    angle: p.angle,
+                    age: 0
+                };
+                activeTrails.push(seg);
+                socket.broadcast.emit('trailEmitted', seg);
+            }
         }
     });
 
@@ -86,6 +100,16 @@ const TICK_MS = 1000 / TICK_RATE;
 const limit = ARENA_SIZE / 2 - 5;
 
 setInterval(() => {
+    const dt = TICK_MS / 1000;
+
+    // Age server-side trails
+    for (let i = activeTrails.length - 1; i >= 0; i--) {
+        activeTrails[i].age += dt;
+        if (activeTrails[i].age > 4.0) {
+            activeTrails.splice(i, 1);
+        }
+    }
+
     // 1. WALL DEATH
     for (const id in players) {
         const p = players[id];
@@ -95,28 +119,26 @@ setInterval(() => {
         }
     }
 
-    // 2. CAR VS CAR COLLISION
-    const ids = Object.keys(players);
-    for (let a = 0; a < ids.length; a++) {
-        const pA = players[ids[a]];
-        if (!pA) continue;
-        for (let b = a + 1; b < ids.length; b++) {
-            const pB = players[ids[b]];
-            if (!pB) continue;
-            const dx = pA.x - pB.x;
-            const dz = pA.z - pB.z;
-            if (dx * dx + dz * dz < 10.0) {
-                const dieA = pA.driftScore <= pB.driftScore;
-                const dieB = pB.driftScore <= pA.driftScore;
+    // 2. TRON LIGHT TRAIL COLLISION
+    for (const id in players) {
+        const p = players[id];
+        if (!p) continue;
 
-                if (dieA) {
-                    io.to(ids[a]).emit('gameOver', { reason: `💥 ${pB.name} ile çarpıştın!` });
-                    delete players[ids[a]];
-                }
-                if (dieB && !dieA) {
-                    io.to(ids[b]).emit('gameOver', { reason: `💥 ${pA.name} ile çarpıştın!` });
-                    delete players[ids[b]];
-                }
+        for (let i = 0; i < activeTrails.length; i++) {
+            const seg = activeTrails[i];
+            if (seg.playerId === id && seg.age < 0.8) continue; // Don't hit your own fresh trail
+
+            const dx = p.x - seg.x;
+            const dz = p.z - seg.z;
+            if (dx * dx + dz * dz < 5.0) { // Collision radius ~2.2 units
+                const owner = players[seg.playerId];
+                const killerName = owner ? owner.name : 'Tron Neon İzi';
+                
+                io.to(id).emit('gameOver', { reason: `⚡ ${killerName}'nin Tron Neon İzi'ne çarptın ve patladın!` });
+                if (owner) owner.driftScore += 300; // Bonus score for killing player with trail!
+
+                delete players[id];
+                break;
             }
         }
     }
@@ -127,5 +149,5 @@ setInterval(() => {
 
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
-    console.log(`🏎️ Drift.io Server Active (No Bots) on port ${PORT}`);
+    console.log(`⚡ Tron.io Server Active on port ${PORT}`);
 });

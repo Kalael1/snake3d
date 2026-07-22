@@ -8,6 +8,7 @@ import { AudioManager } from './src/AudioManager.js';
 import { SKINS } from './src/SkinRegistry.js';
 import { ProgressionManager } from './src/ProgressionManager.js';
 import { NameTagManager } from './src/NameTagManager.js';
+import { TronTrailManager } from './src/TronTrailManager.js';
 
 // ============== SOCKET ==============
 const SOCKET_URL = window.location.hostname.includes('github.io') || window.location.hostname.includes('vercel.app') || window.location.hostname.includes('netlify.app')
@@ -43,6 +44,7 @@ const arena = new Arena(scene, 500);
 const localCar = new DriftCar(scene);
 localCar.applySkin(progressionManager.selectedSkinId);
 
+const tronTrailManager = new TronTrailManager(scene);
 const otherCars = {};
 
 let isGameRunning = false;
@@ -50,6 +52,8 @@ let localSocketId = null;
 let gameStartTime = 0;
 let currentPlayersList = [];
 let lastNetworkEmitTime = 0;
+let lastTrailEmitTime = 0;
+let isEmittingTrail = false;
 
 let targetZoom = 1.0;
 let currentZoom = 1.0;
@@ -94,7 +98,6 @@ const mobileChatInput = document.getElementById('mobile-chat-input');
 const mobileSendChatBtn = document.getElementById('mobile-send-chat-btn');
 const closeMobileChatBtn = document.getElementById('close-mobile-chat-btn');
 
-// Drift combo display
 const driftComboEl = document.getElementById('drift-combo');
 const driftAngleEl = document.getElementById('drift-angle');
 
@@ -198,6 +201,16 @@ window.addEventListener('mousemove', (e) => {
     mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
 });
 
+// TRON TRAIL ACTIVATION VIA MOUSE CLICK & TOUCH
+window.addEventListener('mousedown', (e) => {
+    if (e.button === 0 && !e.target.closest('#overlay,#gameover-modal-overlay,#chat-container,#sound-btn,#fullscreen-btn,#skin-gallery-container')) {
+        isEmittingTrail = true;
+    }
+});
+window.addEventListener('mouseup', (e) => {
+    if (e.button === 0) isEmittingTrail = false;
+});
+
 let touchStartOrigin = { x: 0, y: 0 };
 let initialPinchDist = null;
 
@@ -212,6 +225,7 @@ window.addEventListener('touchstart', (e) => {
         virtualJoystick.classList.remove('hidden');
         mouse.x = (t.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(t.clientY / window.innerHeight) * 2 + 1;
+        isEmittingTrail = true;
     } else if (e.touches.length === 2) {
         const dx = e.touches[0].clientX - e.touches[1].clientX;
         const dy = e.touches[0].clientY - e.touches[1].clientY;
@@ -246,21 +260,18 @@ window.addEventListener('touchend', (e) => {
         virtualJoystick.classList.add('hidden');
         joystickKnob.style.transform = 'translate(-50%, -50%)';
         initialPinchDist = null;
+        isEmittingTrail = false;
     }
 }, { passive: true });
 
-// Keyboard Steering & Nitro Boost State
-const keysPressed = {};
-
 window.addEventListener('keydown', (e) => {
     if (document.activeElement === chatInput || document.activeElement === mobileChatInput) return;
-    keysPressed[e.code] = true;
+    if (e.code === 'Space') isEmittingTrail = true;
     if (e.code === 'Escape' && isGameRunning) openMenu('Oyun Duraklatıldı');
 });
 
 window.addEventListener('keyup', (e) => {
-    if (document.activeElement === chatInput || document.activeElement === mobileChatInput) return;
-    keysPressed[e.code] = false;
+    if (e.code === 'Space') isEmittingTrail = false;
 });
 
 window.addEventListener('resize', () => {
@@ -301,11 +312,18 @@ socket.on('gameState', (state) => {
     updateLeaderboard(sp);
 });
 
+socket.on('trailEmitted', (seg) => {
+    if (seg && seg.playerId !== localSocketId) {
+        tronTrailManager.addSegment(seg.playerId, seg.x, seg.z, seg.angle);
+    }
+});
+
 socket.on('gameOver', (data) => { triggerGameOver(data ? data.reason : 'Oyun Bitti!'); });
 
 function triggerGameOver(reasonText) {
     if (!isGameRunning) return;
     isGameRunning = false;
+    isEmittingTrail = false;
     audioManager.playDeath();
 
     const finalScore = localCar.getScore();
@@ -326,7 +344,6 @@ function triggerGameOver(reasonText) {
     statHighscore.innerText = progressionManager.highScore;
     gameoverModalOverlay.classList.remove('hidden');
 
-    // Hide drift combo
     if (driftComboEl) driftComboEl.classList.add('hidden');
 }
 
@@ -340,6 +357,7 @@ function updateLeaderboard(sp) {
 
 function openMenu(reasonText) {
     isGameRunning = false;
+    isEmittingTrail = false;
     virtualJoystick.classList.add('hidden');
     renderSkinGallery();
     overlayDesc.innerText = reasonText;
@@ -359,6 +377,7 @@ function startGame() {
     requestLandscapeAndFullscreen();
     const playerName = playerNameInput.value.trim() || 'DriftPilotu';
     localCar.reset();
+    tronTrailManager.clear();
     gameStartTime = Date.now();
     socket.emit('join', { name: playerName, skinId: progressionManager.selectedSkinId });
     isGameRunning = true;
@@ -381,19 +400,35 @@ function animate() {
         raycaster.setFromCamera(mouse, camera);
         raycaster.ray.intersectPlane(groundPlane, targetPoint);
 
-        // 2. Update local car physics (100% Pure Mouse Drift Steering)
+        // 2. Update local car physics
         localCar.update(delta, targetPoint);
         const headPos = localCar.getHeadPosition();
         const driftScore = localCar.getScore();
 
-        // 3. Update score display
+        // 3. Emit Tron Light Trail if left-click / touch / space is held down!
+        if (isEmittingTrail && now - lastTrailEmitTime > 60) {
+            lastTrailEmitTime = now;
+            tronTrailManager.addSegment(localSocketId, headPos.x, headPos.z, localCar.heading);
+        }
+
+        // Update Tron Light Trail visuals & animations
+        tronTrailManager.update(delta);
+
+        // 4. Check Tron Light Trail Collision!
+        const hitSeg = tronTrailManager.checkCollision(headPos.x, headPos.z, localSocketId);
+        if (hitSeg) {
+            triggerGameOver("⚡ Tron Neon Işıklı Duvara Çarptın ve Patladın!");
+            return;
+        }
+
+        // 5. Update score display
         scoreElement.innerText = driftScore;
         if (driftScore > progressionManager.highScore) {
             progressionManager.saveHighScore(driftScore);
             highScoreElement.innerText = driftScore;
         }
 
-        // 4. Drift combo display
+        // 6. Drift combo display
         if (driftComboEl) {
             if (localCar.isDrifting) {
                 driftComboEl.classList.remove('hidden');
@@ -404,20 +439,20 @@ function animate() {
             }
         }
 
-        // 5. Drift angle indicator
+        // 7. Drift angle indicator
         if (driftAngleEl) {
             driftAngleEl.innerText = `${Math.floor(localCar.slipAngle)}°`;
             driftAngleEl.style.color = localCar.slipAngle > 30 ? '#ef4444' : localCar.slipAngle > 10 ? '#f59e0b' : '#6b7280';
         }
 
-        // 6. Wall collision (client-side)
+        // 8. Wall collision (client-side)
         const wallThreshold = 240;
         if (Math.abs(headPos.x) >= wallThreshold || Math.abs(headPos.z) >= wallThreshold) {
             triggerGameOver('💥 Duvara çarptın!');
             return;
         }
 
-        // 7. Car vs car collision
+        // 9. Car vs car collision
         for (const otherId in otherCars) {
             const rc = otherCars[otherId];
             if (!rc) continue;
@@ -429,10 +464,10 @@ function animate() {
             }
         }
 
-        // 8. Remote car animation
+        // 10. Remote car animation
         for (const id in otherCars) otherCars[id].animate(delta);
 
-        // 9. Network emit (20 ticks/sec)
+        // 11. Network emit (20 ticks/sec)
         if (now - lastNetworkEmitTime > 50) {
             lastNetworkEmitTime = now;
             socket.volatile.emit('playerInput', {
@@ -440,7 +475,8 @@ function animate() {
                 z: Math.round(headPos.z * 10) / 10,
                 angle: Math.round(localCar.currentAngle * 10) / 10,
                 driftScore: driftScore,
-                skinId: progressionManager.selectedSkinId
+                skinId: progressionManager.selectedSkinId,
+                emittingTrail: isEmittingTrail
             });
         }
     } else {
