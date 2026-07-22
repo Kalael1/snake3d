@@ -29,7 +29,9 @@ scene.fog = new THREE.FogExp2(0x475569, 0.002);
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 2500);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+// Optimized Ceiling Pixel Ratio to prevent GPU lag on high-DPI / 4K mobile displays
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -46,7 +48,7 @@ composer.addPass(renderPass);
 
 const bloomPass = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.22,
+    0.20,
     0.2,
     0.92
 );
@@ -62,8 +64,8 @@ scene.add(hemiLight);
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
 dirLight.position.set(120, 200, 100);
 dirLight.castShadow = true;
-dirLight.shadow.mapSize.width = 2048;
-dirLight.shadow.mapSize.height = 2048;
+dirLight.shadow.mapSize.width = 1024;
+dirLight.shadow.mapSize.height = 1024;
 dirLight.shadow.camera.near = 0.5;
 dirLight.shadow.camera.far = 1000;
 dirLight.shadow.camera.left = -400;
@@ -387,10 +389,6 @@ socket.on('foodRemoved', (data) => {
 socket.on('gameState', (state) => {
     if (!state) return;
 
-    if (state.foods) {
-        syncFoods(state.foods);
-    }
-
     const serverPlayers = state.players || {};
     const serverIds = Object.keys(serverPlayers);
 
@@ -666,7 +664,7 @@ function animate() {
     camera.position.z += (camTargetZ - camera.position.z) * 0.1;
     camera.lookAt(headPos.x, headPos.y, headPos.z - 2);
 
-    // 7. Update Overhead 3D projected Player Name Tags & Speech/Emoji Bubbles (Live 60 FPS!)
+    // 7. Update Overhead 3D projected Player Name Tags & Speech/Emoji Bubbles
     nameTagManager.updatePositions();
 
     composer.render();

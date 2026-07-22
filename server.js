@@ -37,12 +37,16 @@ const players = {};
 let foods = [];
 const foodColors = [0xff0055, 0x00ffcc, 0xffff00, 0xaa00ff, 0xff8800, 0x00ffaa];
 
+function round2(num) {
+    return Math.round(num * 100) / 100;
+}
+
 function spawnFood(id = null, value = 2, isBig = false) {
     const halfSize = (ARENA_SIZE / 2) - 10;
     return {
         id: id || 'food_' + Math.random().toString(36).substring(2, 9),
-        x: (Math.random() - 0.5) * 2 * halfSize,
-        z: (Math.random() - 0.5) * 2 * halfSize,
+        x: round2((Math.random() - 0.5) * 2 * halfSize),
+        z: round2((Math.random() - 0.5) * 2 * halfSize),
         color: foodColors[Math.floor(Math.random() * foodColors.length)],
         value: value,
         isBig: isBig
@@ -61,8 +65,8 @@ io.on('connection', (socket) => {
         const skinId = typeof data === 'object' && data.skinId ? data.skinId : 'classic';
 
         const halfSize = (ARENA_SIZE / 2) - 20;
-        const spawnX = (Math.random() - 0.5) * 2 * halfSize;
-        const spawnZ = (Math.random() - 0.5) * 2 * halfSize;
+        const spawnX = round2((Math.random() - 0.5) * 2 * halfSize);
+        const spawnZ = round2((Math.random() - 0.5) * 2 * halfSize);
 
         players[socket.id] = {
             id: socket.id,
@@ -73,14 +77,13 @@ io.on('connection', (socket) => {
             angle: 0,
             isBoosting: false,
             score: 0,
-            colorHue: Math.random(),
             body: []
         };
 
         for (let i = 1; i <= 8; i++) {
             players[socket.id].body.push({
                 x: spawnX,
-                z: spawnZ - i * 1.3,
+                z: round2(spawnZ - i * 1.3),
                 angle: 0
             });
         }
@@ -97,19 +100,22 @@ io.on('connection', (socket) => {
         if (!player || !data) return;
 
         if (typeof data.x === 'number' && typeof data.z === 'number') {
-            player.x = data.x;
-            player.z = data.z;
-            player.angle = data.angle || 0;
+            player.x = round2(data.x);
+            player.z = round2(data.z);
+            player.angle = round2(data.angle || 0);
             player.isBoosting = !!data.isBoosting;
             if (data.skinId) player.skinId = data.skinId;
 
             if (Array.isArray(data.body)) {
-                player.body = data.body;
+                player.body = data.body.map(seg => ({
+                    x: round2(seg.x),
+                    z: round2(seg.z),
+                    angle: round2(seg.angle || 0)
+                }));
             }
         }
     });
 
-    // Real-Time Chat & Emoji Broadcast
     socket.on('chatMessage', (data) => {
         const player = players[socket.id];
         if (!player || !data || !data.text) return;
@@ -146,14 +152,16 @@ io.on('connection', (socket) => {
         if (player) {
             if (player.body) {
                 player.body.forEach(seg => {
-                    foods.push({
+                    const drop = {
                         id: 'food_' + Math.random().toString(36).substring(2, 9),
-                        x: seg.x,
-                        z: seg.z,
+                        x: round2(seg.x),
+                        z: round2(seg.z),
                         color: foodColors[Math.floor(Math.random() * foodColors.length)],
                         value: 15,
                         isBig: true
-                    });
+                    };
+                    foods.push(drop);
+                    io.emit('foodRemoved', { foodId: null, newFood: drop });
                 });
             }
             delete players[socket.id];
@@ -197,14 +205,16 @@ setInterval(() => {
                     
                     if (pA.body) {
                         pA.body.forEach(seg => {
-                            foods.push({
+                            const drop = {
                                 id: 'food_' + Math.random().toString(36).substring(2, 9),
-                                x: seg.x,
-                                z: seg.z,
+                                x: round2(seg.x),
+                                z: round2(seg.z),
                                 color: foodColors[Math.floor(Math.random() * foodColors.length)],
                                 value: 15,
                                 isBig: true
-                            });
+                            };
+                            foods.push(drop);
+                            io.emit('foodRemoved', { foodId: null, newFood: drop });
                         });
                     }
 
@@ -215,16 +225,16 @@ setInterval(() => {
         });
     });
 
+    // Emit light snapshot with players (foods excluded to save 90% bandwidth!)
     io.emit('gameState', {
-        players: players,
-        foods: foods
+        players: players
     });
 }, 1000 / TICK_RATE);
 
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
     console.log(`================================================`);
-    console.log(`🚀 Snake.io 3D Multiplayer Sunucusu Hazır!`);
+    console.log(`🚀 Snake.io 3D Multiplayer Sunucusu Hazır! (Lag Optimizasyonu Aktif)`);
     console.log(`🌐 Bağlantı adresi: http://localhost:${PORT}`);
     console.log(`================================================`);
 });
