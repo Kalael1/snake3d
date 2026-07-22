@@ -3,12 +3,12 @@ import * as THREE from 'three';
 export class TronTrailManager {
     constructor(scene) {
         this.scene = scene;
-        this.playerTrails = {}; // Map of playerId -> RibbonMesh
+        this.playerStrokes = []; // Array of active ribbon stroke objects
         this.allSegments = [];   // Collision data: { playerId, x, z, age }
         this.TRAIL_LIFETIME = 3.8;
     }
 
-    addSegment(playerId, x, z, angle) {
+    addSegment(playerId, x, z, angle, breakTrail = false) {
         this.allSegments.push({
             playerId,
             x,
@@ -21,23 +21,32 @@ export class TronTrailManager {
             this.allSegments.shift();
         }
 
-        if (!this.playerTrails[playerId]) {
-            this.playerTrails[playerId] = this.createRibbonMesh();
+        // Get current stroke for this player or start a NEW separate stroke if breakTrail is true!
+        let activeStroke = this.playerStrokes.find(s => s.playerId === playerId && s.active);
+
+        if (!activeStroke || breakTrail) {
+            if (activeStroke) activeStroke.active = false; // Close previous stroke!
+            activeStroke = this.createStrokeMesh(playerId);
+            this.playerStrokes.push(activeStroke);
         }
-        this.playerTrails[playerId].addPoint(x, z, angle);
+
+        activeStroke.addPoint(x, z, angle);
     }
 
-    createRibbonMesh() {
-        const maxPoints = 500;
+    breakPlayerTrail(playerId) {
+        const stroke = this.playerStrokes.find(s => s.playerId === playerId && s.active);
+        if (stroke) stroke.active = false;
+    }
+
+    createStrokeMesh(playerId) {
+        const maxPoints = 300;
         const height = 1.4;
 
         const geometry = new THREE.BufferGeometry();
         const positions = new Float32Array(maxPoints * 4 * 3);
-        const colors = new Float32Array(maxPoints * 4 * 4); // RGBA per vertex for smooth FADE-OUT!
         const indices = new Uint16Array(maxPoints * 6);
 
         geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 4));
         geometry.setIndex(new THREE.BufferAttribute(indices, 1));
 
         const material = new THREE.MeshBasicMaterial({
@@ -56,10 +65,11 @@ export class TronTrailManager {
         const lifetime = this.TRAIL_LIFETIME;
 
         return {
+            playerId,
+            active: true,
             mesh,
             geometry,
             positions,
-            colors,
             indices,
             pts,
             addPoint(x, z, angle) {
@@ -67,7 +77,7 @@ export class TronTrailManager {
                 if (pts.length > maxPoints) pts.shift();
             },
             update(delta) {
-                // Age points and fade opacity smoothly!
+                // Age points
                 for (let i = pts.length - 1; i >= 0; i--) {
                     pts[i].age += delta;
                     if (pts[i].age > lifetime) {
@@ -78,11 +88,10 @@ export class TronTrailManager {
                 const count = pts.length;
                 if (count < 2) {
                     geometry.setDrawRange(0, 0);
-                    return;
+                    return count;
                 }
 
                 let idx = 0;
-                let colIdx = 0;
                 let triIdx = 0;
 
                 for (let i = 0; i < count - 1; i++) {
@@ -91,17 +100,16 @@ export class TronTrailManager {
 
                     const vIdx = i * 4;
 
-                    // Smooth Fade Out Alpha: 1.0 -> 0.0 over lifetime!
+                    // Smooth Fade Out Alpha & Shrinking Height
                     const alpha1 = Math.max(0, 1.0 - (p1.age / lifetime));
                     const alpha2 = Math.max(0, 1.0 - (p2.age / lifetime));
 
-                    // Positions
                     positions[idx] = p1.x;
                     positions[idx + 1] = 0.1;
                     positions[idx + 2] = p1.z;
 
                     positions[idx + 3] = p1.x;
-                    positions[idx + 4] = height * alpha1; // Wall height also shrinks smoothly as it fades out!
+                    positions[idx + 4] = height * alpha1;
                     positions[idx + 5] = p1.z;
 
                     positions[idx + 6] = p2.x;
@@ -114,7 +122,6 @@ export class TronTrailManager {
 
                     idx += 12;
 
-                    // Quad indices
                     indices[triIdx] = vIdx;
                     indices[triIdx + 1] = vIdx + 1;
                     indices[triIdx + 2] = vIdx + 2;
@@ -129,6 +136,7 @@ export class TronTrailManager {
                 geometry.attributes.position.needsUpdate = true;
                 geometry.index.needsUpdate = true;
                 geometry.setDrawRange(0, triIdx);
+                return count;
             },
             destroy() {
                 scene.remove(mesh);
@@ -147,9 +155,14 @@ export class TronTrailManager {
             }
         }
 
-        // Update active player trail ribbon meshes with smooth fade out
-        for (const pid in this.playerTrails) {
-            this.playerTrails[pid].update(delta);
+        // Update active stroke meshes and clean expired empty strokes
+        for (let i = this.playerStrokes.length - 1; i >= 0; i--) {
+            const stroke = this.playerStrokes[i];
+            const remainingPts = stroke.update(delta);
+            if (remainingPts === 0 && !stroke.active) {
+                stroke.destroy();
+                this.playerStrokes.splice(i, 1);
+            }
         }
     }
 
@@ -170,9 +183,9 @@ export class TronTrailManager {
 
     clear() {
         this.allSegments = [];
-        for (const pid in this.playerTrails) {
-            this.playerTrails[pid].destroy();
+        for (let i = 0; i < this.playerStrokes.length; i++) {
+            this.playerStrokes[i].destroy();
         }
-        this.playerTrails = {};
+        this.playerStrokes = [];
     }
 }

@@ -208,7 +208,10 @@ window.addEventListener('mousedown', (e) => {
     }
 });
 window.addEventListener('mouseup', (e) => {
-    if (e.button === 0) isEmittingTrail = false;
+    if (e.button === 0) {
+        isEmittingTrail = false;
+        tronTrailManager.breakPlayerTrail(localSocketId);
+    }
 });
 
 let touchStartOrigin = { x: 0, y: 0 };
@@ -261,6 +264,7 @@ window.addEventListener('touchend', (e) => {
         joystickKnob.style.transform = 'translate(-50%, -50%)';
         initialPinchDist = null;
         isEmittingTrail = false;
+        tronTrailManager.breakPlayerTrail(localSocketId);
     }
 }, { passive: true });
 
@@ -275,7 +279,10 @@ window.addEventListener('keydown', (e) => {
 
 window.addEventListener('keyup', (e) => {
     keysPressed[e.code] = false;
-    if (e.code === 'Space') isEmittingTrail = false;
+    if (e.code === 'Space') {
+        isEmittingTrail = false;
+        tronTrailManager.breakPlayerTrail(localSocketId);
+    }
 });
 
 window.addEventListener('resize', () => {
