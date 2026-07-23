@@ -407,10 +407,15 @@ function escapeHtml(str) {
 }
 
 function sendChat() {
+    if (!chatInput) return;
     const text = chatInput.value.trim();
     if (text) {
-        socket.emit('chatMessage', text);
+        addChatMessage('Ben', text);
+        if (socket && socket.connected) {
+            socket.emit('chatMessage', text);
+        }
         chatInput.value = '';
+        chatInput.blur();
     }
 }
 
@@ -421,10 +426,15 @@ chatInput.addEventListener('keydown', (e) => {
 
 if (mobileSendChatBtn) {
     mobileSendChatBtn.addEventListener('click', () => {
+        if (!mobileChatInput) return;
         const text = mobileChatInput.value.trim();
         if (text) {
-            socket.emit('chatMessage', text);
+            addChatMessage('Ben', text);
+            if (socket && socket.connected) {
+                socket.emit('chatMessage', text);
+            }
             mobileChatInput.value = '';
+            mobileChatInput.blur();
             mobileChatModal.classList.add('hidden');
         }
     });
@@ -481,6 +491,7 @@ socket.on('state', (players) => {
 });
 
 socket.on('chatBroadcast', (data) => {
+    if (data.id === localSocketId) return;
     addChatMessage(data.sender, data.text);
     if (otherCars[data.id]) {
         otherCars[data.id].showSpeechBubble(data.text);
@@ -691,9 +702,9 @@ function startGame() {
     try {
         audioManager.init();
         const playerName = playerNameInput ? (playerNameInput.value.trim() || 'DriftPilotu') : 'DriftPilotu';
-        isEngineOn = false; // Car spawns STOPPED until Space or W is pressed!
+        isEngineOn = true; // Motor aktif başlar, araba doğrudan hareket eder!
         isEmittingTrail = false;
-        addChatMessage('SİSTEM', '🎮 Oyuna başladınız! Harekete geçmek için W veya SPACE tuşuna basın.', true);
+        addChatMessage('SİSTEM', '🏎️ Oyuna başladınız! Kontroller: W/S Gaz/Fren, A/D Direksiyon, SPACE Motor Aç/Kapat.', true);
 
         localCar.reset();
         // Spawn on a clear spot in the city (not inside a building)
