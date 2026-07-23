@@ -102,21 +102,20 @@ io.on('connection', (socket) => {
 
     socket.on('join', (data) => {
         const name = typeof data === 'string' ? data : (data.name || 'Oyuncu');
-        const skinId = typeof data === 'object' && data.skinId ? data.skinId : 'sport';
-        const half = (ARENA_SIZE / 2) - 30;
+        const skinId = typeof data === 'object' && data.skinId ? data.skinId : 'turkey';
 
         players[socket.id] = {
             id: socket.id,
-            isBot: false,
-            name: name || 'Driver #' + socket.id.substring(0, 4),
+            name: name || 'Player #' + socket.id.substring(0, 4),
             skinId,
-            x: round1((Math.random() - 0.5) * 2 * half),
-            z: round1((Math.random() - 0.5) * 2 * half),
-            angle: Math.random() * Math.PI * 2,
-            driftScore: 0
+            x: 400,
+            y: 300,
+            vx: 0,
+            vy: 0,
+            score: 0
         };
 
-        socket.emit('init', { id: socket.id, arenaSize: ARENA_SIZE });
+        socket.emit('init', { id: socket.id });
     });
 
     socket.on('playerInput', (data) => {
@@ -124,31 +123,22 @@ io.on('connection', (socket) => {
         if (!p || !data) return;
         if (typeof data.x === 'number') {
             p.x = round1(data.x);
-            p.z = round1(data.z);
-            p.angle = round1(data.angle || 0);
-            if (typeof data.driftScore === 'number') p.driftScore = data.driftScore;
+            p.y = round1(data.y || data.z || 0);
+            p.vx = round1(data.vx || 0);
+            p.vy = round1(data.vy || 0);
+            if (typeof data.score === 'number') p.score = data.score;
             if (data.skinId) p.skinId = data.skinId;
-
-            // Handle Tron trail emission from player
-            if (data.emittingTrail) {
-                const seg = {
-                    id: socket.id + '_' + Date.now(),
-                    playerId: socket.id,
-                    x: p.x,
-                    z: p.z,
-                    angle: p.angle,
-                    age: 0
-                };
-                activeTrails.push(seg);
-                socket.broadcast.emit('trailEmitted', seg);
-            }
         }
     });
 
     socket.on('chatMessage', (data) => {
         const p = players[socket.id];
-        if (!p || !data || !data.text) return;
-        io.emit('chatReceived', { id: socket.id, name: p.name, text: data.text.substring(0, 60), isEmoji: !!data.isEmoji });
+        if (!p || !data) return;
+        const text = typeof data === 'string' ? data : (data.text || '');
+        const isEmoji = typeof data === 'object' ? !!data.isEmoji : false;
+        if (!text) return;
+
+        io.emit('chatReceived', { id: socket.id, name: p.name, text: text.substring(0, 60), isEmoji });
     });
 
     socket.on('disconnect', () => {

@@ -6,67 +6,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="screen-orientation" content="landscape">
     <meta name="orientation" content="landscape">
-    <title>Drift.io — 3D Multiplayer Drift Arena</title>
-    <meta name="description" content="Drift.io — Gerçek zamanlı 3D çok oyunculu drift yarışı. Drift yap, skor topla, lider ol!">
+    <title>Countryballs.io — 2D Bouncy Playground & Chat</title>
+    <meta name="description" content="Countryballs.io — 2D eğlenceli ülke topları oyunu. Topunu seç, sek, sohbet et ve müzik dinle!">
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Outfit:wght@500;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./style.css">
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <canvas id="gameCanvas"></canvas>
+    </div>
 
     <!-- Portrait Warning -->
     <div id="rotate-device-overlay" class="hidden">
       <div class="rotate-card">
         <div class="phone-rotate-icon">📱🔄</div>
         <h2>Lütfen Cihazınızı Yatay Döndürün</h2>
-        <p>Drift.io en iyi yatay (Landscape) modda çalışır.</p>
+        <p>Countryballs.io en iyi yatay (Landscape) modda çalışır.</p>
       </div>
     </div>
 
-    <!-- 3D Name Tags -->
-    <div id="nametag-container"></div>
-
-    <!-- Virtual Joystick -->
+    <!-- Virtual Joystick for Mobile -->
     <div id="virtual-joystick" class="hidden">
       <div id="joystick-ring">
         <div id="joystick-knob"></div>
       </div>
     </div>
 
-    <!-- Mobile Boost (hidden in drift mode) -->
-    <button id="mobile-boost-btn" class="mobile-only-btn" style="display:none">⚡ HIZLAN</button>
-
-    <!-- DRIFT COMBO DISPLAY (Center Screen) -->
-    <div id="drift-combo" class="hidden">
-      <span class="combo-score">+0</span>
-      <span class="combo-label">DRİFT!</span>
-    </div>
-
     <!-- HUD Layer -->
     <div id="ui-layer">
       <div id="top-left-hud">
         <div id="score-card" class="hud-pill">
-          <span class="hud-icon">🏎️</span>
+          <span class="hud-icon">⚽</span>
           <div class="hud-info">
-            <span class="hud-label">DRİFT SKORU</span>
-            <span id="score" class="hud-value">0</span>
+            <span class="hud-label">OYUNCU TOPU</span>
+            <span id="player-skin-name" class="hud-value">Türkiye 🇹🇷</span>
           </div>
         </div>
 
         <div id="high-score-card" class="hud-pill gold-pill">
           <span class="hud-icon">🏆</span>
           <div class="hud-info">
-            <span class="hud-label">REKOR</span>
-            <span id="high-score" class="hud-value">0</span>
-          </div>
-        </div>
-
-        <!-- Drift Angle Indicator -->
-        <div class="hud-pill angle-pill">
-          <span class="hud-icon">📐</span>
-          <div class="hud-info">
-            <span class="hud-label">KAYMA AÇISI</span>
-            <span id="drift-angle" class="hud-value">0°</span>
+            <span class="hud-label">SEKME SAYISI</span>
+            <span id="score" class="hud-value">0</span>
           </div>
         </div>
       </div>
@@ -75,9 +56,9 @@
       <div id="top-right-bar">
         <button id="fullscreen-btn" class="icon-btn" title="Tam Ekran">⛶</button>
         <button id="sound-btn" class="icon-btn" title="Ses">🔊</button>
-        <button id="open-screen-btn" class="icon-btn" title="Arena Ekranına müzik / video koy">📺</button>
+        <button id="open-screen-btn" class="icon-btn" title="YouTube Müzik / Video Aç">📺</button>
         <div id="leaderboard">
-          <div class="lb-header">🏎️ DRİFT LİDERLERİ</div>
+          <div class="lb-header">⚽ ÜLKE TOPLARI</div>
           <ul id="lb-list">
             <li>1. Bekleniyor...</li>
           </ul>
@@ -87,15 +68,17 @@
       <!-- Chat -->
       <div id="chat-container">
         <div id="chat-messages">
-          <div class="chat-msg system-msg">🏎️ Drift.io arenasına hoş geldiniz!</div>
+          <div class="chat-msg system-msg">⚽ Countryballs.io arenasına hoş geldiniz!</div>
         </div>
         <div id="quick-emoji-bar">
           <button class="emoji-btn" data-emoji="😂">😂</button>
-          <button class="emoji-btn" data-emoji="😈">😈</button>
           <button class="emoji-btn" data-emoji="🔥">🔥</button>
-          <button class="emoji-btn" data-emoji="💀">💀</button>
           <button class="emoji-btn" data-emoji="👑">👑</button>
-          <button class="emoji-btn" data-emoji="🏎️">🏎️</button>
+          <button class="emoji-btn" data-emoji="💩">💩</button>
+          <button class="emoji-btn" data-emoji="😡">😡</button>
+          <button class="emoji-btn" data-emoji="🚀">🚀</button>
+          <button class="emoji-btn" data-emoji="🇹🇷">🇹🇷</button>
+          <button class="emoji-btn" data-emoji="⚽">⚽</button>
         </div>
         <div id="chat-input-wrapper">
           <input type="text" id="chat-input" placeholder="Mesaj yazın... (Enter)" maxlength="50" autocomplete="off">
@@ -104,19 +87,14 @@
       </div>
 
       <div id="controls-hint">
-        <span>🏎️ A / D: DİREKSİYON</span> • <span>⚡ SPACE: MOTOR & TRON İZİ AÇ/KAPAT</span> • <span>🛞 Q / E: İKİ TEKER</span> • <span>🎥 V: TPS KAMERA</span>
+        <span>🎮 W A S D / YÖN: HAREKET</span> • <span>⚡ SPACE: HIZLI ATILMA (DASH)</span> • <span>🖱️ FARE: SÜRÜKLE</span>
       </div>
     </div>
 
-    <!-- Minimap Radar HUD -->
-    <div id="minimap-container" style="position: fixed; bottom: 20px; right: 20px; width: 140px; height: 140px; border-radius: 50%; border: 3px solid #00f3ff; background: rgba(5, 12, 24, 0.85); box-shadow: 0 0 15px rgba(0, 243, 255, 0.5); overflow: hidden; pointer-events: none; z-index: 900;">
-      <canvas id="minimap-canvas" width="140" height="140"></canvas>
-    </div>
-
-    <!-- Arena Screen: shared YouTube jumbotron (everyone sees/hears the same video) -->
+    <!-- Arena Screen: shared YouTube jumbotron -->
     <div id="arena-screen-jumbotron" class="hidden">
       <div class="jumbo-header">
-        <span id="arena-screen-label">📺 ARENA EKRANI</span>
+        <span id="arena-screen-label">📺 YOUTUBE MÜZİK OYNATICI</span>
         <button id="jumbo-mute-btn" title="Sesi Aç/Kapat">🔊</button>
         <button id="jumbo-minimize-btn" title="Küçült / Büyüt">—</button>
       </div>
@@ -125,12 +103,12 @@
       </div>
     </div>
 
-    <!-- Arena Screen: paste-a-link popover -->
+    <!-- YouTube link input popover -->
     <div id="screen-input-popover" class="hidden">
-      <div class="screen-pop-title">📺 ARENA EKRANINA MÜZİK / VİDEO KOY</div>
-      <p class="screen-pop-desc">Bir YouTube linki yapıştır — herkes aynı ekranda görür. Yeni video 2 dakikada bir eklenebilir.</p>
+      <div class="screen-pop-title">📺 MÜZİK / VİDEO YÜKLE</div>
+      <p class="screen-pop-desc">Bir YouTube linki yapıştırın — herkes aynı müziği dinlesin!</p>
       <input type="text" id="screen-url-input" placeholder="https://youtube.com/watch?v=..." autocomplete="off">
-      <button id="screen-set-btn">▶ EKRANDA AÇ</button>
+      <button id="screen-set-btn">▶ MÜZİĞİ BAŞLAT</button>
       <div id="screen-status" class="screen-status"></div>
     </div>
 
@@ -138,7 +116,7 @@
     <div id="mobile-chat-modal" class="hidden">
       <div class="mobile-chat-card">
         <div class="mobile-chat-header">
-          <span>💬 MOBİL SOHBET</span>
+          <span>💬 SOHBET</span>
           <button id="close-mobile-chat-btn">✕</button>
         </div>
         <div id="mobile-chat-messages"></div>
@@ -149,93 +127,29 @@
       </div>
     </div>
 
-    <!-- Game Over Modal -->
-    <div id="gameover-modal-overlay" class="hidden">
-      <div class="gameover-modal">
-        <div class="gameover-header">
-          <div class="skull-badge">💥 ÇARPIŞMA</div>
-          <h1 class="gameover-title">OYUN BİTTİ</h1>
-          <p id="gameover-reason-text" class="gameover-reason">💥 Duvara çarptın!</p>
-        </div>
-
-        <div class="summary-stats-container">
-          <div class="summary-card rank-card">
-            <span class="card-icon">👑</span>
-            <div class="card-content">
-              <span class="card-title">ARENA SIRALAMASI</span>
-              <span id="stat-rank" class="card-value">#1</span>
-            </div>
-          </div>
-          <div class="summary-card score-card">
-            <span class="card-icon">🏎️</span>
-            <div class="card-content">
-              <span class="card-title">DRİFT SKORU</span>
-              <span id="stat-score" class="card-value">0</span>
-            </div>
-          </div>
-          <div class="summary-card time-card">
-            <span class="card-icon">⏱️</span>
-            <div class="card-content">
-              <span class="card-title">SÜRÜŞ SÜRESİ</span>
-              <span id="stat-time" class="card-value">00:00</span>
-            </div>
-          </div>
-          <div class="summary-card highscore-card">
-            <span class="card-icon">🏆</span>
-            <div class="card-content">
-              <span class="card-title">EN YÜKSEK REKOR</span>
-              <span id="stat-highscore" class="card-value">0</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="gameover-action-row">
-          <button id="restart-game-btn" class="action-btn primary-action">
-            <span class="btn-icon">🔄</span> TEKRAR SÜR
-          </button>
-          <button id="open-skins-btn" class="action-btn secondary-action">
-            <span class="btn-icon">🏎️</span> GARAJ & ARABALAR
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Start / Garage Modal -->
+    <!-- Start / Countryball Skin Selection Gallery Overlay -->
     <div id="overlay">
       <div class="stylized-modal">
         <div class="modal-header">
-          <div class="brand-badge">🏎️ 3D MULTIPLAYER ARENA</div>
-          <h1 class="game-title">DRIFT<span class="dot">.</span>IO <span class="accent-badge">3D</span></h1>
-          <p class="subtitle" id="overlay-desc">Arenaya katıl, drift yap ve en yüksek skoru kır!</p>
+          <div class="brand-badge">⚽ 2D BOUNCY PLAYGROUND</div>
+          <h1 class="game-title">COUNTRYBALLS<span class="dot">.</span>IO</h1>
+          <p class="subtitle" id="overlay-desc">Ülke topunu seç, sekmeye başla ve sohbet et!</p>
         </div>
         
         <div class="player-input-wrapper">
           <span class="input-icon">👤</span>
-          <input type="text" id="player-name" placeholder="Sürücü Adınız..." maxlength="12" value="DriftPilotu">
-        </div>
-
-        <!-- CONTROL SCHEME SELECTOR (Klavye vs Fare) -->
-        <div id="control-scheme-wrapper">
-          <span class="control-title">🎮 KONTROL YÖNTEMİ:</span>
-          <div class="control-btn-group">
-            <button type="button" id="ctrl-keyboard-btn" class="ctrl-option-btn active">⌨️ KLAVYE (A / D)</button>
-            <button type="button" id="ctrl-mouse-btn" class="ctrl-option-btn">🖱️ FARE İLE DİREKSİYON</button>
-          </div>
+          <input type="text" id="player-name" placeholder="Oyuncu Adınız..." maxlength="14" value="OyuncuTopu">
         </div>
 
         <div id="skin-gallery-container">
           <div class="gallery-title-bar">
-            <span class="gallery-title">🏎️ ARABA GARAJI</span>
-            <span id="skin-progress-text" class="progress-badge">0 / 200 Pn</span>
-          </div>
-          <div id="skin-progress-bar-bg">
-            <div id="skin-progress-bar-fill"></div>
+            <span class="gallery-title">⚽ ÜLKE TOPUNU SEÇ</span>
           </div>
           <div id="skin-cards-grid"></div>
         </div>
 
         <button id="start-btn" class="play-btn">
-          <span class="play-icon">▶</span> SÜRE BAŞLAT
+          <span class="play-icon">▶</span> ARENAYA GİR
         </button>
       </div>
     </div>
@@ -243,7 +157,7 @@
     <!-- MOBILE EASY TOUCH CONTROLS -->
     <div id="mobile-touch-controls">
       <button id="mobile-left-btn" class="touch-ctrl-btn steer-btn">◀ SOL</button>
-      <button id="mobile-engine-toggle-btn" class="touch-ctrl-btn engine-btn">⚡ MOTOR</button>
+      <button id="mobile-engine-toggle-btn" class="touch-ctrl-btn engine-btn">⚡ ATIL (DASH)</button>
       <button id="mobile-right-btn" class="touch-ctrl-btn steer-btn">SAĞ ▶</button>
     </div>
 
