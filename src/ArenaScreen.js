@@ -71,25 +71,16 @@ export class ArenaScreen {
         const onScreen = !behind && sx > -pxWidth && sx < w + pxWidth && sy > -400 && sy < h + 400 && pxWidth > 40;
 
         if (onScreen) {
-            let angleY = 0;
-            if (this.monitor.mesh) {
-                camera.getWorldDirection(this._cameraForward);
-                const targetDir = this._monitorForward.clone().negate();
-                
-                const cAng = Math.atan2(this._cameraForward.x, this._cameraForward.z);
-                const tAng = Math.atan2(targetDir.x, targetDir.z);
-                
-                angleY = cAng - tAng;
-                
-                while (angleY > Math.PI) angleY -= Math.PI * 2;
-                while (angleY < -Math.PI) angleY += Math.PI * 2;
-                
-                // Clamp to prevent it from flipping inside out at extreme angles
-                angleY = Math.max(-1.3, Math.min(1.3, angleY));
-                
-                // Increase pixel width slightly when highly skewed so it doesn't shrink too much visually
-                pxWidth /= Math.cos(angleY);
-            }
+            // Fake perspective based on screen position!
+            // When the monitor is on the left side of the screen, it tilts to the right.
+            // When on the right, it tilts to the left.
+            // This breaks the illusion that it's "looking at you" and makes it feel
+            // glued to the background, WITHOUT risking the monitor disappearing.
+            const dx = (sx - (w / 2)) / (w / 2); // -1.0 to 1.0
+            const angleY = dx * 0.6; // Max ~35 degrees skew
+
+            // Increase width slightly when skewed to maintain visual size
+            pxWidth /= Math.cos(angleY * 0.8);
 
             wrap.classList.add('tracking');
             wrap.style.width = pxWidth + 'px';
