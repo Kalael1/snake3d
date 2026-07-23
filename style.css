@@ -1506,3 +1506,6 @@ canvas {
 .spyfall-card { background: rgba(15, 23, 42, 0.9); border: 2px solid #ef4444; padding: 15px; color: white; font-family: 'Outfit'; border-radius: 0 0 10px 10px; }
 .spyfall-info { margin-bottom: 8px; font-size: 14px; }
 .spyfall-info span { font-weight: bold; color: #fde047; }
+
+.hidden { display: none !important; }
+
