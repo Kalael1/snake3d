@@ -873,22 +873,22 @@ function animate() {
         }
 
         // 9. Wall collision (client-side)
-        if (!isInvincible && (Math.abs(headPos.x) >= arena.halfX - 6 || Math.abs(headPos.z) >= arena.halfZ - 6)) {
-            triggerGameOver('💥 Şehrin sınırına ulaştın!');
-            return;
+        if (Math.abs(headPos.x) >= arena.halfX - 6 || Math.abs(headPos.z) >= arena.halfZ - 6) {
+            localCar.currentSpeed *= -0.5; // Bounce
+            localCar.position.x = Math.max(-arena.halfX + 7, Math.min(arena.halfX - 7, localCar.position.x));
+            localCar.position.z = Math.max(-arena.halfZ + 7, Math.min(arena.halfZ - 7, localCar.position.z));
         }
 
         // 10. Car vs car collision
-        if (!isInvincible) {
-            for (const otherId in otherCars) {
-                const rc = otherCars[otherId];
-                if (!rc) continue;
-                const dx = headPos.x - rc.group.position.x;
-                const dz = headPos.z - rc.group.position.z;
-                if (dx * dx + dz * dz < 10.0) {
-                    triggerGameOver(`💥 ${rc.name} ile çarpıştın!`);
-                    return;
-                }
+        for (const otherId in otherCars) {
+            const rc = otherCars[otherId];
+            if (!rc) continue;
+            const dx = headPos.x - rc.group.position.x;
+            const dz = headPos.z - rc.group.position.z;
+            if (dx * dx + dz * dz < 10.0) {
+                localCar.currentSpeed *= -0.5;
+                localCar.position.x -= Math.sin(localCar.velocityAngle) * 1.5;
+                localCar.position.z -= Math.cos(localCar.velocityAngle) * 1.5;
             }
         }
 
