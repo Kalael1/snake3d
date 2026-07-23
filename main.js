@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CSS3DRenderer } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
 import { io } from 'socket.io-client';
 
 import { CityMap } from './src/CityMap.js';
@@ -38,6 +39,13 @@ renderer.toneMappingExposure = 1.35;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 document.getElementById('app').appendChild(renderer.domElement);
+
+const cssRenderer = new CSS3DRenderer();
+cssRenderer.setSize(window.innerWidth, window.innerHeight);
+cssRenderer.domElement.style.position = 'absolute';
+cssRenderer.domElement.style.top = '0';
+cssRenderer.domElement.style.pointerEvents = 'none';
+document.getElementById('app').appendChild(cssRenderer.domElement);
 
 const nameTagManager = new NameTagManager(camera, document.getElementById('nametag-container'));
 
@@ -517,6 +525,7 @@ window.addEventListener('resize', () => {
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     renderer.setSize(w, h);
+    cssRenderer.setSize(w, h);
 });
 
 window.addEventListener('mousemove', (e) => {
@@ -920,7 +929,9 @@ function animate() {
     }
 
     nameTagManager.updatePositions();
+
     renderer.render(scene, camera);
+    cssRenderer.render(scene, camera);
 }
 
 function updateMinimap() {

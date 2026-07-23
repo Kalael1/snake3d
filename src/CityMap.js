@@ -83,6 +83,7 @@ export class CityMap {
             const mbox = new THREE.Box3().setFromObject(monitorMesh);
             const ms = mbox.getSize(new THREE.Vector3());
             this.monitor = {
+                mesh: monitorMesh,
                 pos: wp,
                 width: Math.max(ms.x, ms.z),
                 height: ms.y

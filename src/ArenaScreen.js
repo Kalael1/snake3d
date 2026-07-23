@@ -1,14 +1,11 @@
 import * as THREE from 'three';
+import { CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
 
 /**
  * ArenaScreen — the shared "jukebox".
  *
- * A YouTube player can't be painted onto a WebGL texture (browser CORS/DRM), so
- * the video lives in an HTML <iframe>. The AUDIO plays everywhere regardless of
- * where the iframe sits, and the VIDEO is projected onto the city model's
- * "YoutubeMonitor" surface: each frame we project that mesh's world position to
- * screen space and lay the iframe over it. When the monitor is off-screen or
- * behind the camera we park the iframe off-view (still playing) so music keeps going.
+ * Uses CSS3DRenderer to embed the YouTube iframe directly onto the 
+ * "YoutubeMonitor" mesh in the 3D scene, providing a true 3D perspective.
  */
 export class ArenaScreen {
     constructor(scene, { iframeEl, wrapEl, labelEl } = {}) {
@@ -17,15 +14,40 @@ export class ArenaScreen {
         this.wrapEl = wrapEl;
         this.labelEl = labelEl;
         this.videoId = null;
-        this.monitor = null;      // { pos: Vector3, width, height }
-        this._v = new THREE.Vector3();
-        this._right = new THREE.Vector3();
+        this.monitor = null;
+        this.cssObject = null;
     }
 
     /** Tell the screen where the in-world monitor is (from CityMap). */
     setMonitor(monitor) {
         this.monitor = monitor;
         if (this.wrapEl) this.wrapEl.classList.add('on-monitor');
+
+        if (monitor && monitor.mesh && this.wrapEl) {
+            this.cssObject = new CSS3DObject(this.wrapEl);
+
+            // We define a high-res base size for the iframe
+            const baseWidth = 1280;
+            const baseHeight = 720;
+            this.wrapEl.style.width = baseWidth + 'px';
+            this.wrapEl.style.height = baseHeight + 'px';
+            
+            // Allow pointer events just on the iframe wrap
+            this.wrapEl.style.pointerEvents = 'auto';
+
+            // Scale the CSS3DObject down to fit the monitor's 3D width
+            const scale = monitor.width / baseWidth;
+            this.cssObject.scale.set(scale, scale, scale);
+
+            // Parent the CSS3DObject directly to the monitor mesh!
+            // This means it inherits the exact world position and rotation of the monitor surface.
+            monitor.mesh.add(this.cssObject);
+
+            // Adjust the local position slightly to prevent z-fighting with the monitor mesh
+            // Z is usually forward/backward depending on the mesh's local axes.
+            // If the video faces the wrong way or is inside the mesh, we may need to adjust this.
+            this.cssObject.position.set(0, 0, 0.2); 
+        }
     }
 
     setVideo(videoId, setByName) {
@@ -40,42 +62,8 @@ export class ArenaScreen {
         if (this.labelEl) this.labelEl.innerText = `📺 ${setByName || 'Bir sürücü'} açtı`;
     }
 
-    /** Position the iframe over the in-world monitor (or park it off-screen). */
+    /** Update is no longer needed for 2D tracking! CSS3DRenderer handles it entirely. */
     update(camera) {
-        const wrap = this.wrapEl;
-        if (!wrap || !this.videoId) return;
-
-        // No monitor located → behave as a fixed corner jumbotron (CSS default).
-        if (!this.monitor) return;
-
-        const w = window.innerWidth, h = window.innerHeight;
-
-        // Project the monitor centre to screen space
-        this._v.copy(this.monitor.pos).project(camera);
-        const behind = this._v.z > 1;
-        const sx = (this._v.x * 0.5 + 0.5) * w;
-        const sy = (-this._v.y * 0.5 + 0.5) * h;
-
-        // Project a point one monitor half-width to the camera's right to get on-screen scale
-        camera.getWorldDirection(this._right);
-        this._right.cross(camera.up).normalize().multiplyScalar(this.monitor.width * 0.5);
-        this._right.add(this.monitor.pos).project(camera);
-        const edgeX = (this._right.x * 0.5 + 0.5) * w;
-        const pxWidth = Math.abs(edgeX - sx) * 2;
-
-        const onScreen = !behind && sx > -pxWidth && sx < w + pxWidth && sy > -400 && sy < h + 400 && pxWidth > 60;
-
-        if (onScreen) {
-            wrap.classList.add('tracking');
-            wrap.style.width = pxWidth + 'px';
-            wrap.style.left = '0px';
-            wrap.style.top = '0px';
-            wrap.style.transform =
-                `translate(-50%, -50%) translate(${Math.round(sx)}px, ${Math.round(sy)}px)`;
-        } else {
-            // Park off-view but keep the iframe alive so audio continues
-            wrap.classList.add('tracking');
-            wrap.style.transform = 'translate(-9999px, -9999px)';
-        }
+        // Nothing to do here!
     }
 }
