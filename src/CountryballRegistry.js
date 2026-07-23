@@ -5,11 +5,14 @@ export const COUNTRYBALLS = [
         flagEmoji: '🇹🇷',
         type: 'custom',
         drawFlag: (ctx, r) => {
-            // Red background
-            ctx.fillStyle = '#E30A17';
+            ctx.save();
             ctx.beginPath();
             ctx.arc(0, 0, r, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.clip();
+
+            // Red background
+            ctx.fillStyle = '#E30A17';
+            ctx.fillRect(-r, -r, r * 2, r * 2);
 
             // White crescent outer
             ctx.fillStyle = '#FFFFFF';
@@ -26,6 +29,8 @@ export const COUNTRYBALLS = [
             // White Star
             ctx.fillStyle = '#FFFFFF';
             drawStar(ctx, r * 0.3, 0, 5, r * 0.22, r * 0.1);
+
+            ctx.restore();
         }
     },
     {

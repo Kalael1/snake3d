@@ -117,31 +117,39 @@ export class Countryball {
         this.x += this.vx;
         this.y += this.vy;
 
-        // Border Collisions with Elastic Bounce
+        // NaN & Infinity Safety Guards
+        if (isNaN(this.x) || !isFinite(this.x)) this.x = bounds ? bounds.maxX / 2 : 400;
+        if (isNaN(this.y) || !isFinite(this.y)) this.y = bounds ? bounds.maxY / 2 : 300;
+        if (isNaN(this.vx) || !isFinite(this.vx)) this.vx = 0;
+        if (isNaN(this.vy) || !isFinite(this.vy)) this.vy = 0;
+
+        // Border Collisions with Elastic Bounce (Directional Math.abs prevents wall trapping!)
         const r = this.radius;
-        if (bounds) {
+        if (bounds && bounds.maxX > 100 && bounds.maxY > 100) {
             if (this.x - r < bounds.minX) {
                 this.x = bounds.minX + r;
-                this.vx = -this.vx * 0.8;
+                this.vx = Math.abs(this.vx) * 0.8;
                 this.onBounce();
             } else if (this.x + r > bounds.maxX) {
                 this.x = bounds.maxX - r;
-                this.vx = -this.vx * 0.8;
+                this.vx = -Math.abs(this.vx) * 0.8;
                 this.onBounce();
             }
 
             if (this.y - r < bounds.minY) {
                 this.y = bounds.minY + r;
-                this.vy = -this.vy * 0.8;
+                this.vy = Math.abs(this.vy) * 0.8;
                 this.onBounce();
             } else if (this.y + r > bounds.maxY) {
                 this.y = bounds.maxY - r;
-                this.vy = -this.vy * 0.8;
+                this.vy = -Math.abs(this.vy) * 0.8;
                 this.onBounce();
             }
         }
 
         // Smooth squish recovery back to 1.0
+        if (isNaN(this.squishX) || !isFinite(this.squishX)) this.squishX = 1.0;
+        if (isNaN(this.squishY) || !isFinite(this.squishY)) this.squishY = 1.0;
         this.squishX += (1.0 - this.squishX) * 0.15;
         this.squishY += (1.0 - this.squishY) * 0.15;
     }
