@@ -18,7 +18,7 @@ resizeCanvas();
 
 // ============== SOCKET & MANAGER SETUP ==============
 const SOCKET_URL = window.location.hostname.includes('github.io') || window.location.hostname.includes('vercel.app') || window.location.hostname.includes('netlify.app')
-    ? 'https://boutique-mainly-being-succeed.trycloudflare.com'
+    ? 'http://82.70.212.199:3000'
     : window.location.origin;
 
 const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
