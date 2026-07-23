@@ -604,11 +604,21 @@ window.addEventListener('keydown', (e) => {
     keysPressed[e.code] = true;
     if (e.code === 'KeyV') isTPSMode = !isTPSMode;
     if (e.code === 'Space') {
-        if (!isEngineOn) {
-            isEngineOn = true;
-            addChatMessage('SİSTEM', '🔥 Motor çalıştırıldı! Gaza basılıyor...', true);
+        if (selectedControlScheme === 'mouse' && isGameRunning) {
+            isEngineOn = !isEngineOn;
+            if (isEngineOn) {
+                addChatMessage('SİSTEM', '🔥 Motor çalıştırıldı! Fare ile yönlendirin...', true);
+            } else {
+                addChatMessage('SİSTEM', '🛑 Motor durduruldu.', true);
+            }
         }
         isEmittingTrail = true;
+    }
+    if ((e.code === 'KeyW' || e.code === 'ArrowUp') && selectedControlScheme === 'keyboard') {
+        if (!isEngineOn && isGameRunning) {
+            isEngineOn = true;
+            addChatMessage('SİSTEM', '🔥 Motor çalıştırıldı! İyi sürüşler!', true);
+        }
     }
     if (e.code === 'Escape' && isGameRunning) openMenu('Oyun Duraklatıldı');
 });
@@ -762,11 +772,14 @@ function animate() {
         if (keysPressed['KeyD'] || keysPressed['ArrowRight'] || mobileSteerRight) steerDir += 1; // Turn Right (Positive heading)
 
         const controlState = {
-            left: !!keysPressed['KeyQ'],
-            right: !!keysPressed['KeyE'],
+            left: !!keysPressed['KeyA'] || !!keysPressed['ArrowLeft'] || mobileSteerLeft,
+            right: !!keysPressed['KeyD'] || !!keysPressed['ArrowRight'] || mobileSteerRight,
+            forward: !!keysPressed['KeyW'] || !!keysPressed['ArrowUp'],
+            backward: !!keysPressed['KeyS'] || !!keysPressed['ArrowDown'],
             steerDir,
             isEngineOn,
-            isHandbrake: !!keysPressed['Space'] || !!keysPressed['ShiftLeft']
+            isHandbrake: !!keysPressed['Space'] || !!keysPressed['ShiftLeft'],
+            selectedControlScheme
         };
 
         if (selectedControlScheme === 'keyboard' || !hasMovedMouseSinceStart) {
@@ -804,20 +817,46 @@ function animate() {
         if (!isInvincible) {
             const hitSeg = tronTrailManager.checkCollision(headPos.x, headPos.z, localSocketId);
             if (hitSeg) {
-                triggerGameOver("⚡ Tron Neon Işıklı Duvara Çarptın!");
-                return;
+                if (Math.abs(localCar.currentSpeed) > 25.0) {
+                    triggerGameOver("⚡ Tron Neon Işıklı Duvara Çok Hızlı Çarptın!");
+                    return;
+                } else {
+                    localCar.currentSpeed *= -0.5;
+                }
             }
 
             const hitBarrier = arena.checkBarrierCollision(headPos.x, headPos.z);
             if (hitBarrier) {
-                triggerGameOver("💥 Neon Güvenlik Bariyerine Yüksek Hızla Çarptın!");
-                return;
+                if (Math.abs(localCar.currentSpeed) > 25.0) {
+                    triggerGameOver("💥 Neon Güvenlik Bariyerine Yüksek Hızla Çarptın!");
+                    return;
+                } else {
+                    localCar.currentSpeed *= -0.5;
+                }
             }
 
             const hitBuilding = arena.checkBuildingCollision(headPos.x, headPos.z);
             if (hitBuilding) {
-                triggerGameOver("💥 Binaya Yüksek Hızla Çarptın!");
-                return;
+                if (Math.abs(localCar.currentSpeed) > 25.0) {
+                    triggerGameOver("💥 Binaya Yüksek Hızla Çarptın!");
+                    return;
+                } else {
+                    localCar.currentSpeed *= -0.5;
+                }
+            }
+
+            // Outer arena boundary check
+            const maxD = ARENA_SIZE / 2;
+            if (Math.abs(headPos.x) > maxD || Math.abs(headPos.z) > maxD) {
+                if (Math.abs(localCar.currentSpeed) > 25.0) {
+                    triggerGameOver("🧱 Şehir Duvarına Çok Hızlı Çarptın!");
+                    return;
+                } else {
+                    localCar.currentSpeed *= -0.5; // Bounce
+                    // push it slightly back so it doesn't get stuck
+                    localCar.position.x = Math.max(-maxD, Math.min(maxD, localCar.position.x));
+                    localCar.position.z = Math.max(-maxD, Math.min(maxD, localCar.position.z));
+                }
             }
         }
 

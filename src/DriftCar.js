@@ -167,9 +167,23 @@ export class DriftCar {
         }
         this.wasTwoWheeling = this.isTwoWheeling;
 
-        // 1. ENGINE POWER & SPEED CONTROL (Handbrake / Space)
-        let targetSpeed = isEngineOn ? this.baseSpeed : 0.0;
-        if (this.isHandbrake) targetSpeed = this.baseSpeed * 0.6; // Handbrake scrubs speed but keeps momentum for drift
+        // 1. ENGINE POWER & SPEED CONTROL (Handbrake / Space / WASD)
+        let targetSpeed = 0.0;
+        if (controlState.selectedControlScheme === 'keyboard') {
+            if (controlState.forward) {
+                targetSpeed = this.baseSpeed;
+            } else if (controlState.backward) {
+                targetSpeed = -this.baseSpeed * 0.4; // Reverse speed is slower
+            }
+        } else {
+            // Mouse control uses engine toggle
+            targetSpeed = isEngineOn ? this.baseSpeed : 0.0;
+        }
+
+        if (this.isHandbrake) {
+            // Handbrake only scrubs forward speed, doesn't speed up if standing still
+            if (targetSpeed > 0) targetSpeed = this.baseSpeed * 0.6;
+        }
 
         // CORNERING SCRUB — hard steering and big slides bleed speed. This makes the
         // car "load up" in a turn (nicer feel) AND makes spin-in-place donuts
