@@ -211,28 +211,28 @@ export const HATS = [
         id: 'tophat', name: 'Silindir Şapka',
         draw: (ctx, r) => {
             const img = getOrLoadImage('tophat', '/assets/tophat.png');
-            if (img.complete) ctx.drawImage(img, -r*0.8, -r*1.6, r*1.6, r*1.6);
+            if (img.complete) ctx.drawImage(img, -r*0.8, -r*2.4, r*1.6, r*1.6);
         }
     },
     {
         id: 'cap', name: 'Kasket',
         draw: (ctx, r) => {
             const img = getOrLoadImage('cap', '/assets/cap.png');
-            if (img.complete) ctx.drawImage(img, -r*0.8, -r*1.4, r*1.6, r*1.6);
+            if (img.complete) ctx.drawImage(img, -r*0.8, -r*2.3, r*1.6, r*1.6);
         }
     },
     {
         id: 'crown', name: 'Kral Tacı',
         draw: (ctx, r) => {
             const img = getOrLoadImage('crown', '/assets/crown.png');
-            if (img.complete) ctx.drawImage(img, -r*0.8, -r*1.5, r*1.6, r*1.6);
+            if (img.complete) ctx.drawImage(img, -r*0.8, -r*2.4, r*1.6, r*1.6);
         }
     },
     {
         id: 'banana', name: 'Muz (Nano Banana) 🍌',
         draw: (ctx, r) => {
             const img = getOrLoadImage('banana', '/assets/banana.png');
-            if (img.complete) ctx.drawImage(img, -r*0.9, -r*1.6, r*1.8, r*1.8);
+            if (img.complete) ctx.drawImage(img, -r*0.9, -r*2.6, r*1.8, r*1.8);
         }
     }
 ];
