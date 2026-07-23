@@ -289,10 +289,24 @@ export const GLASSES = [
         }
     },
     {
-        id: 'mask', name: 'Tiyatro/Ninja Maskesi 🎭',
+        id: 'clown', name: 'Palyaço Maskesi 🤡',
         draw: (ctx, r) => {
-            const img = getOrLoadImage('mask', '/assets/mask.svg');
-            if (img.complete) ctx.drawImage(img, -r*1.0, -r*0.7, r*2.0, r*1.4);
+            const img = getOrLoadImage('clown', '/assets/clown.svg');
+            if (img.complete) ctx.drawImage(img, -r*1.0, -r*0.9, r*2.0, r*1.8);
+        }
+    },
+    {
+        id: 'cigarette', name: 'Sigara 🚬',
+        draw: (ctx, r) => {
+            const img = getOrLoadImage('cigarette', '/assets/cigarette.svg');
+            if (img.complete) ctx.drawImage(img, r*0.1, r*0.1, r*1.4, r*1.4);
+        }
+    },
+    {
+        id: 'tesbih', name: 'Tesbih 📿',
+        draw: (ctx, r) => {
+            const img = getOrLoadImage('tesbih', '/assets/tesbih.svg');
+            if (img.complete) ctx.drawImage(img, -r*0.8, r*0.3, r*1.6, r*1.6);
         }
     },
     {
