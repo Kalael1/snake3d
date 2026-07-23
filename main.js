@@ -603,8 +603,11 @@ window.addEventListener('keydown', (e) => {
     if (document.activeElement === chatInput || document.activeElement === mobileChatInput) return;
     keysPressed[e.code] = true;
     if (e.code === 'KeyV') isTPSMode = !isTPSMode;
-    // Removed Space engine toggle because users press Space to drift (handbrake)
     if (e.code === 'Space') {
+        if (!isEngineOn) {
+            isEngineOn = true;
+            addChatMessage('SİSTEM', '🔥 Motor çalıştırıldı! Gaza basılıyor...', true);
+        }
         isEmittingTrail = true;
     }
     if (e.code === 'Escape' && isGameRunning) openMenu('Oyun Duraklatıldı');
@@ -623,7 +626,7 @@ function triggerGameOver(reasonText) {
     if (!isGameRunning) return;
     isGameRunning = false;
     isEmittingTrail = false;
-    audioManager.playCrash();
+    audioManager.playDeath();
 
     const hp = localCar.getHeadPosition();
     localCar.group.visible = false; // Hide car instantly on crash
@@ -678,7 +681,7 @@ function startGame() {
     try {
         audioManager.init();
         const playerName = playerNameInput ? (playerNameInput.value.trim() || 'DriftPilotu') : 'DriftPilotu';
-        isEngineOn = true;
+        isEngineOn = false; // Car spawns STOPPED until Space is pressed!
         isEmittingTrail = false;
 
         localCar.reset();
