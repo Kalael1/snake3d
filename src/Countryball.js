@@ -38,10 +38,19 @@ export class Countryball {
         this.speechTimer = duration;
     }
 
-    dash() {
+    dash(targetPos = null) {
         if (this.dashCooldown > 0) return false;
-        const speed = Math.hypot(this.vx, this.vy);
-        const angle = speed > 0.1 ? Math.atan2(this.vy, this.vx) : -Math.PI / 2;
+        
+        let angle;
+        if (targetPos) {
+            const dx = targetPos.x - this.x;
+            const dy = targetPos.y - this.y;
+            angle = Math.atan2(dy, dx);
+        } else {
+            const speed = Math.hypot(this.vx, this.vy);
+            angle = speed > 0.1 ? Math.atan2(this.vy, this.vx) : -Math.PI / 2;
+        }
+
         this.vx = Math.cos(angle) * 16;
         this.vy = Math.sin(angle) * 16;
         this.dashCooldown = 1.2;

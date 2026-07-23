@@ -302,7 +302,7 @@ window.addEventListener('keydown', (e) => {
 
     // SPACE = DASH / BOOST!
     if (e.code === 'Space') {
-        if (localPlayer.dash()) {
+        if (localPlayer.dash(globalMousePos)) {
             particleSystem.addSparkles(localPlayer.x, localPlayer.y, '#00f3ff', 16);
             particleSystem.addDashTrail(localPlayer.x, localPlayer.y, localPlayer.radius, '#00f3ff');
         }
