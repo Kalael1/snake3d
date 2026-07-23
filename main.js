@@ -31,6 +31,24 @@ let isGameRunning = false;
 let bounceScore = 0;
 let highscore = parseInt(localStorage.getItem('countryball_highscore') || '0', 10);
 
+window.currentRoom = 'lobby';
+window.DOORS = {
+    lobby: [
+        { id: 'beach', rx: 0.1, ry: 0.1, rw: 180, rh: 80, label: '🏖️ Sahil', color: '#fde047' },
+        { id: 'coffeeshop', rx: 0.7, ry: 0.1, rw: 180, rh: 80, label: '☕ Kafe', color: '#78350f' },
+        { id: 'disco', rx: 0.4, ry: 0.8, rw: 180, rh: 80, label: '🕺 Disko', color: '#ec4899' }
+    ],
+    beach: [
+        { id: 'lobby', rx: 0.4, ry: 0.8, rw: 180, rh: 80, label: '🚪 Lobiye Dön', color: '#3b82f6' }
+    ],
+    coffeeshop: [
+        { id: 'lobby', rx: 0.4, ry: 0.8, rw: 180, rh: 80, label: '🚪 Lobiye Dön', color: '#3b82f6' }
+    ],
+    disco: [
+        { id: 'lobby', rx: 0.4, ry: 0.1, rw: 180, rh: 80, label: '🚪 Lobiye Dön', color: '#3b82f6' }
+    ]
+};
+
 // Input state
 const keysPressed = {};
 const globalMousePos = { x: canvas.width / 2, y: canvas.height / 2 };
@@ -770,6 +788,38 @@ function gameLoop(now) {
     // In-game: update local player + collisions
     if (isGameRunning) {
         localPlayer.update(delta, inputState, bounds);
+        
+        // Door Collisions
+        if (window.DOORS && window.DOORS[window.currentRoom]) {
+            const doors = window.DOORS[window.currentRoom];
+            for (let d of doors) {
+                const w = canvas.width;
+                const h = canvas.height;
+                const dx = d.rx * w;
+                const dy = d.ry * h;
+                const dw = d.rw;
+                const dh = d.rh;
+                
+                // Simple AABB collision for circle
+                if (localPlayer.x + localPlayer.radius > dx &&
+                    localPlayer.x - localPlayer.radius < dx + dw &&
+                    localPlayer.y + localPlayer.radius > dy &&
+                    localPlayer.y - localPlayer.radius < dy + dh) {
+                    
+                    // Transition to new room!
+                    window.currentRoom = d.id;
+                    localPlayer.x = w / 2;
+                    localPlayer.y = h / 2;
+                    localPlayer.vx = 0;
+                    localPlayer.vy = 0;
+                    if (socket && socket.connected) {
+                        socket.emit('changeRoom', d.id);
+                    }
+                    addChatMessage('SİSTEM', `🚪 ${d.id.toUpperCase()} odasına geçtiniz!`, true);
+                    break;
+                }
+            }
+        }
 
         botPlayers.forEach(bot => checkBallCollision(localPlayer, bot));
 
@@ -804,79 +854,91 @@ function gameLoop(now) {
 function drawPlaygroundBackground(ctx) {
     const w = canvas.width;
     const h = canvas.height;
-
-    // --- 1. Beach (Top-Left) ---
-    ctx.fillStyle = '#fde047'; // Sand
-    ctx.fillRect(0, 0, w/2, h/2);
-    // Ocean strip
-    const gradOcean = ctx.createLinearGradient(0, 0, 0, h*0.15);
-    gradOcean.addColorStop(0, '#0284c7');
-    gradOcean.addColorStop(1, 'transparent');
-    ctx.fillStyle = gradOcean;
-    ctx.fillRect(0, 0, w/2, h*0.15);
-
-    // --- 2. Coffee Shop (Top-Right) ---
-    ctx.fillStyle = '#78350f'; // Wood floor base
-    ctx.fillRect(w/2, 0, w/2, h/2);
-    // Coffee shop counter
-    ctx.fillStyle = '#451a03';
-    ctx.fillRect(w*0.65, h*0.1, w*0.2, h*0.2);
-    // Coffee shop tables (simple circles)
-    ctx.fillStyle = '#d4d4d8';
-    ctx.beginPath(); ctx.arc(w*0.6, h*0.4, 30, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(w*0.8, h*0.4, 30, 0, Math.PI*2); ctx.fill();
-
-    // --- 3. Disco (Bottom Half) ---
-    ctx.fillStyle = '#0f172a'; // Dark floor
-    ctx.fillRect(0, h/2, w, h/2);
     
-    // Flashing Disco tiles
-    ctx.save();
-    const tileSize = 60;
-    const colors = ['#ec4899', '#8b5cf6', '#3b82f6', '#14b8a6', '#f59e0b'];
-    const time = Math.floor(Date.now() / 400); // Change colors every 400ms
-    
-    for(let y = Math.floor(h/2); y < h; y += tileSize) {
-        for(let x = 0; x < w; x += tileSize) {
-            // Deterministic pseudo-random based on time and coordinates
-            const hash = Math.sin(x * 1.23 + y * 4.56 + time * 7.89) * 10000;
-            const rand = hash - Math.floor(hash);
-            if (rand < 0.25) { // 25% of tiles are lit
-                ctx.fillStyle = colors[Math.floor(rand * 100) % colors.length];
-                ctx.globalAlpha = 0.6;
-                ctx.fillRect(x, y, tileSize, tileSize);
+    // Draw Background based on current room
+    if (window.currentRoom === 'beach') {
+        ctx.fillStyle = '#fde047'; // Sand
+        ctx.fillRect(0, 0, w, h);
+        const gradOcean = ctx.createLinearGradient(0, 0, 0, h*0.2);
+        gradOcean.addColorStop(0, '#0284c7');
+        gradOcean.addColorStop(1, 'transparent');
+        ctx.fillStyle = gradOcean;
+        ctx.fillRect(0, 0, w, h*0.2);
+    } 
+    else if (window.currentRoom === 'coffeeshop') {
+        ctx.fillStyle = '#78350f'; // Wood floor
+        ctx.fillRect(0, 0, w, h);
+        ctx.fillStyle = '#451a03'; // Counter
+        ctx.fillRect(w*0.7, h*0.2, w*0.2, h*0.6);
+        ctx.fillStyle = '#d4d4d8'; // Tables
+        ctx.beginPath(); ctx.arc(w*0.3, h*0.3, 40, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(w*0.3, h*0.7, 40, 0, Math.PI*2); ctx.fill();
+    }
+    else if (window.currentRoom === 'disco') {
+        ctx.fillStyle = '#0f172a'; // Dark floor
+        ctx.fillRect(0, 0, w, h);
+        ctx.save();
+        const tileSize = 60;
+        const colors = ['#ec4899', '#8b5cf6', '#3b82f6', '#14b8a6', '#f59e0b'];
+        const time = Math.floor(Date.now() / 400); 
+        for(let y = 0; y < h; y += tileSize) {
+            for(let x = 0; x < w; x += tileSize) {
+                const hash = Math.sin(x * 1.23 + y * 4.56 + time * 7.89) * 10000;
+                const rand = hash - Math.floor(hash);
+                if (rand < 0.25) {
+                    ctx.fillStyle = colors[Math.floor(rand * 100) % colors.length];
+                    ctx.globalAlpha = 0.6;
+                    ctx.fillRect(x, y, tileSize, tileSize);
+                }
             }
         }
+        ctx.restore();
     }
-    ctx.restore();
+    else { // Lobby / Default
+        const grad = ctx.createLinearGradient(0, 0, w, h);
+        grad.addColorStop(0, '#0f172a');
+        grad.addColorStop(1, '#1e1b4b');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+    }
     
-    // --- Divider Lines ---
-    ctx.save();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 4;
-    ctx.globalAlpha = 0.2;
-    // Horizontal divider
-    ctx.beginPath(); ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); ctx.stroke();
-    // Vertical divider (top half)
-    ctx.beginPath(); ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h/2); ctx.stroke();
-    ctx.restore();
-
-    // Playful grid pattern over everything
+    // Draw Grid for retro feel
     ctx.save();
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
     const gridSize = 60;
     for (let x = 0; x < w; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, h);
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
     }
     for (let y = 0; y < h; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(w, y);
-        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+    
+    // Draw Doors!
+    if (window.DOORS && window.DOORS[window.currentRoom]) {
+        const doors = window.DOORS[window.currentRoom];
+        for (let d of doors) {
+            const dx = d.rx * w;
+            const dy = d.ry * h;
+            // Door rect
+            ctx.fillStyle = d.color;
+            ctx.globalAlpha = 0.8;
+            ctx.fillRect(dx, dy, d.rw, d.rh);
+            ctx.globalAlpha = 1.0;
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(dx, dy, d.rw, d.rh);
+            // Label
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 20px Fredoka';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(d.label, dx + d.rw/2, dy + d.rh/2);
+            
+            // Draw a glowing portal effect inside the door
+            ctx.fillStyle = 'rgba(255, 255, 255, ' + (0.2 + Math.sin(Date.now() / 200) * 0.1) + ')';
+            ctx.fillRect(dx + 5, dy + 5, d.rw - 10, d.rh - 10);
+        }
     }
 
     // Outer neon boundary line

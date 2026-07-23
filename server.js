@@ -135,6 +135,7 @@ io.on('connection', (socket) => {
             hatId,
             glassesId,
             expression: 'normal',
+            room: 'lobby',
             x: 400,
             y: 300,
             vx: 0,
@@ -142,7 +143,16 @@ io.on('connection', (socket) => {
             score: 0
         };
 
+        socket.join('lobby');
         socket.emit('init', { id: socket.id });
+    });
+
+    socket.on('changeRoom', (newRoom) => {
+        const p = players[socket.id];
+        if (!p) return;
+        socket.leave(p.room);
+        p.room = newRoom;
+        socket.join(newRoom);
     });
 
     socket.on('playerInput', (data) => {
@@ -168,13 +178,14 @@ io.on('connection', (socket) => {
         const isEmoji = typeof data === 'object' ? !!data.isEmoji : false;
         if (!text) return;
 
-        io.emit('chatReceived', { id: socket.id, name: p.name, text: text.substring(0, 60), isEmoji });
+        io.to(p.room).emit('chatReceived', { id: socket.id, name: p.name, text: text.substring(0, 60), isEmoji });
     });
 
     socket.on('playerAction', (data) => {
-        if (!data || !data.action) return;
-        // Broadcast the action to everyone else
-        socket.broadcast.emit('playerAction', { id: socket.id, action: data.action });
+        const p = players[socket.id];
+        if (!p || !data || !data.action) return;
+        // Broadcast the action to everyone in the same room
+        socket.to(p.room).emit('playerAction', { id: socket.id, action: data.action });
     });
 
     socket.on('disconnect', () => {
@@ -188,9 +199,16 @@ const TICK_MS = 1000 / TICK_RATE;
 
 setInterval(() => {
     try {
-        // 1. BROADCAST SNAPSHOT
-        // Use normal emit instead of volatile to prevent packet drops and ensure delivery
-        io.emit('state', players);
+        const rooms = ['lobby', 'beach', 'coffeeshop', 'disco'];
+        rooms.forEach(room => {
+            const roomPlayers = {};
+            for (let id in players) {
+                if (players[id].room === room) {
+                    roomPlayers[id] = players[id];
+                }
+            }
+            io.to(room).emit('state', roomPlayers);
+        });
     } catch (err) {
         console.error("Error in game loop broadcast:", err);
     }
