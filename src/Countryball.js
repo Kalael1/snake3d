@@ -225,41 +225,65 @@ export class Countryball {
     _drawUI(ctx, r) {
         // name tag
         ctx.save();
-        ctx.font = 'bold 13px Fredoka, Outfit, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
+        try {
+            ctx.font = 'bold 13px Fredoka, Outfit, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
 
-        const ny = this.y + r * (this.squishY || 1) + 5;
-        const tw = ctx.measureText(this.name).width + 14;
-        ctx.fillStyle = 'rgba(0,0,0,0.55)';
-        ctx.beginPath(); ctx.roundRect(this.x - tw / 2, ny, tw, 18, 5); ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.fillText(this.name, this.x, ny + 2);
+            const ny = this.y + r * (this.squishY || 1) + 5;
+            const tw = ctx.measureText(this.name).width + 14;
+            ctx.fillStyle = 'rgba(0,0,0,0.55)';
+            
+            // Custom roundRect implementation for maximum browser compatibility
+            const drawRoundRect = (x, y, w, h, rad) => {
+                ctx.beginPath();
+                ctx.moveTo(x + rad, y);
+                ctx.lineTo(x + w - rad, y);
+                ctx.quadraticCurveTo(x + w, y, x + w, y + rad);
+                ctx.lineTo(x + w, y + h - rad);
+                ctx.quadraticCurveTo(x + w, y + h, x + w - rad, y + h);
+                ctx.lineTo(x + rad, y + h);
+                ctx.quadraticCurveTo(x, y + h, x, y + h - rad);
+                ctx.lineTo(x, y + rad);
+                ctx.quadraticCurveTo(x, y, x + rad, y);
+                ctx.closePath();
+            };
 
-        // speech bubble
-        if (this.speechText) {
-            ctx.font = '13px Fredoka, Outfit, sans-serif';
-            const bw = ctx.measureText(this.speechText).width + 22;
-            const bh = 28;
-            const bx = this.x - bw / 2;
-            const by = this.y - r * (this.squishY || 1) - bh - 10;
+            drawRoundRect(this.x - tw / 2, ny, tw, 18, 5);
+            ctx.fill();
 
             ctx.fillStyle = '#fff';
-            ctx.strokeStyle = '#1e293b';
-            ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 8); ctx.fill(); ctx.stroke();
+            ctx.fillText(this.name, this.x, ny + 2);
 
-            ctx.fillStyle = '#fff'; ctx.strokeStyle = '#1e293b';
-            ctx.beginPath();
-            ctx.moveTo(this.x - 6, by + bh);
-            ctx.lineTo(this.x, by + bh + 7);
-            ctx.lineTo(this.x + 6, by + bh);
-            ctx.closePath(); ctx.fill(); ctx.stroke();
+            // speech bubble
+            if (this.speechText) {
+                ctx.font = '13px Fredoka, Outfit, sans-serif';
+                const bw = ctx.measureText(this.speechText).width + 22;
+                const bh = 28;
+                const bx = this.x - bw / 2;
+                const by = this.y - r * (this.squishY || 1) - bh - 10;
 
-            ctx.fillStyle = '#0f172a';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(this.speechText, this.x, by + bh / 2);
+                ctx.fillStyle = '#fff';
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 2;
+                
+                drawRoundRect(bx, by, bw, bh, 8);
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#fff'; ctx.strokeStyle = '#1e293b';
+                ctx.beginPath();
+                ctx.moveTo(this.x - 6, by + bh);
+                ctx.lineTo(this.x, by + bh + 7);
+                ctx.lineTo(this.x + 6, by + bh);
+                ctx.closePath(); ctx.fill(); ctx.stroke();
+
+                ctx.fillStyle = '#0f172a';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.speechText, this.x, by + bh / 2);
+            }
+        } finally {
+            ctx.restore();
         }
-        ctx.restore();
     }
 }
