@@ -96,10 +96,10 @@ export class Countryball {
         // Wall bounce using Math.abs so the ball always bounces inward
         const r = this.radius;
         if (bounds && bounds.maxX > 50 && bounds.maxY > 50) {
-            if (this.x - r < bounds.minX) { this.x = bounds.minX + r; this.vx = Math.abs(this.vx) * 0.75; this.onBounce(); }
-            else if (this.x + r > bounds.maxX) { this.x = bounds.maxX - r; this.vx = -Math.abs(this.vx) * 0.75; this.onBounce(); }
-            if (this.y - r < bounds.minY) { this.y = bounds.minY + r; this.vy = Math.abs(this.vy) * 0.75; this.onBounce(); }
-            else if (this.y + r > bounds.maxY) { this.y = bounds.maxY - r; this.vy = -Math.abs(this.vy) * 0.75; this.onBounce(); }
+            if (this.x - r < bounds.minX) { this.x = bounds.minX + r; this.vx = Math.abs(this.vx) * 0.75; this.onBounce('x'); }
+            else if (this.x + r > bounds.maxX) { this.x = bounds.maxX - r; this.vx = -Math.abs(this.vx) * 0.75; this.onBounce('x'); }
+            if (this.y - r < bounds.minY) { this.y = bounds.minY + r; this.vy = Math.abs(this.vy) * 0.75; this.onBounce('y'); }
+            else if (this.y + r > bounds.maxY) { this.y = bounds.maxY - r; this.vy = -Math.abs(this.vy) * 0.75; this.onBounce('y'); }
         }
 
         if (!isFinite(this.squishX)) this.squishX = 1.0;
@@ -108,23 +108,47 @@ export class Countryball {
         this.squishY += (1.0 - this.squishY) * 0.18;
     }
 
-    onBounce() {
-        this.squishX = 1.3;
-        this.squishY = 0.75;
+    onBounce(axis = 'xy') {
+        if (axis === 'x') {
+            this.squishX = 0.75; // Squash horizontally (hit left/right wall)
+            this.squishY = 1.30; // Stretch vertically
+        } else if (axis === 'y') {
+            this.squishX = 1.30; // Stretch horizontally
+            this.squishY = 0.75; // Squash vertically (hit top/bottom wall)
+        } else {
+            this.squishX = 0.85; // Generic bump contraction
+            this.squishY = 0.85;
+        }
+        
         if (Math.hypot(this.vx, this.vy) > 3) { this.expression = 'angry'; this.expressionTimer = 0.5; }
     }
 
-    // ─── DRAW ───────────────────────────────────────────────────────────────
     draw(ctx, targetPos = null) {
         if (!isFinite(this.x) || !isFinite(this.y)) return;
 
         const r = this.radius;
-        const sx = isFinite(this.squishX) ? this.squishX : 1.0;
-        const sy = isFinite(this.squishY) ? this.squishY : 1.0;
+        const bounceSx = isFinite(this.squishX) ? this.squishX : 1.0;
+        const bounceSy = isFinite(this.squishY) ? this.squishY : 1.0;
 
         ctx.save();                         // save-1: outer transform
         ctx.translate(this.x, this.y);
-        ctx.scale(sx, sy);
+        
+        // 🔹 Movement Squish (Directional) 🔹
+        const speed = Math.hypot(this.vx, this.vy);
+        if (speed > 0.5) {
+            const moveAngle = Math.atan2(this.vy, this.vx);
+            const stretchAmount = Math.min(speed * 0.015, 0.4); // Scale stretch with speed, max 40%
+            
+            // Rotate to velocity vector, stretch, and rotate back.
+            // This stretches the body into an ellipse pointing in the movement direction
+            // WITHOUT rotating the flag texture inside it!
+            ctx.rotate(moveAngle);
+            ctx.scale(1.0 + stretchAmount, 1.0 - stretchAmount * 0.4);
+            ctx.rotate(-moveAngle);
+        }
+
+        // Apply wall bounce squish (aligned to world axes)
+        ctx.scale(bounceSx, bounceSy);
 
         // ── shadow ──
         ctx.save();
