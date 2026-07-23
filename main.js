@@ -78,6 +78,7 @@ let localSocketId = null;
 let currentPlayersList = [];
 let gameStartTime = 0;
 let lastNetworkEmitTime = 0;
+let hasMovedMouseSinceStart = false;
 
 // ============== DOM ELEMENTS ==============
 const overlay = document.getElementById('overlay');
@@ -371,6 +372,7 @@ window.addEventListener('resize', () => {
 });
 
 window.addEventListener('mousemove', (e) => {
+    hasMovedMouseSinceStart = true;
     const w = Math.max(1, window.innerWidth);
     const h = Math.max(1, window.innerHeight);
     mouse.x = (e.clientX / w) * 2 - 1;
@@ -398,6 +400,7 @@ window.addEventListener('touchstart', (e) => {
     if (!isGameRunning) return;
 
     if (e.touches.length === 1) {
+        hasMovedMouseSinceStart = true;
         const t = e.touches[0];
         const w = Math.max(1, window.innerWidth);
         const h = Math.max(1, window.innerHeight);
@@ -532,6 +535,7 @@ function startGame() {
         explosionManager.clear();
         tronTrailManager.clear();
         gameStartTime = Date.now();
+        hasMovedMouseSinceStart = false; // Prevents U-turn crash on spawn!
 
         // INSTANTLY SNAP CAMERA TO CAR POSITION (0,0,0)
         const hp = localCar.getHeadPosition();
@@ -590,8 +594,11 @@ function animate() {
             isEngineOn
         };
 
-        // Hybrid steering: Both Mouse Target & Keyboard A/D steer seamlessly!
-        localCar.update(delta, targetPoint, controlState);
+        if (selectedControlScheme === 'keyboard' || !hasMovedMouseSinceStart) {
+            localCar.update(delta, null, controlState);
+        } else {
+            localCar.update(delta, targetPoint, controlState);
+        }
 
         const headPos = localCar.getHeadPosition();
         const driftScore = localCar.getScore();
