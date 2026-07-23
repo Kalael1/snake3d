@@ -1022,24 +1022,45 @@ function drawPlaygroundBackground(ctx) {
         ctx.strokeStyle = '#290f01';
         ctx.stroke();
     }
-    else { // Lobby / Default
-        const grad = ctx.createLinearGradient(0, 0, w, h);
-        grad.addColorStop(0, '#0f172a');
-        grad.addColorStop(1, '#1e1b4b');
-        ctx.fillStyle = grad;
+    else { // Lobby / Default - COMIC SUNBURST
+        // Base color
+        ctx.fillStyle = '#ffde00'; // Bright yellow
         ctx.fillRect(0, 0, w, h);
-    }
-    
-    // Draw Grid for retro feel
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
-    const gridSize = 60;
-    for (let x = 0; x < w; x += gridSize) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
-    }
-    for (let y = 0; y < h; y += gridSize) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        
+        ctx.save();
+        ctx.translate(w / 2, h / 2);
+        const time = Date.now() / 2000;
+        ctx.rotate(time); // Slow rotation
+        
+        ctx.fillStyle = '#ff9900'; // Orange rays
+        const numRays = 24;
+        const radius = Math.max(w, h) * 1.5;
+        for (let i = 0; i < numRays; i++) {
+            if (i % 2 === 0) continue;
+            const angle1 = (i / numRays) * Math.PI * 2;
+            const angle2 = ((i + 1) / numRays) * Math.PI * 2;
+            
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(Math.cos(angle1) * radius, Math.sin(angle1) * radius);
+            ctx.lineTo(Math.cos(angle2) * radius, Math.sin(angle2) * radius);
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.restore();
+        
+        // Pop-art halftone overlay
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+        for (let y = 0; y < h; y += 15) {
+            for (let x = 0; x < w; x += 15) {
+                const r = 2;
+                ctx.beginPath();
+                ctx.arc(x + 7.5, y + 7.5, r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        ctx.restore();
     }
     
     // Draw Doors!
