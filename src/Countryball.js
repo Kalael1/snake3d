@@ -115,7 +115,7 @@ export class Countryball {
     }
 
     // ─── DRAW ───────────────────────────────────────────────────────────────
-    draw(ctx) {
+    draw(ctx, targetPos = null) {
         if (!isFinite(this.x) || !isFinite(this.y)) return;
 
         const r = this.radius;
@@ -152,7 +152,7 @@ export class Countryball {
         ctx.stroke();
 
         // ── eyes ──
-        this._drawEyes(ctx, r);
+        this._drawEyes(ctx, r, targetPos);
 
         ctx.restore();                      // restore-1: transform removed
 
@@ -184,12 +184,24 @@ export class Countryball {
         }
     }
 
-    _drawEyes(ctx, r) {
+    _drawEyes(ctx, r, targetPos) {
         const ex = r * 0.30;
         const ey = -r * 0.10;
         const er = r * 0.23;
-        const lx = Math.max(-3, Math.min(3, this.vx * 0.35));
-        const ly = Math.max(-3, Math.min(3, this.vy * 0.35));
+        
+        let lx = 0, ly = 0;
+        if (targetPos) {
+            const dx = targetPos.x - this.x;
+            const dy = targetPos.y - this.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist > 0) {
+                lx = (dx / dist) * 3.5;
+                ly = (dy / dist) * 3.5;
+            }
+        } else {
+            lx = Math.max(-3, Math.min(3, this.vx * 0.35));
+            ly = Math.max(-3, Math.min(3, this.vy * 0.35));
+        }
 
         ctx.strokeStyle = '#111';
         ctx.lineWidth = 2.5;

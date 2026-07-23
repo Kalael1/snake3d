@@ -33,6 +33,7 @@ let highscore = parseInt(localStorage.getItem('countryball_highscore') || '0', 1
 
 // Input state
 const keysPressed = {};
+const globalMousePos = { x: canvas.width / 2, y: canvas.height / 2 };
 const inputState = {
     left: false,
     right: false,
@@ -323,6 +324,8 @@ canvas.addEventListener('mousedown', (e) => {
 });
 
 canvas.addEventListener('mousemove', (e) => {
+    globalMousePos.x = e.clientX;
+    globalMousePos.y = e.clientY;
     if (inputState.isMouseDown) {
         inputState.mouseTarget = { x: e.clientX, y: e.clientY };
     }
@@ -343,6 +346,8 @@ canvas.addEventListener('touchstart', (e) => {
 
 canvas.addEventListener('touchmove', (e) => {
     if (e.touches.length > 0) {
+        globalMousePos.x = e.touches[0].clientX;
+        globalMousePos.y = e.touches[0].clientY;
         inputState.mouseTarget = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     }
 }, { passive: true });
@@ -560,7 +565,7 @@ function gameLoop(now) {
     // 3. Draw all balls
     botPlayers.forEach(bot => bot.draw(ctx));
     Object.values(otherPlayers).forEach(op => op.draw(ctx));
-    if (isGameRunning) localPlayer.draw(ctx);
+    if (isGameRunning) localPlayer.draw(ctx, globalMousePos);
 }
 
 function drawPlaygroundBackground(ctx) {
