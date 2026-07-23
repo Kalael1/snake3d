@@ -1548,3 +1548,17 @@ input, select { background: #fff !important; color: #000 !important; border: 3px
 .hud-label, .gallery-title-bar h2 { font-size: 22px !important; }
 .hud-value { font-size: 28px !important; }
 #quick-emoji-bar, #chat-input-wrapper { background: transparent !important; border: none !important; box-shadow: none !important; margin: 5px 0 !important; }
+
+/* CHAT COMIC FIX 2 */
+#chat-container { background: #fff !important; border: 4px solid #000 !important; box-shadow: 6px 6px 0px #000 !important; border-radius: 8px !important; padding: 10px !important; }
+#chat-messages { background: transparent !important; border: none !important; backdrop-filter: none !important; box-shadow: none !important; }
+#chat-input-wrapper { background: transparent !important; border: none !important; backdrop-filter: none !important; padding: 0 !important; }
+#chat-input { background: #fff !important; border: 3px solid #000 !important; color: #000 !important; box-shadow: 2px 2px 0px #000 !important; border-radius: 4px !important; }
+#send-chat-btn { background: #fbbf24 !important; color: #000 !important; border: 3px solid #000 !important; box-shadow: 2px 2px 0px #000 !important; text-transform: uppercase; font-family: 'Bangers', cursive !important; border-radius: 4px !important; }
+.emoji-btn { background: #fff !important; border: 3px solid #000 !important; box-shadow: 2px 2px 0px #000 !important; }
+#quick-emoji-bar { background: transparent !important; border: none !important; box-shadow: none !important; backdrop-filter: none !important; }
+
+#chat-container { width: max-content !important; min-width: 280px; max-width: 350px; }
+#quick-emoji-bar { display: flex; flex-wrap: wrap; gap: 4px; }
+#chat-input-wrapper { display: flex; width: 100%; gap: 4px; }
+#chat-input { flex: 1; min-width: 0; }
