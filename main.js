@@ -817,51 +817,31 @@ function animate() {
         if (!isInvincible) {
             const hitSeg = tronTrailManager.checkCollision(headPos.x, headPos.z, localSocketId);
             if (hitSeg) {
-                if (Math.abs(localCar.currentSpeed) > 25.0) {
-                    triggerGameOver("⚡ Tron Neon Işıklı Duvara Çok Hızlı Çarptın!");
-                    return;
-                } else {
-                    localCar.currentSpeed *= -0.5;
-                    localCar.position.x -= Math.sin(localCar.velocityAngle) * 1.0;
-                    localCar.position.z -= Math.cos(localCar.velocityAngle) * 1.0;
-                }
+                localCar.currentSpeed *= -0.5;
+                localCar.position.x -= Math.sin(localCar.velocityAngle) * 1.0;
+                localCar.position.z -= Math.cos(localCar.velocityAngle) * 1.0;
             }
 
             const hitBarrier = arena.checkBarrierCollision(headPos.x, headPos.z);
             if (hitBarrier) {
-                if (Math.abs(localCar.currentSpeed) > 25.0) {
-                    triggerGameOver("💥 Neon Güvenlik Bariyerine Yüksek Hızla Çarptın!");
-                    return;
-                } else {
-                    localCar.currentSpeed *= -0.5;
-                    localCar.position.x -= Math.sin(localCar.velocityAngle) * 1.0;
-                    localCar.position.z -= Math.cos(localCar.velocityAngle) * 1.0;
-                }
+                localCar.currentSpeed *= -0.5;
+                localCar.position.x -= Math.sin(localCar.velocityAngle) * 1.0;
+                localCar.position.z -= Math.cos(localCar.velocityAngle) * 1.0;
             }
 
-            const hitBuilding = arena.checkBuildingCollision(headPos.x, headPos.z);
+            const hitBuilding = arena.checkBuildingCollision(headPos.x, headPos.z, localCar.currentSpeed);
             if (hitBuilding) {
-                if (Math.abs(localCar.currentSpeed) > 25.0) {
-                    triggerGameOver("💥 Binaya Yüksek Hızla Çarptın!");
-                    return;
-                } else {
-                    localCar.currentSpeed *= -0.5;
-                    localCar.position.x -= Math.sin(localCar.velocityAngle) * 1.0;
-                    localCar.position.z -= Math.cos(localCar.velocityAngle) * 1.0;
-                }
+                localCar.currentSpeed *= -0.5;
+                localCar.position.x -= Math.sin(localCar.velocityAngle) * 1.0;
+                localCar.position.z -= Math.cos(localCar.velocityAngle) * 1.0;
             }
 
             // Outer arena boundary check
             const maxD = ARENA_SIZE / 2;
             if (Math.abs(headPos.x) > maxD || Math.abs(headPos.z) > maxD) {
-                if (Math.abs(localCar.currentSpeed) > 25.0) {
-                    triggerGameOver("🧱 Şehir Duvarına Çok Hızlı Çarptın!");
-                    return;
-                } else {
-                    localCar.currentSpeed *= -0.5; // Bounce
-                    localCar.position.x = Math.max(-maxD + 1.0, Math.min(maxD - 1.0, localCar.position.x));
-                    localCar.position.z = Math.max(-maxD + 1.0, Math.min(maxD - 1.0, localCar.position.z));
-                }
+                localCar.currentSpeed *= -0.5; // Bounce
+                localCar.position.x = Math.max(-maxD + 1.0, Math.min(maxD - 1.0, localCar.position.x));
+                localCar.position.z = Math.max(-maxD + 1.0, Math.min(maxD - 1.0, localCar.position.z));
             }
         }
 
