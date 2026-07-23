@@ -986,20 +986,23 @@ function drawPlaygroundBackground(ctx) {
         ctx.fillStyle = '#0f172a'; // Dark floor
         ctx.fillRect(0, 0, w, h);
         ctx.save();
-        const tileSize = 60;
-        const colors = ['#ec4899', '#8b5cf6', '#3b82f6', '#14b8a6', '#f59e0b'];
-        const time = Math.floor(Date.now() / 400); 
-        for(let y = 0; y < h; y += tileSize) {
-            for(let x = 0; x < w; x += tileSize) {
-                const hash = Math.sin(x * 1.23 + y * 4.56 + time * 7.89) * 10000;
-                const rand = hash - Math.floor(hash);
-                if (rand < 0.25) {
-                    ctx.fillStyle = colors[Math.floor(rand * 100) % colors.length];
-                    ctx.globalAlpha = 0.6;
-                    ctx.fillRect(x, y, tileSize, tileSize);
-                }
-            }
+        
+        // Soft neon grid
+        ctx.strokeStyle = 'rgba(236, 72, 153, 0.15)'; // Faint pink lines
+        ctx.lineWidth = 2;
+        const tileSize = 80;
+        for (let x = 0; x <= w; x += tileSize) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
         }
+        for (let y = 0; y <= h; y += tileSize) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+        }
+        
+        // Very slow, soft ambient glow
+        const pulse = Math.abs(Math.sin(Date.now() / 3000));
+        ctx.fillStyle = `rgba(139, 92, 246, ${pulse * 0.08})`; // Soft purple glow
+        ctx.fillRect(0, 0, w, h);
+        
         ctx.restore();
     }
     else if (window.currentRoom === 'spyfall') {
