@@ -39,14 +39,30 @@ export class ArenaScreen {
             const scale = monitor.width / baseWidth;
             this.cssObject.scale.set(scale, scale, scale);
 
-            // Parent the CSS3DObject directly to the monitor mesh!
-            // This means it inherits the exact world position and rotation of the monitor surface.
-            monitor.mesh.add(this.cssObject);
+            // Add directly to the scene to avoid inheriting weird GLTF scales from parent meshes!
+            this.scene.add(this.cssObject);
 
-            // Adjust the local position slightly to prevent z-fighting with the monitor mesh
-            // Z is usually forward/backward depending on the mesh's local axes.
-            // If the video faces the wrong way or is inside the mesh, we may need to adjust this.
-            this.cssObject.position.set(0, 0, 0.2); 
+            // Extract exact world coordinates
+            const pos = new THREE.Vector3();
+            const quat = new THREE.Quaternion();
+            const scl = new THREE.Vector3();
+            monitor.mesh.matrixWorld.decompose(pos, quat, scl);
+
+            this.cssObject.position.copy(pos);
+            this.cssObject.quaternion.copy(quat);
+
+            // Create a semi-transparent red debug plane so we can see where the screen is supposed to be!
+            const debugGeo = new THREE.PlaneGeometry(monitor.width, monitor.width * (720/1280));
+            const debugMat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+            const debugMesh = new THREE.Mesh(debugGeo, debugMat);
+            debugMesh.position.copy(pos);
+            debugMesh.quaternion.copy(quat);
+            this.scene.add(debugMesh);
+
+            // Adjust the local position slightly outward to prevent z-fighting
+            const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(quat);
+            this.cssObject.position.add(forward.multiplyScalar(0.5));
+            debugMesh.position.add(forward.multiplyScalar(0.4));
         }
     }
 
