@@ -1,4 +1,4 @@
-import { io } from 'socket.io-client';
+const io = (typeof window !== 'undefined' && window.io) ? window.io : function() { return { on: () => {}, emit: () => {} }; };
 import { COUNTRYBALLS, getCountryballSkin } from './src/CountryballRegistry.js';
 import { Countryball } from './src/Countryball.js';
 import { ParticleSystem } from './src/Particles.js';
