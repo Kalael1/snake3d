@@ -1196,6 +1196,20 @@ canvas {
 #arena-screen-jumbotron.hidden { display: none; }
 #arena-screen-jumbotron.minimized .jumbo-video-wrap { display: none; }
 
+/* When the video is pinned onto the in-world monitor, drop the corner-panel chrome */
+#arena-screen-jumbotron.tracking {
+  top: 0;
+  left: 0;
+  transform: translate(-9999px, -9999px);
+  border-width: 3px;
+  border-radius: 6px;
+  backdrop-filter: none;
+  box-shadow: 0 0 18px rgba(0, 243, 255, 0.5);
+  transition: none;
+  will-change: transform, width;
+}
+#arena-screen-jumbotron.tracking .jumbo-header { display: none; }
+
 .jumbo-header {
   display: flex;
   align-items: center;

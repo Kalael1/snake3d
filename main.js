@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { io } from 'socket.io-client';
 
-import { Arena } from './src/Arena.js';
+import { CityMap } from './src/CityMap.js';
 import { DriftCar } from './src/DriftCar.js';
 import { OtherCar } from './src/OtherCar.js';
 import { AudioManager } from './src/AudioManager.js';
@@ -24,8 +24,8 @@ const audioManager = new AudioManager();
 
 // ============== SCENE & STABLE HIGH-PERFORMANCE LIGHTING ==============
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0f172a);
-scene.fog = new THREE.FogExp2(0x1e293b, 0.0022);
+scene.background = new THREE.Color(0x8fc4ec); // daytime city sky
+scene.fog = new THREE.FogExp2(0xa9cdea, 0.00075);
 
 const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 800);
 
@@ -41,17 +41,17 @@ document.getElementById('app').appendChild(renderer.domElement);
 
 const nameTagManager = new NameTagManager(camera, document.getElementById('nametag-container'));
 
-// 1. Bright Ambient Hemisphere Light
-const hemiLight = new THREE.HemisphereLight(0x00f3ff, 0x334155, 1.4);
+// 1. Neutral sky/ground hemisphere so the city keeps its own colours
+const hemiLight = new THREE.HemisphereLight(0xcfe6ff, 0x6b7480, 1.15);
 scene.add(hemiLight);
 
-// 2. Primary Cyber Moonlight
-const dirLight = new THREE.DirectionalLight(0x7dd3fc, 2.6);
-dirLight.position.set(100, 180, 80);
+// 2. Primary daylight sun
+const dirLight = new THREE.DirectionalLight(0xfff4e0, 2.1);
+dirLight.position.set(120, 200, 90);
 scene.add(dirLight);
 
-// 3. Pink / Magenta Rim Accent Light
-const rimLight = new THREE.DirectionalLight(0xff0077, 2.2);
+// 3. Soft cool fill (subtle, no heavy tint)
+const rimLight = new THREE.DirectionalLight(0x9fbdf0, 0.7);
 rimLight.position.set(-120, 100, -100);
 scene.add(rimLight);
 
@@ -64,7 +64,7 @@ const carKeySpotlight = new THREE.SpotLight(0xffffff, 16.0, 45, Math.PI / 3, 0.4
 scene.add(carKeySpotlight);
 
 // ============== GAME ENTITIES ==============
-const arena = new Arena(scene, 500);
+const arena = new CityMap(scene);
 const localCar = new DriftCar(scene);
 localCar.applySkin(progressionManager.selectedSkinId);
 
@@ -682,6 +682,10 @@ function startGame() {
         isEmittingTrail = false;
 
         localCar.reset();
+        // Spawn on a clear spot in the city (not inside a building)
+        const spawn = arena.findSpawn ? arena.findSpawn() : { x: 0, z: 0 };
+        localCar.position.set(spawn.x, 0, spawn.z);
+        localCar.group.position.set(spawn.x, 0, spawn.z);
         localCar.group.visible = true;
         explosionManager.clear();
         tronTrailManager.clear();
@@ -715,6 +719,21 @@ function startGame() {
 
 startBtn.addEventListener('click', startGame);
 
+// ============== CITY MAP LOADING GATE ==============
+startBtn.disabled = true;
+const startBtnLabel = startBtn.innerHTML;
+startBtn.innerHTML = '<span class="play-icon">⏳</span> HARİTA YÜKLENİYOR...';
+arena.ready.then(() => {
+    startBtn.disabled = false;
+    startBtn.innerHTML = startBtnLabel;
+    if (arena.monitor) arenaScreen.setMonitor(arena.monitor);
+    console.log(`[🗺️] City map ready — ${arena.buildings.length} collision boxes, monitor: ${arena.monitor ? 'found' : 'MISSING'}`);
+}).catch((e) => {
+    console.error('City map failed to load:', e);
+    startBtn.disabled = false;
+    startBtn.innerHTML = startBtnLabel;
+});
+
 // ============== RENDER LOOP ==============
 const clock = new THREE.Clock();
 
@@ -724,7 +743,7 @@ function animate() {
     const now = Date.now();
 
     explosionManager.update(delta);
-    arenaScreen.update(delta, clock.elapsedTime);
+    arenaScreen.update(camera);
 
     if (isGameRunning) {
         // 1. Raycast for mouse target with NaN & null guards
@@ -822,9 +841,8 @@ function animate() {
         }
 
         // 9. Wall collision (client-side)
-        const wallThreshold = 240;
-        if (Math.abs(headPos.x) >= wallThreshold || Math.abs(headPos.z) >= wallThreshold) {
-            triggerGameOver('💥 Duvara çarptın!');
+        if (Math.abs(headPos.x) >= arena.halfX - 6 || Math.abs(headPos.z) >= arena.halfZ - 6) {
+            triggerGameOver('💥 Şehrin sınırına ulaştın!');
             return;
         }
 
@@ -908,47 +926,30 @@ function updateMinimap() {
     ctx.fill();
 
     const hp = localCar.getHeadPosition();
-    const mapScale = 140 / arena.size;
+    const mapScale = 140 / arena.size; // origin (world 0,0) maps to radar centre (70,70)
 
-    // 1. Draw Road Avenues
-    ctx.fillStyle = '#1e293b';
-    const roadPositions = [-120, 0, 120];
-    const roadWidth = 28 * mapScale;
-
-    roadPositions.forEach(offset => {
-        const rx = 70 + offset * mapScale - roadWidth / 2;
-        ctx.fillRect(rx, 0, roadWidth, 140);
-
-        const rz = 70 + offset * mapScale - roadWidth / 2;
-        ctx.fillRect(0, rz, 140, roadWidth);
-    });
-
-    // 2. Draw Roundabout
-    ctx.strokeStyle = '#f59e0b';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(70, 70, 19 * mapScale, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // 3. Draw Buildings
-    ctx.fillStyle = '#334155';
-    ctx.strokeStyle = '#00f3ff';
-    ctx.lineWidth = 1;
-
+    // 1. Draw Buildings (derived from the city model)
+    ctx.fillStyle = '#3a4a63';
     arena.buildings.forEach(b => {
         const bx = 70 + ((b.minX + b.maxX) / 2) * mapScale;
         const bz = 70 + ((b.minZ + b.maxZ) / 2) * mapScale;
-        const bw = (b.maxX - b.minX - 2.4) * mapScale;
-        const bh = (b.maxZ - b.minZ - 2.4) * mapScale;
-
+        const bw = Math.max(1, (b.maxX - b.minX) * mapScale);
+        const bh = Math.max(1, (b.maxZ - b.minZ) * mapScale);
         ctx.fillRect(bx - bw / 2, bz - bh / 2, bw, bh);
-        ctx.strokeRect(bx - bw / 2, bz - bh / 2, bw, bh);
     });
 
-    // 4. Draw Border
-    ctx.strokeStyle = '#ff0055';
+    // 2. Draw the video screen marker
+    if (arena.monitor) {
+        ctx.fillStyle = '#ff2d95';
+        ctx.beginPath();
+        ctx.arc(70 + arena.monitor.pos.x * mapScale, 70 + arena.monitor.pos.z * mapScale, 3, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // 3. Draw Border
+    ctx.strokeStyle = '#00f3ff';
     ctx.lineWidth = 2;
-    ctx.strokeRect(70 - 250 * mapScale, 70 - 250 * mapScale, 500 * mapScale, 500 * mapScale);
+    ctx.strokeRect(70 - arena.halfX * mapScale, 70 - arena.halfZ * mapScale, arena.halfX * 2 * mapScale, arena.halfZ * 2 * mapScale);
 
     // 5. Draw Multiplayer Opponents (Red Arrows)
     currentPlayersList.forEach(p => {

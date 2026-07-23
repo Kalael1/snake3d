@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 
 /**
- * ArenaScreen — the shared "jumbotron" for the arena.
+ * ArenaScreen — the shared "jukebox".
  *
- * NOTE: A YouTube player cannot be painted onto a WebGL texture (browser CORS/DRM),
- * so the actual video plays in an HTML <iframe> jumbotron overlay that every client
- * shows. This class also builds a big neon screen LANDMARK just beyond the north
- * wall so there is a real "big screen on the map", and lights it up while a video
- * is playing.
+ * A YouTube player can't be painted onto a WebGL texture (browser CORS/DRM), so
+ * the video lives in an HTML <iframe>. The AUDIO plays everywhere regardless of
+ * where the iframe sits, and the VIDEO is projected onto the city model's
+ * "YoutubeMonitor" surface: each frame we project that mesh's world position to
+ * screen space and lay the iframe over it. When the monitor is off-screen or
+ * behind the camera we park the iframe off-view (still playing) so music keeps going.
  */
 export class ArenaScreen {
     constructor(scene, { iframeEl, wrapEl, labelEl } = {}) {
@@ -16,65 +17,17 @@ export class ArenaScreen {
         this.wrapEl = wrapEl;
         this.labelEl = labelEl;
         this.videoId = null;
-        this.build();
+        this.monitor = null;      // { pos: Vector3, width, height }
+        this._v = new THREE.Vector3();
+        this._right = new THREE.Vector3();
     }
 
-    build() {
-        const group = new THREE.Group();
-
-        const frameW = 72;
-        const frameH = 40;
-        const centerY = 40; // floats high over the central avenue — cars drive underneath it
-
-        // Dark screen panel (double-sided so it reads from both approaches)
-        this.panelMat = new THREE.MeshBasicMaterial({ color: 0x05080f, side: THREE.DoubleSide });
-        const panel = new THREE.Mesh(new THREE.PlaneGeometry(frameW - 4, frameH - 4), this.panelMat);
-        panel.position.set(0, centerY, 0);
-        group.add(panel);
-
-        // Neon frame
-        this.frameMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff });
-        const bar = (w, h, x, y) => {
-            const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 2), this.frameMat);
-            m.position.set(x, y, 0);
-            group.add(m);
-        };
-        const t = 2.2;
-        bar(frameW, t, 0, centerY + frameH / 2);
-        bar(frameW, t, 0, centerY - frameH / 2);
-        bar(t, frameH, -frameW / 2, centerY);
-        bar(t, frameH, frameW / 2, centerY);
-
-        // Slim overhead gantry beams so the screen reads as "mounted" over the road
-        const beamMat = new THREE.MeshBasicMaterial({ color: 0x0a2536 });
-        [-frameW / 2, frameW / 2].forEach(px => {
-            const beam = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.6, 300), beamMat);
-            beam.position.set(px, centerY + frameH / 2, 0);
-            group.add(beam);
-        });
-
-        // "LIVE" bar under the screen (pulses while a video plays)
-        this.liveMat = new THREE.MeshBasicMaterial({ color: 0xff2d95, transparent: true, opacity: 0.0 });
-        const live = new THREE.Mesh(new THREE.BoxGeometry(frameW - 8, 2.6, 1.5), this.liveMat);
-        live.position.set(0, centerY - frameH / 2 - 3, 0);
-        group.add(live);
-
-        // Suspended over the central north avenue (x = 0 road is clear), facing the arena
-        group.position.set(0, 0, -140);
-        this.group = group;
-        this.scene.add(group);
-
-        this.setActiveGlow(false);
+    /** Tell the screen where the in-world monitor is (from CityMap). */
+    setMonitor(monitor) {
+        this.monitor = monitor;
+        if (this.wrapEl) this.wrapEl.classList.add('on-monitor');
     }
 
-    setActiveGlow(active) {
-        this.active = active;
-        this.frameMat.color.setHex(active ? 0xff2d95 : 0x00b7cc);
-        this.panelMat.color.setHex(active ? 0x0a1a34 : 0x05080f);
-        this.liveMat.opacity = active ? 0.95 : 0.0;
-    }
-
-    /** Point the jumbotron overlay + landmark at a YouTube video. */
     setVideo(videoId, setByName) {
         if (!videoId) return;
         this.videoId = videoId;
@@ -85,13 +38,44 @@ export class ArenaScreen {
         }
         if (this.wrapEl) this.wrapEl.classList.remove('hidden');
         if (this.labelEl) this.labelEl.innerText = `📺 ${setByName || 'Bir sürücü'} açtı`;
-        this.setActiveGlow(true);
     }
 
-    /** Subtle idle pulse so the landmark reads as "alive" while a video plays. */
-    update(delta, elapsed) {
-        if (this.active && this.liveMat) {
-            this.liveMat.opacity = 0.6 + 0.35 * Math.sin(elapsed * 4.0);
+    /** Position the iframe over the in-world monitor (or park it off-screen). */
+    update(camera) {
+        const wrap = this.wrapEl;
+        if (!wrap || !this.videoId) return;
+
+        // No monitor located → behave as a fixed corner jumbotron (CSS default).
+        if (!this.monitor) return;
+
+        const w = window.innerWidth, h = window.innerHeight;
+
+        // Project the monitor centre to screen space
+        this._v.copy(this.monitor.pos).project(camera);
+        const behind = this._v.z > 1;
+        const sx = (this._v.x * 0.5 + 0.5) * w;
+        const sy = (-this._v.y * 0.5 + 0.5) * h;
+
+        // Project a point one monitor half-width to the camera's right to get on-screen scale
+        camera.getWorldDirection(this._right);
+        this._right.cross(camera.up).normalize().multiplyScalar(this.monitor.width * 0.5);
+        this._right.add(this.monitor.pos).project(camera);
+        const edgeX = (this._right.x * 0.5 + 0.5) * w;
+        const pxWidth = Math.abs(edgeX - sx) * 2;
+
+        const onScreen = !behind && sx > -pxWidth && sx < w + pxWidth && sy > -400 && sy < h + 400 && pxWidth > 60;
+
+        if (onScreen) {
+            wrap.classList.add('tracking');
+            wrap.style.width = pxWidth + 'px';
+            wrap.style.left = '0px';
+            wrap.style.top = '0px';
+            wrap.style.transform =
+                `translate(-50%, -50%) translate(${Math.round(sx)}px, ${Math.round(sy)}px)`;
+        } else {
+            // Park off-view but keep the iframe alive so audio continues
+            wrap.classList.add('tracking');
+            wrap.style.transform = 'translate(-9999px, -9999px)';
         }
     }
 }
