@@ -169,19 +169,14 @@ export class DriftCar {
 
         // 1. ENGINE POWER & SPEED CONTROL (Handbrake / Space / WASD)
         let targetSpeed = 0.0;
-        if (controlState.selectedControlScheme === 'keyboard') {
-            if (controlState.forward) {
-                targetSpeed = this.baseSpeed;
-            } else if (controlState.backward) {
-                targetSpeed = -this.baseSpeed * 0.4; // Reverse speed is slower
-            }
-        } else {
-            // Mouse control uses engine toggle
-            targetSpeed = isEngineOn ? this.baseSpeed : 0.0;
+        if (controlState.forward || isEngineOn) {
+            targetSpeed = this.baseSpeed;
+        } else if (controlState.backward) {
+            targetSpeed = -this.baseSpeed * 0.4; // Reverse speed is slower
         }
 
         if (this.isHandbrake) {
-            // Handbrake only scrubs forward speed, doesn't speed up if standing still
+            // Handbrake scrubs forward speed for drifting
             if (targetSpeed > 0) targetSpeed = this.baseSpeed * 0.6;
         }
 

@@ -604,20 +604,20 @@ window.addEventListener('keydown', (e) => {
     keysPressed[e.code] = true;
     if (e.code === 'KeyV') isTPSMode = !isTPSMode;
     if (e.code === 'Space') {
-        if (selectedControlScheme === 'mouse' && isGameRunning) {
+        if (isGameRunning) {
             isEngineOn = !isEngineOn;
             if (isEngineOn) {
-                addChatMessage('SİSTEM', '🔥 Motor çalıştırıldı! Fare ile yönlendirin...', true);
+                addChatMessage('SİSTEM', '🔥 Motor çalıştırıldı!', true);
             } else {
                 addChatMessage('SİSTEM', '🛑 Motor durduruldu.', true);
             }
         }
         isEmittingTrail = true;
     }
-    if ((e.code === 'KeyW' || e.code === 'ArrowUp') && selectedControlScheme === 'keyboard') {
+    if (e.code === 'KeyW' || e.code === 'ArrowUp') {
         if (!isEngineOn && isGameRunning) {
             isEngineOn = true;
-            addChatMessage('SİSTEM', '🔥 Motor çalıştırıldı! İyi sürüşler!', true);
+            addChatMessage('SİSTEM', '🔥 Gaza basılıyor!', true);
         }
     }
     if (e.code === 'Escape' && isGameRunning) openMenu('Oyun Duraklatıldı');
@@ -691,8 +691,9 @@ function startGame() {
     try {
         audioManager.init();
         const playerName = playerNameInput ? (playerNameInput.value.trim() || 'DriftPilotu') : 'DriftPilotu';
-        isEngineOn = false; // Car spawns STOPPED until Space is pressed!
+        isEngineOn = false; // Car spawns STOPPED until Space or W is pressed!
         isEmittingTrail = false;
+        addChatMessage('SİSTEM', '🎮 Oyuna başladınız! Harekete geçmek için W veya SPACE tuşuna basın.', true);
 
         localCar.reset();
         // Spawn on a clear spot in the city (not inside a building)
