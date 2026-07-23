@@ -1023,13 +1023,13 @@ function drawPlaygroundBackground(ctx) {
         ctx.stroke();
     }
     else { // Lobby / Default - CALM COMIC PAPER
-        // Base color - Soft comic book paper (light cream/blueish)
-        ctx.fillStyle = '#f8fafc'; // Very soft, cool white/grey
+        // Base color - Soft comic book paper (muted grey)
+        ctx.fillStyle = '#cbd5e1'; // Muted grey (slate-300)
         ctx.fillRect(0, 0, w, h);
         
         // Soft pop-art halftone overlay (very faint, no spinning)
         ctx.save();
-        ctx.fillStyle = '#e2e8f0'; // Faint slate grey dots
+        ctx.fillStyle = '#94a3b8'; // Darker grey dots (slate-400)
         const dotSpacing = 24;
         for (let y = 0; y < h; y += dotSpacing) {
             for (let x = 0; x < w; x += dotSpacing) {
