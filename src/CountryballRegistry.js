@@ -196,65 +196,43 @@ export function getCountryballSkin(id) {
 
 // ============== COSMETICS ==============
 
+const loadedImages = {};
+function getOrLoadImage(id, src) {
+    if (loadedImages[id]) return loadedImages[id];
+    const img = new Image();
+    img.src = src;
+    loadedImages[id] = img;
+    return img;
+}
+
 export const HATS = [
     { id: 'none', name: 'Şapka Yok' },
     {
         id: 'tophat', name: 'Silindir Şapka',
         draw: (ctx, r) => {
-            ctx.fillStyle = '#111';
-            ctx.fillRect(-r*0.6, -r*0.95, r*1.2, r*0.2); // brim
-            ctx.fillRect(-r*0.4, -r*1.8, r*0.8, r*0.85); // top
-            ctx.fillStyle = '#dc3545';
-            ctx.fillRect(-r*0.4, -r*1.15, r*0.8, r*0.2); // ribbon
+            const img = getOrLoadImage('tophat', '/assets/tophat.png');
+            if (img.complete) ctx.drawImage(img, -r*1.2, -r*2.2, r*2.4, r*2.4);
         }
     },
     {
         id: 'cap', name: 'Kasket',
         draw: (ctx, r) => {
-            ctx.fillStyle = '#0d6efd';
-            ctx.beginPath(); ctx.arc(0, -r*0.7, r*0.6, Math.PI, 0); ctx.fill(); // dome
-            ctx.fillRect(0, -r*0.7, r*0.8, r*0.15); // brim
+            const img = getOrLoadImage('cap', '/assets/cap.png');
+            if (img.complete) ctx.drawImage(img, -r*1.2, -r*1.8, r*2.4, r*2.4);
         }
     },
     {
         id: 'crown', name: 'Kral Tacı',
         draw: (ctx, r) => {
-            ctx.fillStyle = '#ffc107';
-            ctx.beginPath();
-            ctx.moveTo(-r*0.5, -r*0.8);
-            ctx.lineTo(-r*0.6, -r*1.5);
-            ctx.lineTo(-r*0.2, -r*1.1);
-            ctx.lineTo(0, -r*1.6);
-            ctx.lineTo(r*0.2, -r*1.1);
-            ctx.lineTo(r*0.6, -r*1.5);
-            ctx.lineTo(r*0.5, -r*0.8);
-            ctx.closePath();
-            ctx.fill();
-            // Jewels
-            ctx.fillStyle = '#dc3545';
-            ctx.beginPath(); ctx.arc(-r*0.6, -r*1.5, r*0.08, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(0, -r*1.6, r*0.08, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(r*0.6, -r*1.5, r*0.08, 0, Math.PI*2); ctx.fill();
+            const img = getOrLoadImage('crown', '/assets/crown.png');
+            if (img.complete) ctx.drawImage(img, -r*1.2, -r*2.0, r*2.4, r*2.4);
         }
     },
     {
         id: 'banana', name: 'Muz (Nano Banana) 🍌',
         draw: (ctx, r) => {
-            // Nano Banana
-            ctx.fillStyle = '#FFE135';
-            ctx.beginPath();
-            // Draw a curved banana shape on top
-            ctx.moveTo(-r*0.7, -r*0.7);
-            ctx.quadraticCurveTo(0, -r*1.8, r*0.7, -r*0.7);
-            ctx.quadraticCurveTo(0, -r*1.3, -r*0.7, -r*0.7);
-            ctx.fill();
-            ctx.strokeStyle = '#000';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            // Banana tips
-            ctx.fillStyle = '#4A3B2C';
-            ctx.beginPath(); ctx.arc(-r*0.65, -r*0.72, r*0.08, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(r*0.65, -r*0.72, r*0.08, 0, Math.PI*2); ctx.fill();
+            const img = getOrLoadImage('banana', '/assets/banana.png');
+            if (img.complete) ctx.drawImage(img, -r*1.2, -r*2.0, r*2.4, r*2.4);
         }
     }
 ];
@@ -264,29 +242,15 @@ export const GLASSES = [
     {
         id: 'sunglasses', name: 'Güneş Gözlüğü',
         draw: (ctx, r) => {
-            ctx.fillStyle = '#111';
-            ctx.fillRect(-r*0.7, -r*0.3, r*1.4, r*0.1); // frame
-            // Left lens
-            ctx.beginPath();
-            ctx.moveTo(-r*0.6, -r*0.2); ctx.lineTo(-r*0.1, -r*0.2);
-            ctx.lineTo(-r*0.2, r*0.2); ctx.lineTo(-r*0.5, r*0.2); ctx.closePath(); ctx.fill();
-            // Right lens
-            ctx.beginPath();
-            ctx.moveTo(r*0.6, -r*0.2); ctx.lineTo(r*0.1, -r*0.2);
-            ctx.lineTo(r*0.2, r*0.2); ctx.lineTo(r*0.5, r*0.2); ctx.closePath(); ctx.fill();
+            const img = getOrLoadImage('sunglasses', '/assets/sunglasses.png');
+            if (img.complete) ctx.drawImage(img, -r*1.1, -r*0.8, r*2.2, r*1.6);
         }
     },
     {
         id: 'nerd', name: 'Nerd Gözlük',
         draw: (ctx, r) => {
-            ctx.strokeStyle = '#111';
-            ctx.lineWidth = r*0.08;
-            ctx.beginPath(); ctx.arc(-r*0.35, -r*0.05, r*0.25, 0, Math.PI*2); ctx.stroke();
-            ctx.beginPath(); ctx.arc(r*0.35, -r*0.05, r*0.25, 0, Math.PI*2); ctx.stroke();
-            ctx.beginPath(); ctx.moveTo(-r*0.1, -r*0.05); ctx.lineTo(r*0.1, -r*0.05); ctx.stroke();
-            // White tape in middle
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(-r*0.05, -r*0.12, r*0.1, r*0.14);
+            const img = getOrLoadImage('nerd', '/assets/nerd.png');
+            if (img.complete) ctx.drawImage(img, -r*1.1, -r*0.8, r*2.2, r*1.6);
         }
     }
 ];
