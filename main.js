@@ -802,35 +802,87 @@ function gameLoop(now) {
 }
 
 function drawPlaygroundBackground(ctx) {
-    // Soft stylish gradient background
-    const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-    grad.addColorStop(0, '#0f172a');
-    grad.addColorStop(1, '#1e1b4b');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const w = canvas.width;
+    const h = canvas.height;
 
-    // Playful grid pattern
+    // --- 1. Beach (Top-Left) ---
+    ctx.fillStyle = '#fde047'; // Sand
+    ctx.fillRect(0, 0, w/2, h/2);
+    // Ocean strip
+    const gradOcean = ctx.createLinearGradient(0, 0, 0, h*0.15);
+    gradOcean.addColorStop(0, '#0284c7');
+    gradOcean.addColorStop(1, 'transparent');
+    ctx.fillStyle = gradOcean;
+    ctx.fillRect(0, 0, w/2, h*0.15);
+
+    // --- 2. Coffee Shop (Top-Right) ---
+    ctx.fillStyle = '#78350f'; // Wood floor base
+    ctx.fillRect(w/2, 0, w/2, h/2);
+    // Coffee shop counter
+    ctx.fillStyle = '#451a03';
+    ctx.fillRect(w*0.65, h*0.1, w*0.2, h*0.2);
+    // Coffee shop tables (simple circles)
+    ctx.fillStyle = '#d4d4d8';
+    ctx.beginPath(); ctx.arc(w*0.6, h*0.4, 30, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(w*0.8, h*0.4, 30, 0, Math.PI*2); ctx.fill();
+
+    // --- 3. Disco (Bottom Half) ---
+    ctx.fillStyle = '#0f172a'; // Dark floor
+    ctx.fillRect(0, h/2, w, h/2);
+    
+    // Flashing Disco tiles
     ctx.save();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+    const tileSize = 60;
+    const colors = ['#ec4899', '#8b5cf6', '#3b82f6', '#14b8a6', '#f59e0b'];
+    const time = Math.floor(Date.now() / 400); // Change colors every 400ms
+    
+    for(let y = Math.floor(h/2); y < h; y += tileSize) {
+        for(let x = 0; x < w; x += tileSize) {
+            // Deterministic pseudo-random based on time and coordinates
+            const hash = Math.sin(x * 1.23 + y * 4.56 + time * 7.89) * 10000;
+            const rand = hash - Math.floor(hash);
+            if (rand < 0.25) { // 25% of tiles are lit
+                ctx.fillStyle = colors[Math.floor(rand * 100) % colors.length];
+                ctx.globalAlpha = 0.6;
+                ctx.fillRect(x, y, tileSize, tileSize);
+            }
+        }
+    }
+    ctx.restore();
+    
+    // --- Divider Lines ---
+    ctx.save();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4;
+    ctx.globalAlpha = 0.2;
+    // Horizontal divider
+    ctx.beginPath(); ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); ctx.stroke();
+    // Vertical divider (top half)
+    ctx.beginPath(); ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h/2); ctx.stroke();
+    ctx.restore();
+
+    // Playful grid pattern over everything
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
     const gridSize = 60;
-    for (let x = 0; x < canvas.width; x += gridSize) {
+    for (let x = 0; x < w; x += gridSize) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
+        ctx.lineTo(x, h);
         ctx.stroke();
     }
-    for (let y = 0; y < canvas.height; y += gridSize) {
+    for (let y = 0; y < h; y += gridSize) {
         ctx.beginPath();
         ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
+        ctx.lineTo(w, y);
         ctx.stroke();
     }
 
     // Outer neon boundary line
     ctx.strokeStyle = 'rgba(6, 182, 212, 0.4)';
     ctx.lineWidth = 6;
-    ctx.strokeRect(3, 3, canvas.width - 6, canvas.height - 6);
+    ctx.strokeRect(3, 3, w - 6, h - 6);
 
     ctx.restore();
 }
