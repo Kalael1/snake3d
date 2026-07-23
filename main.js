@@ -18,7 +18,7 @@ resizeCanvas();
 
 // ============== SOCKET & MANAGER SETUP ==============
 const SOCKET_URL = window.location.hostname.includes('github.io') || window.location.hostname.includes('vercel.app') || window.location.hostname.includes('netlify.app')
-    ? 'http://82.70.212.199:3000'
+    ? 'https://shops-lightning-depending-federal.trycloudflare.com'
     : window.location.origin;
 
 const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
