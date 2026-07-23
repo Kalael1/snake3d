@@ -54,14 +54,16 @@ function spawnBotCountryballs() {
     const botSkins = ['poland', 'germany', 'france', 'usa', 'japan', 'brazil', 'uk', 'italy'];
     for (let i = 0; i < 5; i++) {
         const skinId = botSkins[i % botSkins.length];
+        const angle = (i / 5) * Math.PI * 2;
+        const dist = Math.min(canvas.width, canvas.height) * 0.35;
         const bot = new Countryball(
-            100 + Math.random() * (canvas.width - 200),
-            100 + Math.random() * (canvas.height - 200),
+            canvas.width / 2 + Math.cos(angle) * dist,
+            canvas.height / 2 + Math.sin(angle) * dist,
             `Bot ${i + 1}`,
             skinId
         );
-        bot.vx = (Math.random() - 0.5) * 8;
-        bot.vy = (Math.random() - 0.5) * 8;
+        bot.vx = (Math.random() - 0.5) * 4;
+        bot.vy = (Math.random() - 0.5) * 4;
         botPlayers.push(bot);
     }
 }
@@ -443,43 +445,57 @@ if (startBtn) startBtn.addEventListener('click', startGame);
 
 // ============== ELASTIC BALL COLLISION PHYSICS ==============
 function checkBallCollision(b1, b2) {
-    const dx = b2.x - b1.x;
-    const dy = b2.y - b1.y;
-    const dist = Math.hypot(dx, dy);
+    if (!b1 || !b2) return;
+    if (isNaN(b1.x) || isNaN(b1.y) || isNaN(b2.x) || isNaN(b2.y)) return;
+
+    let dx = b2.x - b1.x;
+    let dy = b2.y - b1.y;
+    let dist = Math.hypot(dx, dy);
     const minDist = b1.radius + b2.radius;
 
-    if (dist < minDist && dist > 0) {
-        // Overlap resolution
-        const overlap = (minDist - dist) / 2;
+    if (dist < minDist) {
+        if (dist < 0.001) {
+            dx = 1;
+            dy = 0;
+            dist = 1;
+        }
+
         const nx = dx / dist;
         const ny = dy / dist;
 
+        // Separate overlapping balls evenly
+        const overlap = (minDist - dist) / 2;
         b1.x -= nx * overlap;
         b1.y -= ny * overlap;
         b2.x += nx * overlap;
         b2.y += ny * overlap;
 
-        // Elastic impulse response
+        // Elastic momentum response (Restitution = 0.85)
         const kx = b1.vx - b2.vx;
         const ky = b1.vy - b2.vy;
-        const p = 2 * (nx * kx + ny * ky) / 2;
+        const p = (nx * kx + ny * ky);
 
-        b1.vx -= p * nx * 1.2;
-        b1.vy -= p * ny * 1.2;
-        b2.vx += p * nx * 1.2;
-        b2.vy += p * ny * 1.2;
+        if (p > 0) {
+            const restitution = 0.85;
+            const impulse = p * restitution;
 
-        b1.onBounce();
-        b2.onBounce();
+            b1.vx -= impulse * nx;
+            b1.vy -= impulse * ny;
+            b2.vx += impulse * nx;
+            b2.vy += impulse * ny;
 
-        // Sparkle particles at impact center
-        const impactX = (b1.x + b2.x) / 2;
-        const impactY = (b1.y + b2.y) / 2;
-        particleSystem.addSparkles(impactX, impactY, '#FEDD00', 8);
+            b1.onBounce();
+            b2.onBounce();
 
-        if (b1 === localPlayer || b2 === localPlayer) {
-            bounceScore++;
-            if (scoreElement) scoreElement.innerText = bounceScore;
+            // Sparkle particles at impact center
+            const impactX = (b1.x + b2.x) / 2;
+            const impactY = (b1.y + b2.y) / 2;
+            particleSystem.addSparkles(impactX, impactY, '#FEDD00', 6);
+
+            if (b1 === localPlayer || b2 === localPlayer) {
+                bounceScore++;
+                if (scoreElement) scoreElement.innerText = bounceScore;
+            }
         }
     }
 }
