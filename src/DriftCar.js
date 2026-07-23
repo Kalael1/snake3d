@@ -141,6 +141,7 @@ export class DriftCar {
         this.isTwoWheelLeft = controlState.left;
         this.isTwoWheelRight = controlState.right;
         this.isTwoWheeling = this.isTwoWheelLeft || this.isTwoWheelRight;
+        this.isHandbrake = controlState.isHandbrake || false;
         const isEngineOn = controlState.isEngineOn !== false;
         const steerDir = controlState.steerDir || 0;
 
@@ -160,9 +161,12 @@ export class DriftCar {
         }
         this.wasTwoWheeling = this.isTwoWheeling;
 
-        // 1. ENGINE POWER & SPEED CONTROL (Space Key Engine Toggle)
-        const targetSpeed = isEngineOn ? this.baseSpeed : 0.0;
-        this.currentSpeed += (targetSpeed - this.currentSpeed) * Math.min(1.0, 4.0 * delta);
+        // 1. ENGINE POWER & SPEED CONTROL (Handbrake / Space)
+        let targetSpeed = isEngineOn ? this.baseSpeed : 0.0;
+        if (this.isHandbrake) targetSpeed = this.baseSpeed * 0.4; // Handbrake slows car slightly but keeps it moving for drift
+        
+        const accelFactor = this.isHandbrake ? 8.0 : 4.0;
+        this.currentSpeed += (targetSpeed - this.currentSpeed) * Math.min(1.0, accelFactor * delta);
 
         // 2. RESPONSIVE ARCADE STEERING (Smooth but snappy!)
         const targetSteerVel = steerDir * 3.8; // Snappy target rotation speed
@@ -195,7 +199,9 @@ export class DriftCar {
         while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
         
-        const driftFactor = this.isTwoWheeling ? 10.0 : 6.0; // Tighter grip, much better control!
+        let driftFactor = this.isTwoWheeling ? 10.0 : 6.0; // Tighter grip normally
+        if (this.isHandbrake) driftFactor = 1.2; // MASSIVE SLIDE (No grip) when handbrake is pulled!
+        
         this.velocityAngle += angleDiff * Math.min(1.0, driftFactor * delta);
         if (isNaN(this.velocityAngle)) this.velocityAngle = this.heading;
 
@@ -212,7 +218,8 @@ export class DriftCar {
         if (isNaN(this.position.z)) this.position.z = 0;
 
         // 6. Tire Marks (Only when moving & drifting!)
-        if (this.currentSpeed > 2.0 && (this.isDrifting || this.slipAngle > 8 || this.isTwoWheeling)) {
+        const isSkidding = this.isDrifting || this.slipAngle > 8 || this.isTwoWheeling || this.isHandbrake;
+        if (this.currentSpeed > 2.0 && isSkidding) {
             const cosH = Math.cos(this.heading);
             const sinH = Math.sin(this.heading);
 

@@ -455,16 +455,19 @@ window.addEventListener('keydown', (e) => {
     if (document.activeElement === chatInput || document.activeElement === mobileChatInput) return;
     keysPressed[e.code] = true;
     if (e.code === 'KeyV') isTPSMode = !isTPSMode;
+    // Removed Space engine toggle because users press Space to drift (handbrake)
     if (e.code === 'Space') {
-        isEngineOn = !isEngineOn;
-        isEmittingTrail = isEngineOn;
-        if (!isEngineOn) tronTrailManager.breakPlayerTrail(localSocketId);
+        isEmittingTrail = true;
     }
     if (e.code === 'Escape' && isGameRunning) openMenu('Oyun Duraklatıldı');
 });
 
 window.addEventListener('keyup', (e) => {
     keysPressed[e.code] = false;
+    if (e.code === 'Space') {
+        isEmittingTrail = false;
+        tronTrailManager.breakPlayerTrail(localSocketId);
+    }
 });
 
 // ============== GAME OVER & EXPLOSION SYSTEM ==============
@@ -591,7 +594,8 @@ function animate() {
             left: !!keysPressed['KeyQ'],
             right: !!keysPressed['KeyE'],
             steerDir,
-            isEngineOn
+            isEngineOn,
+            isHandbrake: !!keysPressed['Space'] || !!keysPressed['ShiftLeft']
         };
 
         if (selectedControlScheme === 'keyboard' || !hasMovedMouseSinceStart) {
