@@ -236,6 +236,26 @@ export const HATS = [
             ctx.beginPath(); ctx.arc(0, -r*1.6, r*0.08, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.arc(r*0.6, -r*1.5, r*0.08, 0, Math.PI*2); ctx.fill();
         }
+    },
+    {
+        id: 'banana', name: 'Muz (Nano Banana) 🍌',
+        draw: (ctx, r) => {
+            // Nano Banana
+            ctx.fillStyle = '#FFE135';
+            ctx.beginPath();
+            // Draw a curved banana shape on top
+            ctx.moveTo(-r*0.7, -r*0.7);
+            ctx.quadraticCurveTo(0, -r*1.8, r*0.7, -r*0.7);
+            ctx.quadraticCurveTo(0, -r*1.3, -r*0.7, -r*0.7);
+            ctx.fill();
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            // Banana tips
+            ctx.fillStyle = '#4A3B2C';
+            ctx.beginPath(); ctx.arc(-r*0.65, -r*0.72, r*0.08, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(r*0.65, -r*0.72, r*0.08, 0, Math.PI*2); ctx.fill();
+        }
     }
 ];
 
