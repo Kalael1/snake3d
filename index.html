@@ -65,6 +65,23 @@
         </div>
       </div>
       
+      <!-- FOOTBALL SCOREBOARD -->
+      <div id="football-scoreboard" class="hidden" style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; align-items: center; justify-content: center; z-index: 10;">
+        <div id="red-score-card" class="hud-pill" style="background: #ef4444 !important; border-color: #000 !important; color: #fff !important; width: 120px; justify-content: center;">
+          <div class="hud-info" style="align-items: center;">
+            <span class="hud-label" style="color: #fff !important;">KIRMIZI</span>
+            <span id="red-team-score" class="hud-value" style="color: #fff !important; font-size: 32px !important;">0</span>
+          </div>
+        </div>
+        <div style="font-family: 'Bangers', cursive; font-size: 36px; color: #fff; text-shadow: 2px 2px 0 #000; -webkit-text-stroke: 2px #000;">VS</div>
+        <div id="blue-score-card" class="hud-pill" style="background: #3b82f6 !important; border-color: #000 !important; color: #fff !important; width: 120px; justify-content: center;">
+          <div class="hud-info" style="align-items: center;">
+            <span class="hud-label" style="color: #fff !important;">MAVİ</span>
+            <span id="blue-team-score" class="hud-value" style="color: #fff !important; font-size: 32px !important;">0</span>
+          </div>
+        </div>
+      </div>
+      
       <!-- SPYFALL UI HUD -->
       <div id="spyfall-ui" class="hidden">
         <div id="spyfall-header">🕵️ CASUS KİM?</div>
@@ -166,6 +183,19 @@
           <input type="text" id="mobile-chat-input" placeholder="Mesajınızı yazın..." maxlength="50" autocomplete="off">
           <button id="mobile-send-chat-btn">Gönder</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Football Team Selection Modal -->
+    <div id="football-team-modal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 500; display: flex; justify-content: center; align-items: center;">
+      <div class="stylized-modal" style="text-align: center; max-width: 400px; padding: 30px;">
+        <h1 style="font-size: 36px; margin-bottom: 20px;">TAKIMINI SEÇ</h1>
+        <p style="font-family: 'Fredoka', sans-serif; margin-bottom: 30px; font-weight: 600;">Futbol arenasına girmek için bir takım seçmelisin!</p>
+        <div style="display: flex; gap: 20px; justify-content: center;">
+          <button id="btn-team-red" class="play-btn" style="background: #ef4444 !important; flex: 1; padding: 20px 0; font-size: 28px !important; border-radius: 12px !important;">KIRMIZI</button>
+          <button id="btn-team-blue" class="play-btn" style="background: #3b82f6 !important; flex: 1; padding: 20px 0; font-size: 28px !important; border-radius: 12px !important;">MAVİ</button>
+        </div>
+        <button id="btn-leave-football" class="play-btn" style="background: #94a3b8 !important; width: 100%; margin-top: 20px; font-size: 18px !important; padding: 10px !important;">LOBİYE DÖN</button>
       </div>
     </div>
 

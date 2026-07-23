@@ -36,6 +36,10 @@ const spyfallGame = new SpyfallGame(
     (id) => players[id] || { name: 'Oyuncu' }
 );
 
+const footballState = { ball: { x: 1500, y: 1000, vx: 0, vy: 0 }, redScore: 0, blueScore: 0 };
+const BALL_RADIUS = 25;
+const PLAYER_RADIUS = 30;
+
 function round1(n) { return Math.round(n * 10) / 10; }
 
 // ============== SHARED ARENA SCREEN (YouTube jukebox) ==============
@@ -179,6 +183,16 @@ io.on('connection', (socket) => {
         else if (data.action === 'force_night') spyfallGame.triggerNight();
     });
 
+    socket.on('joinFootballTeam', (team) => {
+        const p = players[socket.id];
+        if (p) {
+            p.team = team;
+            // Place player in their team's half
+            p.x = team === 'red' ? 700 : 2300;
+            p.y = 1000;
+        }
+    });
+
     socket.on('playerInput', (data) => {
         const p = players[socket.id];
         if (!p || !data) return;
@@ -224,7 +238,7 @@ const TICK_MS = 1000 / TICK_RATE;
 
 setInterval(() => {
     try {
-        const rooms = ['lobby', 'beach', 'coffeeshop', 'disco'];
+        const rooms = ['lobby', 'beach', 'coffeeshop', 'disco', 'spyfall', 'football'];
         rooms.forEach(room => {
             const roomPlayers = {};
             for (let id in players) {
@@ -232,7 +246,62 @@ setInterval(() => {
                     roomPlayers[id] = players[id];
                 }
             }
-            io.to(room).emit('state', roomPlayers);
+            
+            if (room === 'football') {
+                const fPlayers = Object.values(roomPlayers);
+                if (fPlayers.length > 0) {
+                    let ball = footballState.ball;
+                    ball.vx *= 0.98;
+                    ball.vy *= 0.98;
+                    
+                    fPlayers.forEach(p => {
+                        let dx = ball.x - p.x;
+                        let dy = ball.y - p.y;
+                        let dist = Math.sqrt(dx*dx + dy*dy);
+                        let minDist = BALL_RADIUS + PLAYER_RADIUS;
+                        if (dist < minDist && dist > 0) {
+                            let nx = dx / dist;
+                            let ny = dy / dist;
+                            let pSpeed = Math.sqrt(p.vx*p.vx + p.vy*p.vy);
+                            let force = Math.max(6, pSpeed * 1.5);
+                            ball.vx += nx * force;
+                            ball.vy += ny * force;
+                            let overlap = minDist - dist;
+                            ball.x += nx * overlap;
+                            ball.y += ny * overlap;
+                        }
+                    });
+                    
+                    ball.x += ball.vx;
+                    ball.y += ball.vy;
+                    
+                    const W = 3000, H = 2000;
+                    const goalTop = H/2 - 250, goalBottom = H/2 + 250;
+                    
+                    if (ball.x < BALL_RADIUS) {
+                        if (ball.y > goalTop && ball.y < goalBottom) {
+                            footballState.blueScore++;
+                            ball.x = W/2; ball.y = H/2; ball.vx = 0; ball.vy = 0;
+                            io.to('football').emit('goal', { team: 'blue', score: footballState });
+                        } else {
+                            ball.x = BALL_RADIUS; ball.vx *= -0.8;
+                        }
+                    } else if (ball.x > W - BALL_RADIUS) {
+                        if (ball.y > goalTop && ball.y < goalBottom) {
+                            footballState.redScore++;
+                            ball.x = W/2; ball.y = H/2; ball.vx = 0; ball.vy = 0;
+                            io.to('football').emit('goal', { team: 'red', score: footballState });
+                        } else {
+                            ball.x = W - BALL_RADIUS; ball.vx *= -0.8;
+                        }
+                    }
+                    if (ball.y < BALL_RADIUS) { ball.y = BALL_RADIUS; ball.vy *= -0.8; }
+                    else if (ball.y > H - BALL_RADIUS) { ball.y = H - BALL_RADIUS; ball.vy *= -0.8; }
+                }
+                io.to(room).emit('state', { players: roomPlayers, footballState });
+            } else {
+                io.to(room).emit('state', roomPlayers);
+            }
         });
     } catch (err) {
         console.error("Error in game loop broadcast:", err);

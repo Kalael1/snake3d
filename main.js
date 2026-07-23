@@ -39,7 +39,8 @@ window.DOORS = {
         { id: 'beach', align: 'left', label: '🏖️ Sahil', color: '#fde047' },
         { id: 'coffeeshop', align: 'right', label: '☕ Kafe', color: '#78350f' },
         { id: 'spyfall', align: 'top', label: '🕵️ Casus Kim?', color: '#ef4444' },
-        { id: 'disco', align: 'bottom', label: '🕺 Disko', color: '#ec4899' }
+        { id: 'disco', align: 'bottom-left', label: '🕺 Disko', color: '#ec4899' },
+        { id: 'football', align: 'bottom-right', label: '⚽ Futbol', color: '#4ade80' }
     ],
     beach: [
         { id: 'lobby', align: 'right', label: '🚪 Lobiye Dön', color: '#3b82f6' }
@@ -51,6 +52,9 @@ window.DOORS = {
         { id: 'lobby', align: 'top', label: '🚪 Lobiye Dön', color: '#3b82f6' }
     ],
     spyfall: [
+        { id: 'lobby', align: 'bottom', label: '🚪 Lobiye Dön', color: '#3b82f6' }
+    ],
+    football: [
         { id: 'lobby', align: 'bottom', label: '🚪 Lobiye Dön', color: '#3b82f6' }
     ]
 };
@@ -65,6 +69,8 @@ function getDoorRect(d) {
     if (d.align === 'right') return { x: cw - thickness, y: ch/2 - length/2, w: thickness, h: length };
     if (d.align === 'top') return { x: cw/2 - length/2, y: 0, w: length, h: thickness };
     if (d.align === 'bottom') return { x: cw/2 - length/2, y: ch - thickness, w: length, h: thickness };
+    if (d.align === 'bottom-left') return { x: cw*0.25 - length/2, y: ch - thickness, w: length, h: thickness };
+    if (d.align === 'bottom-right') return { x: cw*0.75 - length/2, y: ch - thickness, w: length, h: thickness };
     return { x: 0, y: 0, w: 0, h: 0 };
 }
 
@@ -700,6 +706,23 @@ socket.on('spyfallState', (state) => {
     }
 });
 
+socket.on('playerAction', (data) => {
+    if (data.id === localSocketId) return;
+    if (otherPlayers[data.id]) {
+        otherPlayers[data.id].playAction(data.action);
+    }
+});
+
+socket.on('goal', (data) => {
+    if (data.score) {
+        document.getElementById('red-team-score').innerText = data.score.redScore;
+        document.getElementById('blue-team-score').innerText = data.score.blueScore;
+    }
+    const teamName = data.team === 'red' ? 'Kırmızı' : 'Mavi';
+    addChatMessage('SİSTEM', `⚽ GOOOOOL! ${teamName} takım gol attı! ⚽`, false);
+});
+
+// Setup DOM elements
 socket.on('chatReceived', (data) => {
     if (data.id === localSocketId) return;
     addChatMessage(data.name, data.text);
@@ -721,12 +744,20 @@ socket.on('playerAction', (data) => {
     }
 });
 
-socket.on('state', (players) => {
-    updateLeaderboard(players);
+socket.on('state', (data) => {
+    let playersList;
+    if (data && data.footballState) {
+        playersList = data.players;
+        window.footballState = data.footballState;
+    } else {
+        playersList = data;
+    }
 
-    for (const id in players) {
+    updateLeaderboard(playersList);
+
+    for (const id in playersList) {
         if (id === localSocketId) continue;
-        const p = players[id];
+        const p = playersList[id];
         if (!otherPlayers[id]) {
             otherPlayers[id] = new Countryball(p.x, p.y, p.name || 'Oyuncu', p.skinId || 'turkey');
             addChatMessage('SİSTEM', `⚽ ${p.name || 'Oyuncu'} arenaya katıldı!`, true);
@@ -867,6 +898,27 @@ function checkBallCollision(b1, b2) {
 let lastTime = performance.now();
 let lastNetworkEmitTime = 0;
 
+document.getElementById('btn-leave-football').addEventListener('click', () => {
+    document.getElementById('football-team-modal').classList.add('hidden');
+    window.currentRoom = 'lobby';
+    socket.emit('changeRoom', 'lobby');
+    document.getElementById('football-scoreboard').classList.add('hidden');
+    localPlayer.x = canvas.width / 2;
+    localPlayer.y = canvas.height / 2;
+});
+
+document.getElementById('btn-team-red').addEventListener('click', () => {
+    socket.emit('joinFootballTeam', 'red');
+    localPlayer.team = 'red';
+    document.getElementById('football-team-modal').classList.add('hidden');
+});
+
+document.getElementById('btn-team-blue').addEventListener('click', () => {
+    socket.emit('joinFootballTeam', 'blue');
+    localPlayer.team = 'blue';
+    document.getElementById('football-team-modal').classList.add('hidden');
+});
+
 function gameLoop(now) {
     requestAnimationFrame(gameLoop);
 
@@ -882,6 +934,18 @@ function gameLoop(now) {
     if (spyfallUi) {
         if (window.currentRoom === 'spyfall') spyfallUi.classList.remove('hidden');
         else spyfallUi.classList.add('hidden');
+    }
+    const fTeamModal = document.getElementById('football-team-modal');
+    const fScoreboard = document.getElementById('football-scoreboard');
+    if (fTeamModal && fScoreboard) {
+        if (window.currentRoom === 'football') {
+            if (!localPlayer.team) fTeamModal.classList.remove('hidden');
+            fScoreboard.classList.remove('hidden');
+        } else {
+            fTeamModal.classList.add('hidden');
+            fScoreboard.classList.add('hidden');
+            localPlayer.team = null;
+        }
     }
 
     // Always update & draw bots (even on start screen — they bounce around as decoration)
@@ -952,6 +1016,24 @@ function gameLoop(now) {
     // 2. Particles
     particleSystem.update(delta);
     particleSystem.draw(ctx);
+
+    if (window.currentRoom === 'football' && window.footballState) {
+        const ball = window.footballState.ball;
+        ctx.save();
+        ctx.translate(ball.x, ball.y);
+        ctx.rotate((ball.x + ball.y) * 0.02); // pseudo rotation
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(0, 0, 25, 0, Math.PI*2); ctx.fill();
+        ctx.lineWidth = 4; ctx.strokeStyle = '#000'; ctx.stroke();
+        
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(-12, -25); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, 8); ctx.lineTo(12, 25); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(-25, 5); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(25, -5); ctx.stroke();
+        ctx.restore();
+    }
 
     // 3. Draw all balls
     botPlayers.forEach(bot => bot.draw(ctx));
