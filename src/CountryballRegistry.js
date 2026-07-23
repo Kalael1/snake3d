@@ -234,6 +234,41 @@ export const HATS = [
             const img = getOrLoadImage('banana', '/assets/banana.png');
             if (img.complete) ctx.drawImage(img, -r*0.9, -r*2.1, r*1.8, r*1.8);
         }
+    },
+    {
+        id: 'bow', name: 'Pembe Kurdele 🎀 (Kadın)',
+        draw: (ctx, r) => {
+            const img = getOrLoadImage('bow', '/assets/bow.svg');
+            if (img.complete) ctx.drawImage(img, -r*0.6, -r*1.7, r*1.2, r*1.2);
+        }
+    },
+    {
+        id: 'sunhat', name: 'Yazlık Şapka 👒 (Kadın)',
+        draw: (ctx, r) => {
+            const img = getOrLoadImage('sunhat', '/assets/sunhat.svg');
+            if (img.complete) ctx.drawImage(img, -r*1.2, -r*2.0, r*2.4, r*2.0);
+        }
+    },
+    {
+        id: 'flower', name: 'Bahar Çiçeği 🌸 (Kadın)',
+        draw: (ctx, r) => {
+            const img = getOrLoadImage('flower', '/assets/flower.svg');
+            if (img.complete) ctx.drawImage(img, -r*0.6, -r*1.6, r*1.2, r*1.2);
+        }
+    },
+    {
+        id: 'gradcap', name: 'Mezuniyet Şapkası 🎓',
+        draw: (ctx, r) => {
+            const img = getOrLoadImage('gradcap', '/assets/gradcap.svg');
+            if (img.complete) ctx.drawImage(img, -r*1.0, -r*1.8, r*2.0, r*2.0);
+        }
+    },
+    {
+        id: 'helmet', name: 'Askeri Kask 🪖',
+        draw: (ctx, r) => {
+            const img = getOrLoadImage('helmet', '/assets/helmet.svg');
+            if (img.complete) ctx.drawImage(img, -r*0.9, -r*2.0, r*1.8, r*1.8);
+        }
     }
 ];
 
@@ -251,6 +286,20 @@ export const GLASSES = [
         draw: (ctx, r) => {
             const img = getOrLoadImage('nerd', '/assets/nerd.png');
             if (img.complete) ctx.drawImage(img, -r*0.9, -r*0.4, r*1.8, r*0.8);
+        }
+    },
+    {
+        id: 'mask', name: 'Tiyatro/Ninja Maskesi 🎭',
+        draw: (ctx, r) => {
+            const img = getOrLoadImage('mask', '/assets/mask.svg');
+            if (img.complete) ctx.drawImage(img, -r*1.0, -r*0.7, r*2.0, r*1.4);
+        }
+    },
+    {
+        id: 'goggles', name: 'Yarış/Kar Gözlüğü 🥽',
+        draw: (ctx, r) => {
+            const img = getOrLoadImage('goggles', '/assets/goggles.svg');
+            if (img.complete) ctx.drawImage(img, -r*0.9, -r*0.6, r*1.8, r*1.2);
         }
     }
 ];
