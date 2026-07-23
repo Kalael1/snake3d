@@ -75,6 +75,7 @@
       <div id="top-right-bar">
         <button id="fullscreen-btn" class="icon-btn" title="Tam Ekran">⛶</button>
         <button id="sound-btn" class="icon-btn" title="Ses">🔊</button>
+        <button id="open-screen-btn" class="icon-btn" title="Arena Ekranına müzik / video koy">📺</button>
         <div id="leaderboard">
           <div class="lb-header">🏎️ DRİFT LİDERLERİ</div>
           <ul id="lb-list">
@@ -110,6 +111,27 @@
     <!-- Minimap Radar HUD -->
     <div id="minimap-container" style="position: fixed; bottom: 20px; right: 20px; width: 140px; height: 140px; border-radius: 50%; border: 3px solid #00f3ff; background: rgba(5, 12, 24, 0.85); box-shadow: 0 0 15px rgba(0, 243, 255, 0.5); overflow: hidden; pointer-events: none; z-index: 900;">
       <canvas id="minimap-canvas" width="140" height="140"></canvas>
+    </div>
+
+    <!-- Arena Screen: shared YouTube jumbotron (everyone sees/hears the same video) -->
+    <div id="arena-screen-jumbotron" class="hidden">
+      <div class="jumbo-header">
+        <span id="arena-screen-label">📺 ARENA EKRANI</span>
+        <button id="jumbo-mute-btn" title="Sesi Aç/Kapat">🔊</button>
+        <button id="jumbo-minimize-btn" title="Küçült / Büyüt">—</button>
+      </div>
+      <div class="jumbo-video-wrap">
+        <iframe id="arena-screen-iframe" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen frameborder="0"></iframe>
+      </div>
+    </div>
+
+    <!-- Arena Screen: paste-a-link popover -->
+    <div id="screen-input-popover" class="hidden">
+      <div class="screen-pop-title">📺 ARENA EKRANINA MÜZİK / VİDEO KOY</div>
+      <p class="screen-pop-desc">Bir YouTube linki yapıştır — herkes aynı ekranda görür. Yeni video 2 dakikada bir eklenebilir.</p>
+      <input type="text" id="screen-url-input" placeholder="https://youtube.com/watch?v=..." autocomplete="off">
+      <button id="screen-set-btn">▶ EKRANDA AÇ</button>
+      <div id="screen-status" class="screen-status"></div>
     </div>
 
     <!-- Mobile Chat Modal -->

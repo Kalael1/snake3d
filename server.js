@@ -34,9 +34,71 @@ const activeTrails = []; // { id, playerId, x, z, angle, age }
 
 function round1(n) { return Math.round(n * 10) / 10; }
 
+// ============== SHARED ARENA SCREEN (YouTube jukebox) ==============
+const SCREEN_COOLDOWN_MS = 2 * 60 * 1000; // Global: a new video can only be set every 2 minutes
+let screenVideo = null;                    // { videoId, setByName, setAt }
+
+function parseYouTubeId(input) {
+    if (!input || typeof input !== 'string') return null;
+    const s = input.trim();
+    if (/^[a-zA-Z0-9_-]{11}$/.test(s)) return s; // already a raw id
+    const patterns = [
+        /youtube\.com\/watch\?(?:.*&)?v=([a-zA-Z0-9_-]{11})/,
+        /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/live\/([a-zA-Z0-9_-]{11})/,
+        /music\.youtube\.com\/watch\?(?:.*&)?v=([a-zA-Z0-9_-]{11})/
+    ];
+    for (const re of patterns) {
+        const m = s.match(re);
+        if (m) return m[1];
+    }
+    return null;
+}
+
 // ============== SOCKET ==============
 io.on('connection', (socket) => {
     console.log(`[+] Player connected: ${socket.id}`);
+
+    // Bring the newcomer in sync with whatever is currently on the arena screen
+    if (screenVideo) {
+        socket.emit('screenVideo', {
+            videoId: screenVideo.videoId,
+            setByName: screenVideo.setByName,
+            setAt: screenVideo.setAt,
+            remainingMs: Math.max(0, SCREEN_COOLDOWN_MS - (Date.now() - screenVideo.setAt))
+        });
+    }
+
+    socket.on('setScreenVideo', (data) => {
+        const videoId = parseYouTubeId(data && (data.url || data.videoId));
+        if (!videoId) {
+            socket.emit('screenVideoRejected', { reason: 'invalid' });
+            return;
+        }
+
+        const now = Date.now();
+        if (screenVideo && (now - screenVideo.setAt) < SCREEN_COOLDOWN_MS) {
+            socket.emit('screenVideoRejected', {
+                reason: 'cooldown',
+                remainingMs: SCREEN_COOLDOWN_MS - (now - screenVideo.setAt)
+            });
+            return;
+        }
+
+        const p = players[socket.id];
+        const setByName = (p && p.name) || (data && data.name) || 'Bir sürücü';
+        screenVideo = { videoId, setByName, setAt: now };
+
+        io.emit('screenVideo', {
+            videoId,
+            setByName,
+            setAt: now,
+            remainingMs: SCREEN_COOLDOWN_MS
+        });
+        console.log(`[📺] Arena screen -> ${videoId} (by ${setByName})`);
+    });
 
     socket.on('join', (data) => {
         const name = typeof data === 'string' ? data : (data.name || 'Oyuncu');

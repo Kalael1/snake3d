@@ -10,6 +10,7 @@ import { ProgressionManager } from './src/ProgressionManager.js';
 import { NameTagManager } from './src/NameTagManager.js';
 import { TronTrailManager } from './src/TronTrailManager.js';
 import { ExplosionManager } from './src/ExplosionManager.js';
+import { ArenaScreen } from './src/ArenaScreen.js';
 
 // ============== SOCKET ==============
 const SOCKET_URL = window.location.hostname.includes('github.io') || window.location.hostname.includes('vercel.app') || window.location.hostname.includes('netlify.app')
@@ -69,6 +70,13 @@ localCar.applySkin(progressionManager.selectedSkinId);
 
 const tronTrailManager = new TronTrailManager(scene);
 const explosionManager = new ExplosionManager(scene);
+
+const arenaScreen = new ArenaScreen(scene, {
+    iframeEl: document.getElementById('arena-screen-iframe'),
+    wrapEl: document.getElementById('arena-screen-jumbotron'),
+    labelEl: document.getElementById('arena-screen-label')
+});
+
 const otherCars = {};
 
 let isGameRunning = false;
@@ -212,6 +220,128 @@ function toggleFullscreen() {
 }
 fullscreenBtn.addEventListener('click', toggleFullscreen);
 
+// ============== ARENA SCREEN (SHARED YOUTUBE JUKEBOX) ==============
+const SCREEN_COOLDOWN_MS = 2 * 60 * 1000;
+const openScreenBtn = document.getElementById('open-screen-btn');
+const screenPopover = document.getElementById('screen-input-popover');
+const screenUrlInput = document.getElementById('screen-url-input');
+const screenSetBtn = document.getElementById('screen-set-btn');
+const screenStatus = document.getElementById('screen-status');
+const jumbo = document.getElementById('arena-screen-jumbotron');
+const jumboMinimizeBtn = document.getElementById('jumbo-minimize-btn');
+const jumboMuteBtn = document.getElementById('jumbo-mute-btn');
+const arenaScreenIframe = document.getElementById('arena-screen-iframe');
+
+let screenCooldownUntil = 0;
+let screenCooldownTimer = null;
+
+function parseYouTubeId(input) {
+    if (!input || typeof input !== 'string') return null;
+    const s = input.trim();
+    if (/^[a-zA-Z0-9_-]{11}$/.test(s)) return s;
+    const patterns = [
+        /youtube\.com\/watch\?(?:.*&)?v=([a-zA-Z0-9_-]{11})/,
+        /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+        /youtube\.com\/live\/([a-zA-Z0-9_-]{11})/,
+        /music\.youtube\.com\/watch\?(?:.*&)?v=([a-zA-Z0-9_-]{11})/
+    ];
+    for (const re of patterns) {
+        const m = s.match(re);
+        if (m) return m[1];
+    }
+    return null;
+}
+
+function fmtMMSS(ms) {
+    const sec = Math.max(0, Math.ceil(ms / 1000));
+    return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+}
+
+function startScreenCooldown(ms) {
+    screenCooldownUntil = Date.now() + ms;
+    if (screenCooldownTimer) clearInterval(screenCooldownTimer);
+    const tick = () => {
+        const remaining = screenCooldownUntil - Date.now();
+        if (remaining <= 0) {
+            clearInterval(screenCooldownTimer);
+            screenCooldownTimer = null;
+            screenSetBtn.disabled = false;
+            screenSetBtn.innerText = '▶ EKRANDA AÇ';
+            screenStatus.innerText = '';
+            screenStatus.classList.remove('error');
+            return;
+        }
+        screenSetBtn.disabled = true;
+        screenSetBtn.innerText = `⏳ ${fmtMMSS(remaining)}`;
+        screenStatus.classList.remove('error');
+        screenStatus.innerText = `Yeni video için bekle: ${fmtMMSS(remaining)}`;
+    };
+    tick();
+    screenCooldownTimer = setInterval(tick, 500);
+}
+
+function showScreenError(msg) {
+    screenStatus.classList.add('error');
+    screenStatus.innerText = msg;
+}
+
+function requestSetVideo() {
+    const raw = screenUrlInput.value;
+    const videoId = parseYouTubeId(raw);
+    if (!videoId) {
+        showScreenError('❌ Geçerli bir YouTube linki yapıştır.');
+        return;
+    }
+    if (Date.now() < screenCooldownUntil) {
+        showScreenError(`⏳ Yeni video için ${fmtMMSS(screenCooldownUntil - Date.now())} bekle.`);
+        return;
+    }
+    const playerName = playerNameInput ? (playerNameInput.value.trim() || 'Bir sürücü') : 'Bir sürücü';
+
+    if (socket && socket.connected) {
+        // Server is authoritative (shared jukebox + global cooldown)
+        socket.emit('setScreenVideo', { url: raw, name: playerName });
+    } else {
+        // Offline / single-player fallback so the screen still works locally
+        arenaScreen.setVideo(videoId, playerName);
+        startScreenCooldown(SCREEN_COOLDOWN_MS);
+    }
+    screenUrlInput.value = '';
+}
+
+if (openScreenBtn) {
+    openScreenBtn.addEventListener('click', () => {
+        screenPopover.classList.toggle('hidden');
+        if (!screenPopover.classList.contains('hidden')) screenUrlInput.focus();
+    });
+}
+if (screenSetBtn) screenSetBtn.addEventListener('click', requestSetVideo);
+if (screenUrlInput) {
+    screenUrlInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') requestSetVideo();
+    });
+}
+if (jumboMinimizeBtn) {
+    jumboMinimizeBtn.addEventListener('click', () => {
+        jumbo.classList.toggle('minimized');
+        jumboMinimizeBtn.innerText = jumbo.classList.contains('minimized') ? '▢' : '—';
+    });
+}
+if (jumboMuteBtn) {
+    jumboMuteBtn.addEventListener('click', () => {
+        // Reload the iframe muted/unmuted by toggling the mute param
+        if (!arenaScreen.videoId) return;
+        const muted = jumboMuteBtn.dataset.muted === '1';
+        jumboMuteBtn.dataset.muted = muted ? '0' : '1';
+        jumboMuteBtn.innerText = muted ? '🔊' : '🔇';
+        arenaScreenIframe.src =
+            `https://www.youtube-nocookie.com/embed/${arenaScreen.videoId}` +
+            `?autoplay=1&rel=0&modestbranding=1&playsinline=1&mute=${muted ? 0 : 1}`;
+    });
+}
+
 // ============== SKIN GALLERY ==============
 function renderSkinGallery() {
     if (!skinCardsGrid) return;
@@ -354,6 +484,24 @@ socket.on('chatBroadcast', (data) => {
     addChatMessage(data.sender, data.text);
     if (otherCars[data.id]) {
         otherCars[data.id].showSpeechBubble(data.text);
+    }
+});
+
+// Shared arena screen sync
+socket.on('screenVideo', (data) => {
+    if (!data || !data.videoId) return;
+    arenaScreen.setVideo(data.videoId, data.setByName);
+    addChatMessage('SİSTEM', `📺 ${data.setByName || 'Bir sürücü'} arena ekranında video açtı!`, true);
+    if (typeof data.remainingMs === 'number') startScreenCooldown(data.remainingMs);
+});
+
+socket.on('screenVideoRejected', (data) => {
+    if (!data) return;
+    if (data.reason === 'cooldown') {
+        startScreenCooldown(data.remainingMs || SCREEN_COOLDOWN_MS);
+        showScreenError(`⏳ Ekran meşgul — ${fmtMMSS(data.remainingMs || 0)} sonra tekrar dene.`);
+    } else {
+        showScreenError('❌ Geçerli bir YouTube linki yapıştır.');
     }
 });
 
@@ -576,6 +724,7 @@ function animate() {
     const now = Date.now();
 
     explosionManager.update(delta);
+    arenaScreen.update(delta, clock.elapsedTime);
 
     if (isGameRunning) {
         // 1. Raycast for mouse target with NaN & null guards

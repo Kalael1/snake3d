@@ -45,6 +45,12 @@ export class DriftCar {
         this.driftTimer = 0;
         this.currentAngle = 0;
 
+        // Feel & anti-exploit helpers
+        this.gripSmooth = 6.0;   // Smoothed grip → buttery grip/slide transitions (no "raw" snap)
+        this.driftSign = 0;      // This frame's slide direction (+1 / -1 / 0)
+        this.driftDir = 0;       // Direction of the currently scored drift
+        this.sameDirTimer = 0;   // Seconds spent sliding the SAME way (drives the donut fade)
+
         // 3D Scene Group
         this.group = new THREE.Group();
         this.scene.add(this.group);
@@ -163,18 +169,31 @@ export class DriftCar {
 
         // 1. ENGINE POWER & SPEED CONTROL (Handbrake / Space)
         let targetSpeed = isEngineOn ? this.baseSpeed : 0.0;
-        if (this.isHandbrake) targetSpeed = this.baseSpeed * 0.4; // Handbrake slows car slightly but keeps it moving for drift
-        
-        const accelFactor = this.isHandbrake ? 8.0 : 4.0;
+        if (this.isHandbrake) targetSpeed = this.baseSpeed * 0.6; // Handbrake scrubs speed but keeps momentum for drift
+
+        // CORNERING SCRUB — hard steering and big slides bleed speed. This makes the
+        // car "load up" in a turn (nicer feel) AND makes spin-in-place donuts
+        // self-limiting: the harder you keep spinning, the more speed you lose.
+        const steerLoad = Math.min(1, Math.abs(this.keySteerVelocity) / 3.4);
+        const slipLoad = Math.min(1, this.slipAngle / 50); // previous frame's slip magnitude
+        const scrub = Math.min(0.6, 0.26 * steerLoad + 0.34 * slipLoad);
+        targetSpeed *= (1 - scrub);
+
+        const accelFactor = this.isHandbrake ? 7.0 : 3.2;
         this.currentSpeed += (targetSpeed - this.currentSpeed) * Math.min(1.0, accelFactor * delta);
 
-        // 2. RESPONSIVE ARCADE STEERING (Smooth but snappy!)
-        const targetSteerVel = steerDir * 3.8; // Snappy target rotation speed
-        this.keySteerVelocity += (targetSteerVel - this.keySteerVelocity) * Math.min(1.0, 12.0 * delta); // Fast damping
+        const speedRatio = Math.max(0, Math.min(1, this.currentSpeed / this.baseSpeed));
+
+        // 2. RESPONSIVE ARCADE STEERING (smooth + speed-sensitive)
+        const targetSteerVel = steerDir * 3.4;
+        this.keySteerVelocity += (targetSteerVel - this.keySteerVelocity) * Math.min(1.0, 9.0 * delta); // softer ramp = less twitch
+        // Steering authority scales with speed: agile at pace, gentle when crawling
+        // (a near-stopped car can no longer whip around to farm angle).
+        const steerAuthority = 0.4 + 0.6 * speedRatio;
 
         if (steerDir !== 0 || Math.abs(this.keySteerVelocity) > 0.05) {
             // A/D Keyboard or Mobile Touch steering
-            this.heading += this.keySteerVelocity * delta;
+            this.heading += this.keySteerVelocity * delta * steerAuthority;
         } else if (targetPoint && targetPoint.x !== undefined && targetPoint.z !== undefined && !isNaN(targetPoint.x) && !isNaN(targetPoint.z) && this.currentSpeed > 0.5) {
             // Mouse target steering when keyboard A/D is not pressed
             this.keySteerVelocity = 0; // Clear velocity to prevent interference
@@ -186,7 +205,7 @@ export class DriftCar {
                     let steerDiff = targetAngle - this.heading;
                     while (steerDiff < -Math.PI) steerDiff += Math.PI * 2;
                     while (steerDiff > Math.PI) steerDiff -= Math.PI * 2;
-                    this.heading += steerDiff * Math.min(1.0, this.steerSpeed * delta);
+                    this.heading += steerDiff * Math.min(1.0, this.steerSpeed * delta) * steerAuthority;
                 }
             }
         }
@@ -194,15 +213,19 @@ export class DriftCar {
         // Final NaN sanity check on heading
         if (isNaN(this.heading)) this.heading = 0;
 
-        // DRIFT PHYSICS: Velocity angle smoothly follows heading (Higher driftFactor = tighter grip)
+        // DRIFT PHYSICS: velocity angle chases heading through a SMOOTHED grip value,
+        // so grip↔slide transitions ease in/out instead of snapping (kills the "raw" feel).
         let angleDiff = this.heading - this.velocityAngle;
         while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
         while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-        
-        let driftFactor = this.isTwoWheeling ? 10.0 : 6.0; // Tighter grip normally
-        if (this.isHandbrake) driftFactor = 1.2; // MASSIVE SLIDE (No grip) when handbrake is pulled!
-        
-        this.velocityAngle += angleDiff * Math.min(1.0, driftFactor * delta);
+
+        this.driftSign = angleDiff > 0.0001 ? 1 : (angleDiff < -0.0001 ? -1 : 0);
+
+        let targetGrip = this.isTwoWheeling ? 10.0 : 6.0; // Tighter grip normally
+        if (this.isHandbrake) targetGrip = 1.6;           // Long, smooth slides on handbrake
+        this.gripSmooth += (targetGrip - this.gripSmooth) * Math.min(1.0, 8.0 * delta);
+
+        this.velocityAngle += angleDiff * Math.min(1.0, this.gripSmooth * delta);
         if (isNaN(this.velocityAngle)) this.velocityAngle = this.heading;
 
         // 4. Slip angle (drift magnitude)
@@ -277,9 +300,11 @@ export class DriftCar {
     updateDriftScore(delta) {
         const DRIFT_THRESHOLD = 10;
         const MEGA_THRESHOLD = 25;
+        const speedRatio = Math.max(0, Math.min(1, this.currentSpeed / this.baseSpeed));
 
+        // Two-wheel stunt points scale with speed → no free points while barely moving
         if (this.isTwoWheeling) {
-            this.totalDriftScore += Math.floor(50 * delta);
+            this.totalDriftScore += Math.floor(50 * delta * speedRatio);
         }
 
         if (this.slipAngle > DRIFT_THRESHOLD) {
@@ -288,21 +313,39 @@ export class DriftCar {
                 this.currentDriftScore = 0;
                 this.driftCombo = 1;
                 this.driftTimer = 0;
+                this.driftDir = this.driftSign;
+                this.sameDirTimer = 0;
+            }
+
+            // TRANSITION BONUS: flicking the slide to the opposite side refreshes the
+            // donut fade and bumps the combo → rewards skilful S-drifts / countersteer.
+            if (this.driftSign !== 0 && this.driftSign !== this.driftDir) {
+                this.driftDir = this.driftSign;
+                this.sameDirTimer = 0;
+                this.driftCombo = Math.min(6, this.driftCombo + 1);
             }
 
             this.driftTimer += delta;
+            this.sameDirTimer += delta;
 
-            if (this.driftTimer > 1.2) this.driftCombo = 2;
-            if (this.driftTimer > 2.8) this.driftCombo = 3;
-            if (this.driftTimer > 5.0) this.driftCombo = 5;
+            if (this.driftTimer > 1.2) this.driftCombo = Math.max(this.driftCombo, 2);
+            if (this.driftTimer > 2.8) this.driftCombo = Math.max(this.driftCombo, 3);
+            if (this.driftTimer > 5.0) this.driftCombo = Math.max(this.driftCombo, 5);
 
             let angleMult = 1;
             if (this.slipAngle > MEGA_THRESHOLD) angleMult = 3;
             else if (this.slipAngle > 16) angleMult = 2;
-
             if (this.isTwoWheeling) angleMult *= 2;
 
-            this.currentDriftScore += this.slipAngle * delta * angleMult * this.driftCombo;
+            // DONUT FADE — a steady same-direction slide earns full points only briefly,
+            // then decays toward a floor. Combined with speedRatio and cornering scrub,
+            // this stops endless spin-in-place score farming while a real, fast, transitioning
+            // drift keeps scoring big.
+            const fade = this.sameDirTimer < 2.0
+                ? 1.0
+                : Math.max(0.06, 1.0 - (this.sameDirTimer - 2.0) * 0.6);
+
+            this.currentDriftScore += this.slipAngle * delta * angleMult * this.driftCombo * speedRatio * fade;
         } else {
             if (this.isDrifting) {
                 this.totalDriftScore += Math.floor(this.currentDriftScore);
@@ -310,6 +353,8 @@ export class DriftCar {
                 this.currentDriftScore = 0;
                 this.driftCombo = 1;
                 this.driftTimer = 0;
+                this.driftDir = 0;
+                this.sameDirTimer = 0;
             }
         }
     }
@@ -338,6 +383,10 @@ export class DriftCar {
         this.totalDriftScore = 0;
         this.driftCombo = 1;
         this.driftTimer = 0;
+        this.gripSmooth = 6.0;
+        this.driftSign = 0;
+        this.driftDir = 0;
+        this.sameDirTimer = 0;
         this.currentRoll = 0;
         this.rollVelocity = 0;
         this.currentPitch = 0;

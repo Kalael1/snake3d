@@ -1178,3 +1178,131 @@ canvas {
   border: 1px solid rgba(245, 158, 11, 0.4);
 }
 
+/* ============== ARENA SCREEN — SHARED YOUTUBE JUKEBOX ============== */
+#arena-screen-jumbotron {
+  position: fixed;
+  top: 74px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(420px, 42vw);
+  background: rgba(5, 10, 22, 0.92);
+  border: 2px solid #00f3ff;
+  border-radius: 14px;
+  box-shadow: 0 0 22px rgba(0, 243, 255, 0.45), inset 0 0 18px rgba(0, 243, 255, 0.12);
+  overflow: hidden;
+  z-index: 950;
+  backdrop-filter: blur(4px);
+}
+#arena-screen-jumbotron.hidden { display: none; }
+#arena-screen-jumbotron.minimized .jumbo-video-wrap { display: none; }
+
+.jumbo-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: linear-gradient(90deg, rgba(255, 45, 149, 0.25), rgba(0, 243, 255, 0.18));
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  color: #e2f6ff;
+  text-transform: uppercase;
+}
+#arena-screen-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.jumbo-header button {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 243, 255, 0.4);
+  color: #cfefff;
+  border-radius: 6px;
+  width: 26px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+.jumbo-header button:hover { background: rgba(0, 243, 255, 0.25); }
+
+.jumbo-video-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+}
+#arena-screen-iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* Paste-a-link popover */
+#screen-input-popover {
+  position: fixed;
+  top: 74px;
+  right: 20px;
+  width: 300px;
+  background: rgba(8, 14, 26, 0.96);
+  border: 2px solid #00f3ff;
+  border-radius: 14px;
+  padding: 14px;
+  z-index: 1200;
+  box-shadow: 0 0 22px rgba(0, 243, 255, 0.4);
+  font-family: 'Outfit', sans-serif;
+}
+#screen-input-popover.hidden { display: none; }
+.screen-pop-title {
+  font-weight: 900;
+  font-size: 13px;
+  color: #00f3ff;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.screen-pop-desc {
+  font-size: 11px;
+  color: #9fb4cc;
+  line-height: 1.4;
+  margin: 0 0 10px;
+}
+#screen-url-input {
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: 9px;
+  border: 1px solid rgba(0, 243, 255, 0.4);
+  background: rgba(0, 0, 0, 0.45);
+  color: #e2f6ff;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+#screen-url-input:focus { border-color: #00f3ff; box-shadow: 0 0 10px rgba(0, 243, 255, 0.35); }
+#screen-set-btn {
+  width: 100%;
+  margin-top: 9px;
+  padding: 10px;
+  border: none;
+  border-radius: 9px;
+  background: linear-gradient(90deg, #00f3ff, #0088ff);
+  color: #04121f;
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+#screen-set-btn:disabled { background: #33465e; color: #8ea6bf; cursor: not-allowed; }
+.screen-status {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: #7bd3ff;
+  min-height: 14px;
+  text-align: center;
+}
+.screen-status.error { color: #ff6b8a; }
+
+@media (max-width: 768px) {
+  #arena-screen-jumbotron { width: 58vw; top: 60px; }
+  #screen-input-popover { width: 82vw; right: 9vw; left: 9vw; }
+}
+
