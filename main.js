@@ -94,6 +94,13 @@ const glassesSelector = document.getElementById('glasses-selector');
 const radialMenu = document.getElementById('radial-menu');
 const radialItems = document.querySelectorAll('.radial-item');
 
+const ingameEditModal = document.getElementById('ingame-edit-modal');
+const editPlayerName = document.getElementById('edit-player-name');
+const editSkinSelector = document.getElementById('edit-skin-selector');
+const editHatSelector = document.getElementById('edit-hat-selector');
+const editGlassesSelector = document.getElementById('edit-glasses-selector');
+const saveEditBtn = document.getElementById('save-edit-btn');
+
 const chatInput = document.getElementById('chat-input');
 const sendChatBtn = document.getElementById('send-chat-btn');
 const chatMessages = document.getElementById('chat-messages');
@@ -114,6 +121,9 @@ const jumboMuteBtn = document.getElementById('jumbo-mute-btn');
 const jumboMinBtn = document.getElementById('jumbo-minimize-btn');
 
 // UI Init
+if (playerNameInput) {
+    playerNameInput.value = localStorage.getItem('countryball_player_name') || 'OyuncuTopu';
+}
 if (playerSkinNameEl) {
     const skinInfo = getCountryballSkin(selectedSkinId);
     playerSkinNameEl.innerText = skinInfo.name;
@@ -170,6 +180,79 @@ if (glassesSelector) {
         selectedGlassesId = e.target.value;
         localStorage.setItem('countryball_selected_glasses', selectedGlassesId);
         localPlayer.setCosmetics(selectedHatId, selectedGlassesId);
+    });
+}
+
+// ============== IN-GAME ESC MENU ==============
+if (editSkinSelector) {
+    COUNTRYBALLS.forEach(cb => {
+        const opt = document.createElement('option');
+        opt.value = cb.id; opt.innerText = cb.name;
+        editSkinSelector.appendChild(opt);
+    });
+}
+if (editHatSelector) {
+    HATS.forEach(hat => {
+        const opt = document.createElement('option');
+        opt.value = hat.id; opt.innerText = hat.name;
+        editHatSelector.appendChild(opt);
+    });
+}
+if (editGlassesSelector) {
+    GLASSES.forEach(glass => {
+        const opt = document.createElement('option');
+        opt.value = glass.id; opt.innerText = glass.name;
+        editGlassesSelector.appendChild(opt);
+    });
+}
+
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'Escape' && isGameRunning) {
+        if (ingameEditModal.classList.contains('hidden')) {
+            // Open menu
+            editPlayerName.value = localPlayer.name;
+            editSkinSelector.value = selectedSkinId;
+            editHatSelector.value = selectedHatId;
+            editGlassesSelector.value = selectedGlassesId;
+            ingameEditModal.classList.remove('hidden');
+        } else {
+            // Close menu
+            ingameEditModal.classList.add('hidden');
+        }
+    }
+});
+
+if (saveEditBtn) {
+    saveEditBtn.addEventListener('click', () => {
+        const newName = editPlayerName.value.trim() || 'OyuncuTopu';
+        selectedSkinId = editSkinSelector.value;
+        selectedHatId = editHatSelector.value;
+        selectedGlassesId = editGlassesSelector.value;
+
+        localPlayer.name = newName;
+        localPlayer.setSkin(selectedSkinId);
+        localPlayer.setCosmetics(selectedHatId, selectedGlassesId);
+
+        localStorage.setItem('countryball_player_name', newName);
+        localStorage.setItem('countryball_selected_skin', selectedSkinId);
+        localStorage.setItem('countryball_selected_hat', selectedHatId);
+        localStorage.setItem('countryball_selected_glasses', selectedGlassesId);
+
+        if (playerSkinNameEl) {
+            const skinInfo = getCountryballSkin(selectedSkinId);
+            playerSkinNameEl.innerText = skinInfo.name;
+        }
+
+        if (socket && socket.connected) {
+            socket.emit('playerInput', { 
+                x: localPlayer.x, y: localPlayer.y, 
+                vx: localPlayer.vx, vy: localPlayer.vy, 
+                skinId: selectedSkinId, hatId: selectedHatId, glassesId: selectedGlassesId, 
+                score: bounceScore 
+            });
+        }
+        
+        ingameEditModal.classList.add('hidden');
     });
 }
 
@@ -382,6 +465,9 @@ window.addEventListener('keydown', (e) => {
         if (localPlayer.dash(globalMousePos)) {
             particleSystem.addSparkles(localPlayer.x, localPlayer.y, '#00f3ff', 16);
             particleSystem.addDashTrail(localPlayer.x, localPlayer.y, localPlayer.radius, '#00f3ff');
+            if (socket && socket.connected) {
+                socket.emit('playerAction', { action: 'dash' });
+            }
         }
     }
 });
@@ -465,6 +551,15 @@ socket.on('chatReceived', (data) => {
     }
 });
 
+socket.on('playerAction', (data) => {
+    if (data.action === 'dash') {
+        const p = otherPlayers[data.id];
+        if (p) {
+            particleSystem.addSparkles(p.x, p.y, '#00f3ff', 16);
+        }
+    }
+});
+
 socket.on('state', (players) => {
     updateLeaderboard(players);
 
@@ -518,6 +613,7 @@ function updateLeaderboard(players) {
 function startGame() {
     audioManager.init();
     const playerName = playerNameInput ? (playerNameInput.value.trim() || 'OyuncuTopu') : 'OyuncuTopu';
+    localStorage.setItem('countryball_player_name', playerName);
     localPlayer.name = playerName;
     localPlayer.setSkin(selectedSkinId);
     localPlayer.x = canvas.width / 2;
@@ -641,6 +737,9 @@ function gameLoop(now) {
         Object.values(otherPlayers).forEach(op => {
             op.update(delta, noInput, bounds);
             checkBallCollision(localPlayer, op);
+            if (Math.hypot(op.vx, op.vy) > 5) {
+                particleSystem.addDashTrail(op.x, op.y, op.radius, 'rgba(255,255,255,0.4)');
+            }
         });
 
         if (Math.hypot(localPlayer.vx, localPlayer.vy) > 5) {

@@ -36,6 +36,24 @@ function round1(n) { return Math.round(n * 10) / 10; }
 const SCREEN_COOLDOWN_MS = 2 * 60 * 1000; // Global: a new video can only be set every 2 minutes
 let screenVideo = null;                    // { videoId, setByName, setAt }
 
+const STATE_FILE = join(__dirname, 'server-state.json');
+try {
+    if (fs.existsSync(STATE_FILE)) {
+        const data = fs.readFileSync(STATE_FILE, 'utf8');
+        screenVideo = JSON.parse(data).screenVideo;
+        if (screenVideo) {
+            // Adjust setAt so the cooldown doesn't reset to 0 exactly, but it keeps the video
+            // If it's been more than 2 minutes, we can just reset setAt to Date.now() - cooldown
+            const now = Date.now();
+            if (now - screenVideo.setAt > SCREEN_COOLDOWN_MS) {
+                screenVideo.setAt = now - SCREEN_COOLDOWN_MS;
+            }
+        }
+    }
+} catch (e) {
+    console.error('Failed to load server state:', e);
+}
+
 function parseYouTubeId(input) {
     if (!input || typeof input !== 'string') return null;
     const s = input.trim();
@@ -88,6 +106,12 @@ io.on('connection', (socket) => {
         const p = players[socket.id];
         const setByName = (p && p.name) || (data && data.name) || 'Bir oyuncu';
         screenVideo = { videoId, setByName, setAt: now };
+
+        try {
+            fs.writeFileSync(STATE_FILE, JSON.stringify({ screenVideo }));
+        } catch (e) {
+            console.error('Failed to save server state:', e);
+        }
 
         io.emit('screenVideo', {
             videoId,
@@ -145,6 +169,12 @@ io.on('connection', (socket) => {
         if (!text) return;
 
         io.emit('chatReceived', { id: socket.id, name: p.name, text: text.substring(0, 60), isEmoji });
+    });
+
+    socket.on('playerAction', (data) => {
+        if (!data || !data.action) return;
+        // Broadcast the action to everyone else
+        socket.broadcast.emit('playerAction', { id: socket.id, action: data.action });
     });
 
     socket.on('disconnect', () => {

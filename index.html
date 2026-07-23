@@ -183,6 +183,35 @@
       <button id="mobile-right-btn" class="touch-ctrl-btn steer-btn">SAĞ ▶</button>
     </div>
 
+    <!-- ESC / IN-GAME EDIT MODAL -->
+    <div id="ingame-edit-modal" class="hidden">
+      <div class="edit-modal-content">
+        <h2>🛠️ Görünümü Düzenle</h2>
+        <div class="player-input-wrapper">
+          <span class="input-icon">👤</span>
+          <input type="text" id="edit-player-name" placeholder="İsim" maxlength="14">
+        </div>
+        
+        <div class="edit-select-row">
+          <label>Top/Ülke:</label>
+          <select id="edit-skin-selector"></select>
+        </div>
+        <div class="edit-select-row">
+          <label>Şapka:</label>
+          <select id="edit-hat-selector"></select>
+        </div>
+        <div class="edit-select-row">
+          <label>Gözlük:</label>
+          <select id="edit-glasses-selector"></select>
+        </div>
+
+        <button id="save-edit-btn" class="play-btn" style="margin-top: 20px; font-size: 14px; padding: 10px 20px;">
+          KAYDET VE DEVAM ET
+        </button>
+        <div class="esc-hint">İptal etmek için tekrar ESC'ye basın</div>
+      </div>
+    </div>
+
     <script type="module" src="/main.js"></script>
   </body>
 </html>
