@@ -15,6 +15,16 @@
   <body>
     <div id="app">
       <canvas id="gameCanvas"></canvas>
+      
+      <!-- Radial Emote Menu -->
+      <div id="radial-menu" class="hidden">
+        <div class="radial-center">İfade Seç</div>
+        <div class="radial-item" data-emote="normal" style="--i: 0;">😐 Normal</div>
+        <div class="radial-item" data-emote="happy" style="--i: 1;">😁 Sevinçli</div>
+        <div class="radial-item" data-emote="sad" style="--i: 2;">😢 Üzgün</div>
+        <div class="radial-item" data-emote="surprised" style="--i: 3;">😲 Şaşkın</div>
+        <div class="radial-item" data-emote="angry" style="--i: 4;">😡 Kızgın</div>
+      </div>
     </div>
 
     <!-- Portrait Warning -->
@@ -147,6 +157,17 @@
             <span class="gallery-title">⚽ ÜLKE TOPUNU SEÇ</span>
           </div>
           <div id="skin-cards-grid"></div>
+        </div>
+
+        <div class="cosmetics-selectors">
+          <div class="cosmetic-group">
+            <label>Şapka:</label>
+            <select id="hat-selector"></select>
+          </div>
+          <div class="cosmetic-group">
+            <label>Gözlük:</label>
+            <select id="glasses-selector"></select>
+          </div>
         </div>
 
         <button id="start-btn" class="play-btn">

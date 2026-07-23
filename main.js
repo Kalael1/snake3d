@@ -1,5 +1,5 @@
 const io = (typeof window !== 'undefined' && window.io) ? window.io : function() { return { on: () => {}, emit: () => {} }; };
-import { COUNTRYBALLS, getCountryballSkin } from './src/CountryballRegistry.js';
+import { COUNTRYBALLS, getCountryballSkin, HATS, GLASSES } from './src/CountryballRegistry.js';
 import { Countryball } from './src/Countryball.js';
 import { ParticleSystem } from './src/Particles.js';
 import { AudioManager } from './src/AudioManager.js';
@@ -45,7 +45,10 @@ const inputState = {
 
 // Player & Other Players
 let selectedSkinId = localStorage.getItem('countryball_selected_skin') || 'turkey';
+let selectedHatId = localStorage.getItem('countryball_selected_hat') || 'none';
+let selectedGlassesId = localStorage.getItem('countryball_selected_glasses') || 'none';
 const localPlayer = new Countryball(canvas.width / 2, canvas.height / 2, 'OyuncuTopu', selectedSkinId);
+localPlayer.setCosmetics(selectedHatId, selectedGlassesId);
 const otherPlayers = {}; // id -> Countryball instance
 
 // Bot Countryballs
@@ -85,6 +88,11 @@ const soundBtn = document.getElementById('sound-btn');
 const fullscreenBtn = document.getElementById('fullscreen-btn');
 const lbList = document.getElementById('lb-list');
 const skinCardsGrid = document.getElementById('skin-cards-grid');
+
+const hatSelector = document.getElementById('hat-selector');
+const glassesSelector = document.getElementById('glasses-selector');
+const radialMenu = document.getElementById('radial-menu');
+const radialItems = document.querySelectorAll('.radial-item');
 
 const chatInput = document.getElementById('chat-input');
 const sendChatBtn = document.getElementById('send-chat-btn');
@@ -135,6 +143,75 @@ function renderSkinGallery() {
     });
 }
 renderSkinGallery();
+
+// ============== RENDER COSMETICS SELECTORS ==============
+if (hatSelector) {
+    HATS.forEach(hat => {
+        const opt = document.createElement('option');
+        opt.value = hat.id; opt.innerText = hat.name;
+        hatSelector.appendChild(opt);
+    });
+    hatSelector.value = selectedHatId;
+    hatSelector.addEventListener('change', (e) => {
+        selectedHatId = e.target.value;
+        localStorage.setItem('countryball_selected_hat', selectedHatId);
+        localPlayer.setCosmetics(selectedHatId, selectedGlassesId);
+    });
+}
+
+if (glassesSelector) {
+    GLASSES.forEach(glass => {
+        const opt = document.createElement('option');
+        opt.value = glass.id; opt.innerText = glass.name;
+        glassesSelector.appendChild(opt);
+    });
+    glassesSelector.value = selectedGlassesId;
+    glassesSelector.addEventListener('change', (e) => {
+        selectedGlassesId = e.target.value;
+        localStorage.setItem('countryball_selected_glasses', selectedGlassesId);
+        localPlayer.setCosmetics(selectedHatId, selectedGlassesId);
+    });
+}
+
+// ============== RADIAL EMOTE MENU ==============
+let isRadialMenuOpen = false;
+
+window.addEventListener('keydown', (e) => {
+    if (e.code === 'KeyF' && !isRadialMenuOpen && isGameRunning) {
+        if (document.activeElement === chatInput || document.activeElement === mobileChatInput) return;
+        isRadialMenuOpen = true;
+        if (radialMenu) radialMenu.classList.remove('hidden');
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    if (e.code === 'KeyF') {
+        isRadialMenuOpen = false;
+        if (radialMenu) radialMenu.classList.add('hidden');
+    }
+});
+
+if (radialItems) {
+    radialItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const emote = item.getAttribute('data-emote');
+            localPlayer.expression = emote;
+            localPlayer.expressionTimer = 3.0; // Expression lasts 3 seconds
+            isRadialMenuOpen = false;
+            if (radialMenu) radialMenu.classList.add('hidden');
+            
+            // Sync immediately
+            if (socket && socket.connected) {
+                socket.emit('playerInput', { 
+                    x: localPlayer.x, y: localPlayer.y, 
+                    vx: localPlayer.vx, vy: localPlayer.vy, 
+                    skinId: selectedSkinId, hatId: selectedHatId, glassesId: selectedGlassesId, 
+                    expression: localPlayer.expression, score: bounceScore 
+                });
+            }
+        });
+    });
+}
 
 // ============== CHAT & EMOTE SYSTEM ==============
 function addChatMessage(sender, text, isSystem = false) {
@@ -405,6 +482,13 @@ socket.on('state', (players) => {
         if (p.skinId && otherPlayers[id].skinId !== p.skinId) {
             otherPlayers[id].setSkin(p.skinId);
         }
+        if (p.hatId !== undefined || p.glassesId !== undefined) {
+            otherPlayers[id].setCosmetics(p.hatId || 'none', p.glassesId || 'none');
+        }
+        if (p.expression && otherPlayers[id].expression !== p.expression) {
+            otherPlayers[id].expression = p.expression;
+            otherPlayers[id].expressionTimer = 3.0;
+        }
     }
 
     for (const id in otherPlayers) {
@@ -444,7 +528,7 @@ function startGame() {
     spawnBotCountryballs();
 
     if (socket && socket.connected) {
-        socket.emit('join', { name: playerName, skinId: selectedSkinId });
+        socket.emit('join', { name: playerName, skinId: selectedSkinId, hatId: selectedHatId, glassesId: selectedGlassesId });
     }
 
     isGameRunning = true;
@@ -506,6 +590,17 @@ function checkBallCollision(b1, b2) {
             if (b1 === localPlayer || b2 === localPlayer) {
                 bounceScore++;
                 if (scoreElement) scoreElement.innerText = bounceScore;
+
+                // Emote reaction to high-speed collision (dodge attack)
+                const s1 = Math.hypot(b1.vx, b1.vy);
+                const s2 = Math.hypot(b2.vx, b2.vy);
+                if (b1 === localPlayer && s2 > 10) { // Hit by b2 dash
+                    localPlayer.expression = 'sad';
+                    localPlayer.expressionTimer = 3.0;
+                } else if (b2 === localPlayer && s1 > 10) { // Hit by b1 dash
+                    localPlayer.expression = 'sad';
+                    localPlayer.expressionTimer = 3.0;
+                }
             }
         }
     }

@@ -101,11 +101,16 @@ io.on('connection', (socket) => {
     socket.on('join', (data) => {
         const name = typeof data === 'string' ? data : (data.name || 'Oyuncu');
         const skinId = typeof data === 'object' && data.skinId ? data.skinId : 'turkey';
+        const hatId = typeof data === 'object' && data.hatId ? data.hatId : 'none';
+        const glassesId = typeof data === 'object' && data.glassesId ? data.glassesId : 'none';
 
         players[socket.id] = {
             id: socket.id,
             name: name || 'Player #' + socket.id.substring(0, 4),
             skinId,
+            hatId,
+            glassesId,
+            expression: 'normal',
             x: 400,
             y: 300,
             vx: 0,
@@ -126,6 +131,9 @@ io.on('connection', (socket) => {
             p.vy = round1(data.vy || 0);
             if (typeof data.score === 'number') p.score = data.score;
             if (data.skinId) p.skinId = data.skinId;
+            if (data.hatId) p.hatId = data.hatId;
+            if (data.glassesId) p.glassesId = data.glassesId;
+            if (data.expression) p.expression = data.expression;
         }
     });
 

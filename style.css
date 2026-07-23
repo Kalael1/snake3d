@@ -1334,3 +1334,82 @@ canvas {
   #screen-input-popover { width: 82vw; right: 9vw; left: 9vw; }
 }
 
+/* Cosmetics Selectors */
+.cosmetics-selectors { display: flex; gap: 15px; margin-top: 15px; justify-content: center; }
+.cosmetic-group { display: flex; flex-direction: column; align-items: flex-start; }
+.cosmetic-group label { font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+.cosmetic-group select { background: rgba(15, 23, 42, 0.8); border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 10px; color: #fff; padding: 10px 15px; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 600; outline: none; cursor: pointer; transition: all 0.2s ease; width: 140px; }
+.cosmetic-group select:hover { border-color: #3b82f6; }
+
+/* Radial Emote Menu */
+#radial-menu {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(8px);
+  border: 2px solid rgba(255,255,255,0.1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  pointer-events: auto;
+  opacity: 1;
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+#radial-menu.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.8);
+}
+
+.radial-center {
+  width: 80px;
+  height: 80px;
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  border: 2px solid rgba(255,255,255,0.1);
+  z-index: 2;
+}
+
+.radial-item {
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  background: rgba(30, 41, 59, 0.8);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid rgba(255,255,255,0.1);
+  transform-origin: center;
+  /* Calculate position in circle */
+  left: calc(50% - 45px + Math.cos(var(--i) * (360deg / 5) - 90deg) * 110px);
+  top: calc(50% - 45px + Math.sin(var(--i) * (360deg / 5) - 90deg) * 110px);
+}
+
+.radial-item:hover {
+  background: #3b82f6;
+  border-color: #60a5fa;
+  transform: scale(1.15);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+}

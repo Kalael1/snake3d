@@ -165,7 +165,16 @@ export const COUNTRYBALLS = [
             ctx.fillStyle = '#CD2E3A'; ctx.beginPath(); ctx.arc(0,0,r*.42,0,Math.PI*2); ctx.fill();
             ctx.fillStyle = '#0047A0'; ctx.beginPath(); ctx.arc(0,0,r*.42,0,Math.PI); ctx.fill();
         }
-    }
+    },
+    // Solid colors
+    { id: 'color_black', name: 'Siyah ⬛', flagEmoji: '⬛', type: 'custom', drawFlag: (ctx, r) => { ctx.fillStyle = '#111'; ctx.fillRect(-r, -r, r*2, r*2); } },
+    { id: 'color_white', name: 'Beyaz ⬜', flagEmoji: '⬜', type: 'custom', drawFlag: (ctx, r) => { ctx.fillStyle = '#f8f9fa'; ctx.fillRect(-r, -r, r*2, r*2); } },
+    { id: 'color_blue', name: 'Mavi 🟦', flagEmoji: '🟦', type: 'custom', drawFlag: (ctx, r) => { ctx.fillStyle = '#0d6efd'; ctx.fillRect(-r, -r, r*2, r*2); } },
+    { id: 'color_red', name: 'Kırmızı 🟥', flagEmoji: '🟥', type: 'custom', drawFlag: (ctx, r) => { ctx.fillStyle = '#dc3545'; ctx.fillRect(-r, -r, r*2, r*2); } },
+    { id: 'color_green', name: 'Yeşil 🟩', flagEmoji: '🟩', type: 'custom', drawFlag: (ctx, r) => { ctx.fillStyle = '#198754'; ctx.fillRect(-r, -r, r*2, r*2); } },
+    { id: 'color_yellow', name: 'Sarı 🟨', flagEmoji: '🟨', type: 'custom', drawFlag: (ctx, r) => { ctx.fillStyle = '#ffc107'; ctx.fillRect(-r, -r, r*2, r*2); } },
+    { id: 'color_orange', name: 'Turuncu 🟧', flagEmoji: '🟧', type: 'custom', drawFlag: (ctx, r) => { ctx.fillStyle = '#fd7e14'; ctx.fillRect(-r, -r, r*2, r*2); } },
+    { id: 'color_purple', name: 'Mor 🟪', flagEmoji: '🟪', type: 'custom', drawFlag: (ctx, r) => { ctx.fillStyle = '#6f42c1'; ctx.fillRect(-r, -r, r*2, r*2); } }
 ];
 
 function _star(ctx, cx, cy, spikes, outer, inner) {
@@ -184,3 +193,84 @@ function _star(ctx, cx, cy, spikes, outer, inner) {
 export function getCountryballSkin(id) {
     return COUNTRYBALLS.find(c => c.id === id) || COUNTRYBALLS[0];
 }
+
+// ============== COSMETICS ==============
+
+export const HATS = [
+    { id: 'none', name: 'Şapka Yok' },
+    {
+        id: 'tophat', name: 'Silindir Şapka',
+        draw: (ctx, r) => {
+            ctx.fillStyle = '#111';
+            ctx.fillRect(-r*0.6, -r*0.95, r*1.2, r*0.2); // brim
+            ctx.fillRect(-r*0.4, -r*1.8, r*0.8, r*0.85); // top
+            ctx.fillStyle = '#dc3545';
+            ctx.fillRect(-r*0.4, -r*1.15, r*0.8, r*0.2); // ribbon
+        }
+    },
+    {
+        id: 'cap', name: 'Kasket',
+        draw: (ctx, r) => {
+            ctx.fillStyle = '#0d6efd';
+            ctx.beginPath(); ctx.arc(0, -r*0.7, r*0.6, Math.PI, 0); ctx.fill(); // dome
+            ctx.fillRect(0, -r*0.7, r*0.8, r*0.15); // brim
+        }
+    },
+    {
+        id: 'crown', name: 'Kral Tacı',
+        draw: (ctx, r) => {
+            ctx.fillStyle = '#ffc107';
+            ctx.beginPath();
+            ctx.moveTo(-r*0.5, -r*0.8);
+            ctx.lineTo(-r*0.6, -r*1.5);
+            ctx.lineTo(-r*0.2, -r*1.1);
+            ctx.lineTo(0, -r*1.6);
+            ctx.lineTo(r*0.2, -r*1.1);
+            ctx.lineTo(r*0.6, -r*1.5);
+            ctx.lineTo(r*0.5, -r*0.8);
+            ctx.closePath();
+            ctx.fill();
+            // Jewels
+            ctx.fillStyle = '#dc3545';
+            ctx.beginPath(); ctx.arc(-r*0.6, -r*1.5, r*0.08, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(0, -r*1.6, r*0.08, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(r*0.6, -r*1.5, r*0.08, 0, Math.PI*2); ctx.fill();
+        }
+    }
+];
+
+export const GLASSES = [
+    { id: 'none', name: 'Gözlük Yok' },
+    {
+        id: 'sunglasses', name: 'Güneş Gözlüğü',
+        draw: (ctx, r) => {
+            ctx.fillStyle = '#111';
+            ctx.fillRect(-r*0.7, -r*0.3, r*1.4, r*0.1); // frame
+            // Left lens
+            ctx.beginPath();
+            ctx.moveTo(-r*0.6, -r*0.2); ctx.lineTo(-r*0.1, -r*0.2);
+            ctx.lineTo(-r*0.2, r*0.2); ctx.lineTo(-r*0.5, r*0.2); ctx.closePath(); ctx.fill();
+            // Right lens
+            ctx.beginPath();
+            ctx.moveTo(r*0.6, -r*0.2); ctx.lineTo(r*0.1, -r*0.2);
+            ctx.lineTo(r*0.2, r*0.2); ctx.lineTo(r*0.5, r*0.2); ctx.closePath(); ctx.fill();
+        }
+    },
+    {
+        id: 'nerd', name: 'Nerd Gözlük',
+        draw: (ctx, r) => {
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = r*0.08;
+            ctx.beginPath(); ctx.arc(-r*0.35, -r*0.05, r*0.25, 0, Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.arc(r*0.35, -r*0.05, r*0.25, 0, Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-r*0.1, -r*0.05); ctx.lineTo(r*0.1, -r*0.05); ctx.stroke();
+            // White tape in middle
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-r*0.05, -r*0.12, r*0.1, r*0.14);
+        }
+    }
+];
+
+export function getHat(id) { return HATS.find(h => h.id === id) || HATS[0]; }
+export function getGlasses(id) { return GLASSES.find(g => g.id === id) || GLASSES[0]; }
+

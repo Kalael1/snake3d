@@ -1,4 +1,4 @@
-import { getCountryballSkin } from './CountryballRegistry.js';
+import { getCountryballSkin, getHat, getGlasses } from './CountryballRegistry.js';
 
 export class Countryball {
     constructor(x, y, name = 'Player', skinId = 'turkey') {
@@ -10,6 +10,11 @@ export class Countryball {
         this.name = name;
         this.skinId = skinId;
         this.skin = getCountryballSkin(skinId);
+        
+        this.hatId = 'none';
+        this.glassesId = 'none';
+        this.hat = getHat('none');
+        this.glasses = getGlasses('none');
 
         this.accel = 0.5;
         this.friction = 0.92;
@@ -31,6 +36,13 @@ export class Countryball {
     setSkin(skinId) {
         this.skinId = skinId;
         this.skin = getCountryballSkin(skinId);
+    }
+
+    setCosmetics(hatId, glassesId) {
+        this.hatId = hatId;
+        this.glassesId = glassesId;
+        this.hat = getHat(hatId);
+        this.glasses = getGlasses(glassesId);
     }
 
     say(text, duration = 4.0) {
@@ -191,6 +203,10 @@ export class Countryball {
         // ── eyes ──
         this._drawEyes(ctx, r, targetPos);
 
+        // ── cosmetics ──
+        if (this.glasses.draw) this.glasses.draw(ctx, r);
+        if (this.hat.draw) this.hat.draw(ctx, r);
+
         ctx.restore();                      // restore-1: transform removed
 
         // ── UI: name + speech bubble (screen-space, no transform) ──
@@ -283,17 +299,43 @@ export class Countryball {
         if (this.expression === 'angry') {
             ctx.strokeStyle = '#111';
             ctx.lineWidth = 3;
-            // Brows shift slightly with the eyes too
             const bx = (lxL + lxR) * 0.5 * 0.5;
             const by = (lyL + lyR) * 0.5 * 0.5;
-            ctx.beginPath();
-            ctx.moveTo(-ex - er * 1.1 + bx, ey - er * 1.15 + by);
-            ctx.lineTo(-ex + er * 1.1 + bx, ey - er * 0.3 + by);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(ex + er * 1.1 + bx, ey - er * 1.15 + by);
-            ctx.lineTo(ex - er * 1.1 + bx, ey - er * 0.3 + by);
-            ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-ex - er*1.1 + bx, ey - er*1.15 + by); ctx.lineTo(-ex + er*1.1 + bx, ey - er*0.3 + by); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(ex + er*1.1 + bx, ey - er*1.15 + by); ctx.lineTo(ex - er*1.1 + bx, ey - er*0.3 + by); ctx.stroke();
+        } 
+        // Sad brow and tears
+        else if (this.expression === 'sad') {
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 3;
+            const bx = (lxL + lxR) * 0.5 * 0.5;
+            const by = (lyL + lyR) * 0.5 * 0.5;
+            ctx.beginPath(); ctx.moveTo(-ex - er*1.1 + bx, ey - er*0.6 + by); ctx.lineTo(-ex + er*1.1 + bx, ey - er*1.15 + by); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(ex + er*1.1 + bx, ey - er*0.6 + by); ctx.lineTo(ex - er*1.1 + bx, ey - er*1.15 + by); ctx.stroke();
+            // Tear drops
+            ctx.fillStyle = '#0d6efd';
+            ctx.beginPath(); ctx.arc(-ex + lxL, ey + lyL + er*0.8, er*0.25, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(ex + lxR, ey + lyR + er*0.8, er*0.25, 0, Math.PI*2); ctx.fill();
+        }
+        // Surprised (wide eyes, tiny pupils)
+        else if (this.expression === 'surprised') {
+            ctx.fillStyle = '#111';
+            ctx.beginPath(); ctx.arc(-ex + lxL, ey + lyL, er*0.2, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(ex + lxR, ey + lyR, er*0.2, 0, Math.PI*2); ctx.fill();
+            // Mouth
+            ctx.beginPath(); ctx.arc(0, ey + er*1.5, er*0.4, 0, Math.PI*2); ctx.fill();
+        }
+        // Happy (closed curves)
+        else if (this.expression === 'happy') {
+            // Overwrite eyes with happy curves
+            ctx.fillStyle = this.skinId === 'japan' ? '#fff' : this.skin.colors ? this.skin.colors[0] : '#fff'; // approximate background to hide pupil
+            ctx.beginPath(); ctx.ellipse(-ex + lxL*0.3, ey + lyL*0.3, er*1.1, er*1.2, 0, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(ex + lxR*0.3, ey + lyR*0.3, er*1.1, er*1.2, 0, 0, Math.PI*2); ctx.fill();
+            
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 3.5;
+            ctx.beginPath(); ctx.arc(-ex, ey, er*0.8, Math.PI*1.1, Math.PI*1.9); ctx.stroke();
+            ctx.beginPath(); ctx.arc(ex, ey, er*0.8, Math.PI*1.1, Math.PI*1.9); ctx.stroke();
         }
     }
 
