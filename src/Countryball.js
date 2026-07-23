@@ -195,7 +195,7 @@ export class Countryball {
 
         // ── outline (outside clip, no artifact) ──
         ctx.strokeStyle = '#111';
-        ctx.lineWidth = 3.5;
+        ctx.lineWidth = 5;
         ctx.beginPath();
         ctx.arc(0, 0, r, 0, Math.PI * 2);
         ctx.stroke();
@@ -279,7 +279,7 @@ export class Countryball {
         }
 
         ctx.strokeStyle = '#111';
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 4;
 
         // Left eye
         ctx.fillStyle = '#fff';
@@ -298,7 +298,7 @@ export class Countryball {
         // Angry brow
         if (this.expression === 'angry') {
             ctx.strokeStyle = '#111';
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 4.5;
             const bx = (lxL + lxR) * 0.5 * 0.5;
             const by = (lyL + lyR) * 0.5 * 0.5;
             ctx.beginPath(); ctx.moveTo(-ex - er*1.1 + bx, ey - er*1.15 + by); ctx.lineTo(-ex + er*1.1 + bx, ey - er*0.3 + by); ctx.stroke();
@@ -307,7 +307,7 @@ export class Countryball {
         // Sad brow and tears
         else if (this.expression === 'sad') {
             ctx.strokeStyle = '#111';
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 4.5;
             const bx = (lxL + lxR) * 0.5 * 0.5;
             const by = (lyL + lyR) * 0.5 * 0.5;
             ctx.beginPath(); ctx.moveTo(-ex - er*1.1 + bx, ey - er*0.6 + by); ctx.lineTo(-ex + er*1.1 + bx, ey - er*1.15 + by); ctx.stroke();
@@ -333,7 +333,7 @@ export class Countryball {
             ctx.beginPath(); ctx.ellipse(ex + lxR*0.3, ey + lyR*0.3, er*1.1, er*1.2, 0, 0, Math.PI*2); ctx.fill();
             
             ctx.strokeStyle = '#111';
-            ctx.lineWidth = 3.5;
+            ctx.lineWidth = 5;
             ctx.beginPath(); ctx.arc(-ex, ey, er*0.8, Math.PI*1.1, Math.PI*1.9); ctx.stroke();
             ctx.beginPath(); ctx.arc(ex, ey, er*0.8, Math.PI*1.1, Math.PI*1.9); ctx.stroke();
         }
@@ -382,7 +382,7 @@ export class Countryball {
 
                 ctx.fillStyle = '#fff';
                 ctx.strokeStyle = '#1e293b';
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 3;
                 
                 drawRoundRect(bx, by, bw, bh, 8);
                 ctx.fill();
