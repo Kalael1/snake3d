@@ -798,22 +798,27 @@ function animate() {
         tronTrailManager.update(delta);
 
         // 4. Check Collisions (Tron Wall, Barriers, Buildings)
-        const hitSeg = tronTrailManager.checkCollision(headPos.x, headPos.z, localSocketId);
-        if (hitSeg) {
-            triggerGameOver("⚡ Tron Neon Işıklı Duvara Çarptın!");
-            return;
-        }
+        const isInvincible = (now - gameStartTime) < 3000;
+        localCar.group.visible = isInvincible ? (Math.floor(now / 150) % 2 === 0) : true;
 
-        const hitBarrier = arena.checkBarrierCollision(headPos.x, headPos.z);
-        if (hitBarrier) {
-            triggerGameOver("💥 Neon Güvenlik Bariyerine Yüksek Hızla Çarptın!");
-            return;
-        }
+        if (!isInvincible) {
+            const hitSeg = tronTrailManager.checkCollision(headPos.x, headPos.z, localSocketId);
+            if (hitSeg) {
+                triggerGameOver("⚡ Tron Neon Işıklı Duvara Çarptın!");
+                return;
+            }
 
-        const hitBuilding = arena.checkBuildingCollision(headPos.x, headPos.z);
-        if (hitBuilding) {
-            triggerGameOver("💥 Binaya Yüksek Hızla Çarptın!");
-            return;
+            const hitBarrier = arena.checkBarrierCollision(headPos.x, headPos.z);
+            if (hitBarrier) {
+                triggerGameOver("💥 Neon Güvenlik Bariyerine Yüksek Hızla Çarptın!");
+                return;
+            }
+
+            const hitBuilding = arena.checkBuildingCollision(headPos.x, headPos.z);
+            if (hitBuilding) {
+                triggerGameOver("💥 Binaya Yüksek Hızla Çarptın!");
+                return;
+            }
         }
 
         // 5. Update Minimap Radar HUD
@@ -844,20 +849,22 @@ function animate() {
         }
 
         // 9. Wall collision (client-side)
-        if (Math.abs(headPos.x) >= arena.halfX - 6 || Math.abs(headPos.z) >= arena.halfZ - 6) {
+        if (!isInvincible && (Math.abs(headPos.x) >= arena.halfX - 6 || Math.abs(headPos.z) >= arena.halfZ - 6)) {
             triggerGameOver('💥 Şehrin sınırına ulaştın!');
             return;
         }
 
         // 10. Car vs car collision
-        for (const otherId in otherCars) {
-            const rc = otherCars[otherId];
-            if (!rc) continue;
-            const dx = headPos.x - rc.group.position.x;
-            const dz = headPos.z - rc.group.position.z;
-            if (dx * dx + dz * dz < 10.0) {
-                triggerGameOver(`💥 ${rc.name} ile çarpıştın!`);
-                return;
+        if (!isInvincible) {
+            for (const otherId in otherCars) {
+                const rc = otherCars[otherId];
+                if (!rc) continue;
+                const dx = headPos.x - rc.group.position.x;
+                const dz = headPos.z - rc.group.position.z;
+                if (dx * dx + dz * dz < 10.0) {
+                    triggerGameOver(`💥 ${rc.name} ile çarpıştın!`);
+                    return;
+                }
             }
         }
 
