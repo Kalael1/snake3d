@@ -584,8 +584,8 @@ function animate() {
 
         // 2. Control Steering & Engine State
         let steerDir = 0;
-        if (keysPressed['KeyA'] || keysPressed['ArrowLeft'] || mobileSteerLeft) steerDir += 1; // Turn Left
-        if (keysPressed['KeyD'] || keysPressed['ArrowRight'] || mobileSteerRight) steerDir -= 1; // Turn Right
+        if (keysPressed['KeyA'] || keysPressed['ArrowLeft'] || mobileSteerLeft) steerDir -= 1; // Turn Left (Negative heading)
+        if (keysPressed['KeyD'] || keysPressed['ArrowRight'] || mobileSteerRight) steerDir += 1; // Turn Right (Positive heading)
 
         const controlState = {
             left: !!keysPressed['KeyQ'],

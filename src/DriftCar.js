@@ -164,15 +164,16 @@ export class DriftCar {
         const targetSpeed = isEngineOn ? this.baseSpeed : 0.0;
         this.currentSpeed += (targetSpeed - this.currentSpeed) * Math.min(1.0, 4.0 * delta);
 
-        // 2. HYBRID STEERING SYSTEM: A/D KEYBOARD + MOUSE CURSOR BOTH WORK TOGETHER 100%!
-        const targetSteerVel = steerDir * 2.2;
-        this.keySteerVelocity += (targetSteerVel - this.keySteerVelocity) * Math.min(1.0, 7.5 * delta);
+        // 2. RESPONSIVE ARCADE STEERING (Smooth but snappy!)
+        const targetSteerVel = steerDir * 3.8; // Snappy target rotation speed
+        this.keySteerVelocity += (targetSteerVel - this.keySteerVelocity) * Math.min(1.0, 12.0 * delta); // Fast damping
 
-        if (steerDir !== 0 || Math.abs(this.keySteerVelocity) > 0.08) {
+        if (steerDir !== 0 || Math.abs(this.keySteerVelocity) > 0.05) {
             // A/D Keyboard or Mobile Touch steering
             this.heading += this.keySteerVelocity * delta;
         } else if (targetPoint && targetPoint.x !== undefined && targetPoint.z !== undefined && !isNaN(targetPoint.x) && !isNaN(targetPoint.z) && this.currentSpeed > 0.5) {
             // Mouse target steering when keyboard A/D is not pressed
+            this.keySteerVelocity = 0; // Clear velocity to prevent interference
             const dx = targetPoint.x - this.position.x;
             const dz = targetPoint.z - this.position.z;
             if (dx * dx + dz * dz > 2.0) {
@@ -189,15 +190,17 @@ export class DriftCar {
         // Final NaN sanity check on heading
         if (isNaN(this.heading)) this.heading = 0;
 
-        // 3. Velocity direction with realistic drift lag
-        let velDiff = this.heading - this.velocityAngle;
-        while (velDiff < -Math.PI) velDiff += Math.PI * 2;
-        while (velDiff > Math.PI) velDiff -= Math.PI * 2;
-        this.velocityAngle += velDiff * this.gripFactor * delta;
+        // DRIFT PHYSICS: Velocity angle smoothly follows heading (Higher driftFactor = tighter grip)
+        let angleDiff = this.heading - this.velocityAngle;
+        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+        
+        const driftFactor = this.isTwoWheeling ? 10.0 : 6.0; // Tighter grip, much better control!
+        this.velocityAngle += angleDiff * Math.min(1.0, driftFactor * delta);
         if (isNaN(this.velocityAngle)) this.velocityAngle = this.heading;
 
         // 4. Slip angle (drift magnitude)
-        this.slipAngle = Math.abs(velDiff) * (180 / Math.PI);
+        this.slipAngle = Math.abs(angleDiff) * (180 / Math.PI);
         if (isNaN(this.slipAngle)) this.slipAngle = 0;
         this.currentAngle = this.heading;
 
@@ -236,14 +239,14 @@ export class DriftCar {
         this.group.rotation.y = this.heading;
 
         // 9. DAMPED SPRING TILT PHYSICS
-        let targetRoll = Math.max(-0.35, Math.min(0.35, velDiff * 0.45));
-        let targetPitch = Math.min(0.12, Math.abs(velDiff) * 0.15);
+        let targetRoll = Math.max(-0.35, Math.min(0.35, angleDiff * 0.45));
+        let targetPitch = Math.min(0.12, Math.abs(angleDiff) * 0.15);
 
         if (this.isTwoWheelLeft) {
-            targetRoll = 0.78;
+            targetRoll = -0.78; // Roll Left (Negative Z)
             targetPitch = 0.08;
         } else if (this.isTwoWheelRight) {
-            targetRoll = -0.78;
+            targetRoll = 0.78; // Roll Right (Positive Z)
             targetPitch = 0.08;
         }
 
