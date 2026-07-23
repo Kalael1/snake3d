@@ -11,24 +11,19 @@ export class Countryball {
         this.skinId = skinId;
         this.skin = getCountryballSkin(skinId);
 
-        // Movement stats
-        this.accel = 0.8;
-        this.friction = 0.94;
-        this.maxSpeed = 9;
+        this.accel = 0.5;
+        this.friction = 0.92;
+        this.maxSpeed = 8;
 
-        // Visual squish & stretch on impact
         this.squishX = 1.0;
         this.squishY = 1.0;
 
-        // Eye expressions: 'normal', 'angry', 'happy', 'blink'
         this.expression = 'normal';
         this.expressionTimer = 0;
 
-        // Speech bubble
         this.speechText = '';
         this.speechTimer = 0;
 
-        // Dash/Boost ability
         this.dashCooldown = 0;
         this.isDashing = false;
     }
@@ -45,11 +40,10 @@ export class Countryball {
 
     dash() {
         if (this.dashCooldown > 0) return false;
-        const currentSpeed = Math.hypot(this.vx, this.vy);
-        const angle = currentSpeed > 0.1 ? Math.atan2(this.vy, this.vx) : -Math.PI / 2;
-        const dashForce = 18;
-        this.vx = Math.cos(angle) * dashForce;
-        this.vy = Math.sin(angle) * dashForce;
+        const speed = Math.hypot(this.vx, this.vy);
+        const angle = speed > 0.1 ? Math.atan2(this.vy, this.vx) : -Math.PI / 2;
+        this.vx = Math.cos(angle) * 16;
+        this.vy = Math.sin(angle) * 16;
         this.dashCooldown = 1.2;
         this.isDashing = true;
         this.squishX = 1.4;
@@ -60,280 +54,212 @@ export class Countryball {
     }
 
     update(delta, inputState, bounds) {
-        // Cooldowns
         if (this.dashCooldown > 0) this.dashCooldown -= delta;
-        if (this.speechTimer > 0) {
-            this.speechTimer -= delta;
-            if (this.speechTimer <= 0) this.speechText = '';
-        }
-        if (this.expressionTimer > 0) {
-            this.expressionTimer -= delta;
-            if (this.expressionTimer <= 0) this.expression = 'normal';
-        }
+        if (this.speechTimer > 0) { this.speechTimer -= delta; if (this.speechTimer <= 0) this.speechText = ''; }
+        if (this.expressionTimer > 0) { this.expressionTimer -= delta; if (this.expressionTimer <= 0) this.expression = 'normal'; }
 
-        // Keyboard WASD Movement
-        let moveX = 0;
-        let moveY = 0;
-
+        let moveX = 0, moveY = 0;
         if (inputState.left) moveX -= 1;
         if (inputState.right) moveX += 1;
         if (inputState.up) moveY -= 1;
         if (inputState.down) moveY += 1;
 
-        if (moveX !== 0 && moveY !== 0) {
-            moveX *= 0.7071;
-            moveY *= 0.7071;
-        }
+        if (moveX !== 0 && moveY !== 0) { moveX *= 0.7071; moveY *= 0.7071; }
 
-        // Apply acceleration
         this.vx += moveX * this.accel;
         this.vy += moveY * this.accel;
 
-        // Mouse target movement if no WASD pressed
         if (moveX === 0 && moveY === 0 && inputState.mouseTarget && inputState.isMouseDown) {
             const dx = inputState.mouseTarget.x - this.x;
             const dy = inputState.mouseTarget.y - this.y;
             const dist = Math.hypot(dx, dy);
-            if (dist > 10) {
-                this.vx += (dx / dist) * this.accel;
-                this.vy += (dy / dist) * this.accel;
-            }
+            if (dist > 10) { this.vx += (dx / dist) * this.accel; this.vy += (dy / dist) * this.accel; }
         }
 
-        // Apply friction
         this.vx *= this.friction;
         this.vy *= this.friction;
 
-        // Cap speed (unless dashing)
         const speed = Math.hypot(this.vx, this.vy);
-        const limit = this.isDashing ? 20 : this.maxSpeed;
-        if (speed > limit) {
-            this.vx = (this.vx / speed) * limit;
-            this.vy = (this.vy / speed) * limit;
-        }
+        const limit = this.isDashing ? 16 : this.maxSpeed;
+        if (speed > limit) { this.vx = (this.vx / speed) * limit; this.vy = (this.vy / speed) * limit; }
         if (speed < 12) this.isDashing = false;
 
-        // Position update
         this.x += this.vx;
         this.y += this.vy;
 
-        // NaN & Infinity Safety Guards
-        if (isNaN(this.x) || !isFinite(this.x)) this.x = bounds ? bounds.maxX / 2 : 400;
-        if (isNaN(this.y) || !isFinite(this.y)) this.y = bounds ? bounds.maxY / 2 : 300;
-        if (isNaN(this.vx) || !isFinite(this.vx)) this.vx = 0;
-        if (isNaN(this.vy) || !isFinite(this.vy)) this.vy = 0;
+        // Hard NaN/Infinity guards
+        if (!isFinite(this.x)) this.x = bounds ? (bounds.maxX / 2) : 400;
+        if (!isFinite(this.y)) this.y = bounds ? (bounds.maxY / 2) : 300;
+        if (!isFinite(this.vx)) this.vx = 0;
+        if (!isFinite(this.vy)) this.vy = 0;
 
-        // Border Collisions with Elastic Bounce (Directional Math.abs prevents wall trapping!)
+        // Wall bounce using Math.abs so the ball always bounces inward
         const r = this.radius;
-        if (bounds && bounds.maxX > 100 && bounds.maxY > 100) {
-            if (this.x - r < bounds.minX) {
-                this.x = bounds.minX + r;
-                this.vx = Math.abs(this.vx) * 0.8;
-                this.onBounce();
-            } else if (this.x + r > bounds.maxX) {
-                this.x = bounds.maxX - r;
-                this.vx = -Math.abs(this.vx) * 0.8;
-                this.onBounce();
-            }
-
-            if (this.y - r < bounds.minY) {
-                this.y = bounds.minY + r;
-                this.vy = Math.abs(this.vy) * 0.8;
-                this.onBounce();
-            } else if (this.y + r > bounds.maxY) {
-                this.y = bounds.maxY - r;
-                this.vy = -Math.abs(this.vy) * 0.8;
-                this.onBounce();
-            }
+        if (bounds && bounds.maxX > 50 && bounds.maxY > 50) {
+            if (this.x - r < bounds.minX) { this.x = bounds.minX + r; this.vx = Math.abs(this.vx) * 0.75; this.onBounce(); }
+            else if (this.x + r > bounds.maxX) { this.x = bounds.maxX - r; this.vx = -Math.abs(this.vx) * 0.75; this.onBounce(); }
+            if (this.y - r < bounds.minY) { this.y = bounds.minY + r; this.vy = Math.abs(this.vy) * 0.75; this.onBounce(); }
+            else if (this.y + r > bounds.maxY) { this.y = bounds.maxY - r; this.vy = -Math.abs(this.vy) * 0.75; this.onBounce(); }
         }
 
-        // Smooth squish recovery back to 1.0
-        if (isNaN(this.squishX) || !isFinite(this.squishX)) this.squishX = 1.0;
-        if (isNaN(this.squishY) || !isFinite(this.squishY)) this.squishY = 1.0;
-        this.squishX += (1.0 - this.squishX) * 0.15;
-        this.squishY += (1.0 - this.squishY) * 0.15;
+        if (!isFinite(this.squishX)) this.squishX = 1.0;
+        if (!isFinite(this.squishY)) this.squishY = 1.0;
+        this.squishX += (1.0 - this.squishX) * 0.18;
+        this.squishY += (1.0 - this.squishY) * 0.18;
     }
 
     onBounce() {
         this.squishX = 1.3;
         this.squishY = 0.75;
-        if (Math.hypot(this.vx, this.vy) > 4) {
-            this.expression = 'angry';
-            this.expressionTimer = 0.6;
-        }
+        if (Math.hypot(this.vx, this.vy) > 3) { this.expression = 'angry'; this.expressionTimer = 0.5; }
     }
 
+    // ─── DRAW ───────────────────────────────────────────────────────────────
     draw(ctx) {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.scale(this.squishX, this.squishY);
+        if (!isFinite(this.x) || !isFinite(this.y)) return;
 
-        // Shadow under the Countryball
+        const r = this.radius;
+        const sx = isFinite(this.squishX) ? this.squishX : 1.0;
+        const sy = isFinite(this.squishY) ? this.squishY : 1.0;
+
+        ctx.save();                         // save-1: outer transform
+        ctx.translate(this.x, this.y);
+        ctx.scale(sx, sy);
+
+        // ── shadow ──
         ctx.save();
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.globalAlpha = 0.22;
+        ctx.fillStyle = '#000';
         ctx.beginPath();
-        ctx.ellipse(0, this.radius * 0.85, this.radius * 0.9, this.radius * 0.3, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, r * 0.85, r * 0.88, r * 0.28, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
+        ctx.globalAlpha = 1.0;
 
-        // 1. Draw Flag Pattern
-        if (this.skin.type === 'custom' && this.skin.drawFlag) {
-            this.skin.drawFlag(ctx, this.radius);
-        } else if (this.skin.type === 'striped_horizontal' && this.skin.colors) {
-            this.drawHorizontalStripes(ctx, this.skin.colors);
-        } else if (this.skin.type === 'striped_vertical' && this.skin.colors) {
-            this.drawVerticalStripes(ctx, this.skin.colors);
-        } else {
-            // Default circle
-            ctx.fillStyle = '#E30A17';
-            ctx.beginPath();
-            ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-            ctx.fill();
-        }
+        // ── flag body inside clip ──
+        ctx.save();                         // save-2: clip guard
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.clip();
+        this._drawFlagBody(ctx, r);
+        ctx.restore();                      // restore-2: clip released
 
-        // Outer Countryball outline (thick black outline like Polandball style!)
-        ctx.strokeStyle = '#000000';
+        // ── outline (outside clip, no artifact) ──
+        ctx.strokeStyle = '#111';
         ctx.lineWidth = 3.5;
         ctx.beginPath();
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
         ctx.stroke();
 
-        // 2. Draw Classic Countryball Cartoon Eyes!
-        this.drawEyes(ctx);
+        // ── eyes ──
+        this._drawEyes(ctx, r);
 
-        ctx.restore();
+        ctx.restore();                      // restore-1: transform removed
 
-        // 3. Draw Name Tag & Speech Bubble above ball
-        this.drawUI(ctx);
+        // ── UI: name + speech bubble (screen-space, no transform) ──
+        this._drawUI(ctx, r);
     }
 
-    drawHorizontalStripes(ctx, colors) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-        ctx.clip();
-
-        const count = colors.length;
-        const stripeH = (this.radius * 2) / count;
-        for (let i = 0; i < count; i++) {
-            ctx.fillStyle = colors[i];
-            ctx.fillRect(-this.radius, -this.radius + i * stripeH, this.radius * 2, stripeH + 0.5);
+    _drawFlagBody(ctx, r) {
+        const skin = this.skin;
+        if (skin.type === 'custom' && typeof skin.drawFlag === 'function') {
+            skin.drawFlag(ctx, r);
+        } else if (skin.type === 'striped_horizontal' && skin.colors) {
+            const n = skin.colors.length;
+            const h = (r * 2) / n;
+            for (let i = 0; i < n; i++) {
+                ctx.fillStyle = skin.colors[i];
+                ctx.fillRect(-r, -r + i * h, r * 2, h + 1);
+            }
+        } else if (skin.type === 'striped_vertical' && skin.colors) {
+            const n = skin.colors.length;
+            const w = (r * 2) / n;
+            for (let i = 0; i < n; i++) {
+                ctx.fillStyle = skin.colors[i];
+                ctx.fillRect(-r + i * w, -r, w + 1, r * 2);
+            }
+        } else {
+            ctx.fillStyle = '#E30A17';
+            ctx.fillRect(-r, -r, r * 2, r * 2);
         }
-        ctx.restore();
     }
 
-    drawVerticalStripes(ctx, colors) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-        ctx.clip();
+    _drawEyes(ctx, r) {
+        const ex = r * 0.30;
+        const ey = -r * 0.10;
+        const er = r * 0.23;
+        const lx = Math.max(-3, Math.min(3, this.vx * 0.35));
+        const ly = Math.max(-3, Math.min(3, this.vy * 0.35));
 
-        const count = colors.length;
-        const stripeW = (this.radius * 2) / count;
-        for (let i = 0; i < count; i++) {
-            ctx.fillStyle = colors[i];
-            ctx.fillRect(-this.radius + i * stripeW, -this.radius, stripeW + 0.5, this.radius * 2);
-        }
-        ctx.restore();
-    }
-
-    drawEyes(ctx) {
-        // Eyes position
-        const eyeOffsetX = this.radius * 0.32;
-        const eyeOffsetY = -this.radius * 0.12;
-        const eyeR = this.radius * 0.24;
-
-        // Determine look direction slightly towards movement
-        const lookDx = Math.max(-4, Math.min(4, this.vx * 0.4));
-        const lookDy = Math.max(-4, Math.min(4, this.vy * 0.4));
-
-        ctx.fillStyle = '#FFFFFF';
-        ctx.strokeStyle = '#000000';
+        ctx.strokeStyle = '#111';
         ctx.lineWidth = 2.5;
 
-        // Left Eye
-        ctx.beginPath();
-        ctx.ellipse(-eyeOffsetX + lookDx, eyeOffsetY + lookDy, eyeR, eyeR * 1.15, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+        // Left eye
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.ellipse(-ex + lx, ey + ly, er, er * 1.15, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        // pupil
+        ctx.fillStyle = '#111';
+        ctx.beginPath(); ctx.arc(-ex + lx * 1.3, ey + ly * 1.3, er * 0.45, 0, Math.PI * 2); ctx.fill();
 
-        // Right Eye
-        ctx.beginPath();
-        ctx.ellipse(eyeOffsetX + lookDx, eyeOffsetY + lookDy, eyeR, eyeR * 1.15, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+        // Right eye
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.ellipse(ex + lx, ey + ly, er, er * 1.15, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#111';
+        ctx.beginPath(); ctx.arc(ex + lx * 1.3, ey + ly * 1.3, er * 0.45, 0, Math.PI * 2); ctx.fill();
 
-        // Expressions (Angry / Happy eyelids)
+        // Angry brow
         if (this.expression === 'angry') {
-            ctx.fillStyle = '#000000';
+            ctx.strokeStyle = '#111';
+            ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.moveTo(-eyeOffsetX - eyeR * 1.2 + lookDx, eyeOffsetY - eyeR * 1.1 + lookDy);
-            ctx.lineTo(-eyeOffsetX + eyeR * 1.2 + lookDx, eyeOffsetY + eyeR * 0.4 + lookDy);
-            ctx.lineTo(-eyeOffsetX - eyeR * 1.2 + lookDx, eyeOffsetY + eyeR * 0.4 + lookDy);
-            ctx.closePath();
-            ctx.fill();
-
+            ctx.moveTo(-ex - er * 1.1 + lx, ey - er * 1.15 + ly);
+            ctx.lineTo(-ex + er * 1.1 + lx, ey - er * 0.3 + ly);
+            ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(eyeOffsetX + eyeR * 1.2 + lookDx, eyeOffsetY - eyeR * 1.1 + lookDy);
-            ctx.lineTo(eyeOffsetX - eyeR * 1.2 + lookDx, eyeOffsetY + eyeR * 0.4 + lookDy);
-            ctx.lineTo(eyeOffsetX + eyeR * 1.2 + lookDx, eyeOffsetY + eyeR * 0.4 + lookDy);
-            ctx.closePath();
-            ctx.fill();
+            ctx.moveTo(ex + er * 1.1 + lx, ey - er * 1.15 + ly);
+            ctx.lineTo(ex - er * 1.1 + lx, ey - er * 0.3 + ly);
+            ctx.stroke();
         }
     }
 
-    drawUI(ctx) {
+    _drawUI(ctx, r) {
+        // name tag
         ctx.save();
-
-        // 1. Name Tag
-        ctx.font = 'bold 13px Inter, Arial, sans-serif';
+        ctx.font = 'bold 13px Fredoka, Outfit, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
 
-        const nameY = this.y + this.radius + 6;
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-        const nameWidth = ctx.measureText(this.name).width + 12;
-        ctx.fillRect(this.x - nameWidth / 2, nameY, nameWidth, 18);
+        const ny = this.y + r * (this.squishY || 1) + 5;
+        const tw = ctx.measureText(this.name).width + 14;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.beginPath(); ctx.roundRect(this.x - tw / 2, ny, tw, 18, 5); ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.fillText(this.name, this.x, ny + 2);
 
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillText(this.name, this.x, nameY + 2);
-
-        // 2. Speech Bubble (if active)
+        // speech bubble
         if (this.speechText) {
-            ctx.font = '14px Inter, Arial, sans-serif';
-            const padding = 10;
-            const textWidth = ctx.measureText(this.speechText).width;
-            const bubbleW = textWidth + padding * 2;
-            const bubbleH = 28;
-            const bubbleX = this.x - bubbleW / 2;
-            const bubbleY = this.y - this.radius - bubbleH - 14;
+            ctx.font = '13px Fredoka, Outfit, sans-serif';
+            const bw = ctx.measureText(this.speechText).width + 22;
+            const bh = 28;
+            const bx = this.x - bw / 2;
+            const by = this.y - r * (this.squishY || 1) - bh - 10;
 
-            // Draw bubble background
-            ctx.fillStyle = '#FFFFFF';
+            ctx.fillStyle = '#fff';
             ctx.strokeStyle = '#1e293b';
             ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 8); ctx.fill(); ctx.stroke();
 
+            ctx.fillStyle = '#fff'; ctx.strokeStyle = '#1e293b';
             ctx.beginPath();
-            ctx.roundRect(bubbleX, bubbleY, bubbleW, bubbleH, 8);
-            ctx.fill();
-            ctx.stroke();
+            ctx.moveTo(this.x - 6, by + bh);
+            ctx.lineTo(this.x, by + bh + 7);
+            ctx.lineTo(this.x + 6, by + bh);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
 
-            // Pointer triangle pointing to countryball
-            ctx.beginPath();
-            ctx.moveTo(this.x - 6, bubbleY + bubbleH);
-            ctx.lineTo(this.x, bubbleY + bubbleH + 6);
-            ctx.lineTo(this.x + 6, bubbleY + bubbleH);
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-
-            // Text
             ctx.fillStyle = '#0f172a';
-            ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(this.speechText, this.x, bubbleY + bubbleH / 2);
+            ctx.fillText(this.speechText, this.x, by + bh / 2);
         }
-
         ctx.restore();
     }
 }

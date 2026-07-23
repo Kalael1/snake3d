@@ -47,26 +47,32 @@ let selectedSkinId = localStorage.getItem('countryball_selected_skin') || 'turke
 const localPlayer = new Countryball(canvas.width / 2, canvas.height / 2, 'OyuncuTopu', selectedSkinId);
 const otherPlayers = {}; // id -> Countryball instance
 
-// Bot Countryballs for active singleplayer/multiplayer fun!
+// Bot Countryballs
 const botPlayers = [];
 function spawnBotCountryballs() {
     botPlayers.length = 0;
-    const botSkins = ['poland', 'germany', 'france', 'usa', 'japan', 'brazil', 'uk', 'italy'];
-    for (let i = 0; i < 5; i++) {
+    const botSkins = ['poland', 'germany', 'france', 'usa', 'japan', 'brazil', 'uk', 'italy', 'sweden', 'south_korea'];
+    const count = 8;
+    for (let i = 0; i < count; i++) {
         const skinId = botSkins[i % botSkins.length];
-        const angle = (i / 5) * Math.PI * 2;
-        const dist = Math.min(canvas.width, canvas.height) * 0.35;
+        const angle = (i / count) * Math.PI * 2;
+        const dist = Math.min(canvas.width, canvas.height) * 0.32;
         const bot = new Countryball(
             canvas.width / 2 + Math.cos(angle) * dist,
             canvas.height / 2 + Math.sin(angle) * dist,
-            `Bot ${i + 1}`,
+            botSkins[i % botSkins.length].charAt(0).toUpperCase() + botSkins[i % botSkins.length].slice(1),
             skinId
         );
-        bot.vx = (Math.random() - 0.5) * 4;
-        bot.vy = (Math.random() - 0.5) * 4;
+        // Give each bot a random initial velocity
+        const speed = 1.5 + Math.random() * 2.5;
+        const dir = Math.random() * Math.PI * 2;
+        bot.vx = Math.cos(dir) * speed;
+        bot.vy = Math.sin(dir) * speed;
         botPlayers.push(bot);
     }
 }
+// Spawn bots immediately so canvas shows something even before game start
+spawnBotCountryballs();
 
 // ============== DOM ELEMENTS ==============
 const overlay = document.getElementById('overlay');
@@ -506,63 +512,54 @@ let lastTime = performance.now();
 function gameLoop(now) {
     requestAnimationFrame(gameLoop);
 
-    const delta = Math.min((now - lastTime) / 1000, 0.1);
+    const delta = Math.min((now - lastTime) / 1000, 0.05);
     lastTime = now;
 
     const bounds = { minX: 0, minY: 0, maxX: canvas.width, maxY: canvas.height };
+    const noInput = { left: false, right: false, up: false, down: false, isMouseDown: false, mouseTarget: null };
 
-    // 1. Draw Playground Background
+    // 1. Background
     drawPlaygroundBackground(ctx);
 
-    if (isGameRunning) {
-        // Update Local Player
-        localPlayer.update(delta, inputState, bounds);
-
-        // Update Bot Players & Collisions
-        botPlayers.forEach(bot => {
-            bot.update(delta, { left: false, right: false, up: false, down: false }, bounds);
-            checkBallCollision(localPlayer, bot);
-        });
-
-        for (let i = 0; i < botPlayers.length; i++) {
-            for (let j = i + 1; j < botPlayers.length; j++) {
-                checkBallCollision(botPlayers[i], botPlayers[j]);
-            }
-        }
-
-        // Update Other Multiplayer Players & Collisions
-        Object.values(otherPlayers).forEach(op => {
-            op.update(delta, { left: false, right: false, up: false, down: false }, bounds);
-            checkBallCollision(localPlayer, op);
-        });
-
-        // Add movement particle trail
-        if (Math.hypot(localPlayer.vx, localPlayer.vy) > 6) {
-            particleSystem.addDashTrail(localPlayer.x, localPlayer.y, localPlayer.radius, '#ffffff');
-        }
-
-        // Network Sync Emit (20 times/sec)
-        if (socket && socket.connected && now - lastNetworkEmitTime > 50) {
-            lastNetworkEmitTime = now;
-            socket.emit('playerInput', {
-                x: localPlayer.x,
-                y: localPlayer.y,
-                vx: localPlayer.vx,
-                vy: localPlayer.vy,
-                skinId: selectedSkinId,
-                score: bounceScore
-            });
+    // Always update & draw bots (even on start screen — they bounce around as decoration)
+    botPlayers.forEach(bot => {
+        bot.update(delta, noInput, bounds);
+    });
+    for (let i = 0; i < botPlayers.length; i++) {
+        for (let j = i + 1; j < botPlayers.length; j++) {
+            checkBallCollision(botPlayers[i], botPlayers[j]);
         }
     }
 
-    // 2. Draw Particles
+    // In-game: update local player + collisions
+    if (isGameRunning) {
+        localPlayer.update(delta, inputState, bounds);
+
+        botPlayers.forEach(bot => checkBallCollision(localPlayer, bot));
+
+        Object.values(otherPlayers).forEach(op => {
+            op.update(delta, noInput, bounds);
+            checkBallCollision(localPlayer, op);
+        });
+
+        if (Math.hypot(localPlayer.vx, localPlayer.vy) > 5) {
+            particleSystem.addDashTrail(localPlayer.x, localPlayer.y, localPlayer.radius, 'rgba(255,255,255,0.4)');
+        }
+
+        if (socket && socket.connected && now - lastNetworkEmitTime > 50) {
+            lastNetworkEmitTime = now;
+            socket.emit('playerInput', { x: localPlayer.x, y: localPlayer.y, vx: localPlayer.vx, vy: localPlayer.vy, skinId: selectedSkinId, score: bounceScore });
+        }
+    }
+
+    // 2. Particles
     particleSystem.update(delta);
     particleSystem.draw(ctx);
 
-    // 3. Draw Countryballs
+    // 3. Draw all balls
     botPlayers.forEach(bot => bot.draw(ctx));
     Object.values(otherPlayers).forEach(op => op.draw(ctx));
-    localPlayer.draw(ctx);
+    if (isGameRunning) localPlayer.draw(ctx);
 }
 
 function drawPlaygroundBackground(ctx) {

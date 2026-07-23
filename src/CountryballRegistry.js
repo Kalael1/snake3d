@@ -1,3 +1,6 @@
+// All drawFlag functions run INSIDE an already-clipped arc.
+// They must NOT call ctx.save/clip/restore themselves — just fill.
+
 export const COUNTRYBALLS = [
     {
         id: 'turkey',
@@ -5,32 +8,18 @@ export const COUNTRYBALLS = [
         flagEmoji: '🇹🇷',
         type: 'custom',
         drawFlag: (ctx, r) => {
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(0, 0, r, 0, Math.PI * 2);
-            ctx.clip();
-
             // Red background
             ctx.fillStyle = '#E30A17';
             ctx.fillRect(-r, -r, r * 2, r * 2);
-
-            // White crescent outer
-            ctx.fillStyle = '#FFFFFF';
-            ctx.beginPath();
-            ctx.arc(-r * 0.15, 0, r * 0.5, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Red crescent inner cutout
+            // White crescent moon
+            ctx.fillStyle = '#fff';
+            ctx.beginPath(); ctx.arc(-r * 0.12, 0, r * 0.48, 0, Math.PI * 2); ctx.fill();
+            // Red cutout
             ctx.fillStyle = '#E30A17';
-            ctx.beginPath();
-            ctx.arc(-r * 0.05, 0, r * 0.4, 0, Math.PI * 2);
-            ctx.fill();
-
-            // White Star
-            ctx.fillStyle = '#FFFFFF';
-            drawStar(ctx, r * 0.3, 0, 5, r * 0.22, r * 0.1);
-
-            ctx.restore();
+            ctx.beginPath(); ctx.arc(r * 0.02, 0, r * 0.38, 0, Math.PI * 2); ctx.fill();
+            // Star
+            ctx.fillStyle = '#fff';
+            _star(ctx, r * 0.33, 0, 5, r * 0.21, r * 0.09);
         }
     },
     {
@@ -38,7 +27,7 @@ export const COUNTRYBALLS = [
         name: 'Polonya 🇵🇱',
         flagEmoji: '🇵🇱',
         type: 'striped_horizontal',
-        colors: ['#FFFFFF', '#DC143C']
+        colors: ['#ffffff', '#DC143C']
     },
     {
         id: 'germany',
@@ -52,7 +41,7 @@ export const COUNTRYBALLS = [
         name: 'Fransa 🇫🇷',
         flagEmoji: '🇫🇷',
         type: 'striped_vertical',
-        colors: ['#002395', '#FFFFFF', '#ED2939']
+        colors: ['#002395', '#ffffff', '#ED2939']
     },
     {
         id: 'usa',
@@ -60,33 +49,17 @@ export const COUNTRYBALLS = [
         flagEmoji: '🇺🇸',
         type: 'custom',
         drawFlag: (ctx, r) => {
-            // Stripes background
-            const stripes = 7;
-            const stripeHeight = (r * 2) / stripes;
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(0, 0, r, 0, Math.PI * 2);
-            ctx.clip();
-
-            for (let i = 0; i < stripes; i++) {
-                ctx.fillStyle = (i % 2 === 0) ? '#B22234' : '#FFFFFF';
-                ctx.fillRect(-r, -r + i * stripeHeight, r * 2, stripeHeight);
+            const sw = (r * 2) / 7;
+            for (let i = 0; i < 7; i++) {
+                ctx.fillStyle = i % 2 === 0 ? '#B22234' : '#fff';
+                ctx.fillRect(-r, -r + i * sw, r * 2, sw + 0.5);
             }
-
-            // Blue Canton
             ctx.fillStyle = '#3C3B6E';
-            ctx.fillRect(-r, -r, r * 1.1, r * 1.0);
-
-            // Canton Stars
-            ctx.fillStyle = '#FFFFFF';
-            const starPositions = [
-                [-r * 0.7, -r * 0.7], [-r * 0.3, -r * 0.7],
-                [-r * 0.5, -r * 0.4], [-r * 0.8, -r * 0.2], [-r * 0.2, -r * 0.2]
-            ];
-            starPositions.forEach(([sx, sy]) => {
-                drawStar(ctx, sx, sy, 5, r * 0.1, r * 0.04);
+            ctx.fillRect(-r, -r, r * 1.08, r);
+            ctx.fillStyle = '#fff';
+            [[-.7,-.7],[-.3,-.7],[-.5,-.4],[-.8,-.2],[-.2,-.2]].forEach(([sx,sy])=>{
+                _star(ctx, r*sx, r*sy, 5, r*0.1, r*0.04);
             });
-            ctx.restore();
         }
     },
     {
@@ -95,17 +68,8 @@ export const COUNTRYBALLS = [
         flagEmoji: '🇯🇵',
         type: 'custom',
         drawFlag: (ctx, r) => {
-            // White background
-            ctx.fillStyle = '#FFFFFF';
-            ctx.beginPath();
-            ctx.arc(0, 0, r, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Red Sun circle
-            ctx.fillStyle = '#BC002D';
-            ctx.beginPath();
-            ctx.arc(0, 0, r * 0.52, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.fillStyle = '#fff'; ctx.fillRect(-r, -r, r*2, r*2);
+            ctx.fillStyle = '#BC002D'; ctx.beginPath(); ctx.arc(0, 0, r*0.5, 0, Math.PI*2); ctx.fill();
         }
     },
     {
@@ -114,39 +78,12 @@ export const COUNTRYBALLS = [
         flagEmoji: '🇧🇷',
         type: 'custom',
         drawFlag: (ctx, r) => {
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(0, 0, r, 0, Math.PI * 2);
-            ctx.clip();
-
-            // Green background
-            ctx.fillStyle = '#009739';
-            ctx.fillRect(-r, -r, r * 2, r * 2);
-
-            // Yellow Rhombus
+            ctx.fillStyle = '#009739'; ctx.fillRect(-r, -r, r*2, r*2);
             ctx.fillStyle = '#FEDD00';
-            ctx.beginPath();
-            ctx.moveTo(0, -r * 0.75);
-            ctx.lineTo(r * 0.85, 0);
-            ctx.lineTo(0, r * 0.75);
-            ctx.lineTo(-r * 0.85, 0);
-            ctx.closePath();
-            ctx.fill();
-
-            // Blue Circle
-            ctx.fillStyle = '#012169';
-            ctx.beginPath();
-            ctx.arc(0, 0, r * 0.42, 0, Math.PI * 2);
-            ctx.fill();
-
-            // White Band
-            ctx.strokeStyle = '#FFFFFF';
-            ctx.lineWidth = r * 0.08;
-            ctx.beginPath();
-            ctx.arc(0, r * 0.2, r * 0.38, Math.PI * 1.15, Math.PI * 1.85);
-            ctx.stroke();
-
-            ctx.restore();
+            ctx.beginPath(); ctx.moveTo(0,-r*.72); ctx.lineTo(r*.84,0); ctx.lineTo(0,r*.72); ctx.lineTo(-r*.84,0); ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#012169'; ctx.beginPath(); ctx.arc(0,0,r*.42,0,Math.PI*2); ctx.fill();
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = r*0.07;
+            ctx.beginPath(); ctx.arc(0, r*.15, r*.37, Math.PI*1.15, Math.PI*1.85); ctx.stroke();
         }
     },
     {
@@ -154,7 +91,7 @@ export const COUNTRYBALLS = [
         name: 'İtalya 🇮🇹',
         flagEmoji: '🇮🇹',
         type: 'striped_vertical',
-        colors: ['#009246', '#FFFFFF', '#CE2B37']
+        colors: ['#009246', '#ffffff', '#CE2B37']
     },
     {
         id: 'uk',
@@ -162,42 +99,21 @@ export const COUNTRYBALLS = [
         flagEmoji: '🇬🇧',
         type: 'custom',
         drawFlag: (ctx, r) => {
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(0, 0, r, 0, Math.PI * 2);
-            ctx.clip();
-
-            // Deep Blue
-            ctx.fillStyle = '#012169';
-            ctx.fillRect(-r, -r, r * 2, r * 2);
-
-            // White Diagonals
-            ctx.strokeStyle = '#FFFFFF';
-            ctx.lineWidth = r * 0.4;
-            ctx.beginPath();
-            ctx.moveTo(-r, -r); ctx.lineTo(r, r);
-            ctx.moveTo(r, -r); ctx.lineTo(-r, r);
-            ctx.stroke();
-
-            // Red Diagonals
-            ctx.strokeStyle = '#C8102E';
-            ctx.lineWidth = r * 0.2;
-            ctx.beginPath();
-            ctx.moveTo(-r, -r); ctx.lineTo(r, r);
-            ctx.moveTo(r, -r); ctx.lineTo(-r, r);
-            ctx.stroke();
-
-            // White Cross
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(-r * 0.35, -r, r * 0.7, r * 2);
-            ctx.fillRect(-r, -r * 0.35, r * 2, r * 0.7);
-
-            // Red Cross
+            ctx.fillStyle = '#012169'; ctx.fillRect(-r, -r, r*2, r*2);
+            // White diagonals wide
+            ctx.strokeStyle = '#fff'; ctx.lineWidth = r*0.38;
+            ctx.beginPath(); ctx.moveTo(-r,-r); ctx.lineTo(r,r); ctx.moveTo(r,-r); ctx.lineTo(-r,r); ctx.stroke();
+            // Red diagonals thin
+            ctx.strokeStyle = '#C8102E'; ctx.lineWidth = r*0.18;
+            ctx.beginPath(); ctx.moveTo(-r,-r); ctx.lineTo(r,r); ctx.moveTo(r,-r); ctx.lineTo(-r,r); ctx.stroke();
+            // White cross
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-r*0.33, -r, r*0.66, r*2);
+            ctx.fillRect(-r, -r*0.33, r*2, r*0.66);
+            // Red cross
             ctx.fillStyle = '#C8102E';
-            ctx.fillRect(-r * 0.2, -r, r * 0.4, r * 2);
-            ctx.fillRect(-r, -r * 0.2, r * 2, r * 0.4);
-
-            ctx.restore();
+            ctx.fillRect(-r*0.18, -r, r*0.36, r*2);
+            ctx.fillRect(-r, -r*0.18, r*2, r*0.36);
         }
     },
     {
@@ -213,21 +129,10 @@ export const COUNTRYBALLS = [
         flagEmoji: '🇸🇪',
         type: 'custom',
         drawFlag: (ctx, r) => {
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(0, 0, r, 0, Math.PI * 2);
-            ctx.clip();
-
-            // Blue
-            ctx.fillStyle = '#006AA7';
-            ctx.fillRect(-r, -r, r * 2, r * 2);
-
-            // Yellow Cross
+            ctx.fillStyle = '#006AA7'; ctx.fillRect(-r, -r, r*2, r*2);
             ctx.fillStyle = '#FECC00';
-            ctx.fillRect(-r * 0.3, -r, r * 0.35, r * 2);
-            ctx.fillRect(-r, -r * 0.18, r * 2, r * 0.35);
-
-            ctx.restore();
+            ctx.fillRect(-r*0.28, -r, r*0.33, r*2);
+            ctx.fillRect(-r, -r*0.17, r*2, r*0.33);
         }
     },
     {
@@ -235,7 +140,7 @@ export const COUNTRYBALLS = [
         name: 'Hollanda 🇳🇱',
         flagEmoji: '🇳🇱',
         type: 'striped_horizontal',
-        colors: ['#AE1C28', '#FFFFFF', '#21468B']
+        colors: ['#AE1C28', '#ffffff', '#21468B']
     },
     {
         id: 'canada',
@@ -243,24 +148,11 @@ export const COUNTRYBALLS = [
         flagEmoji: '🇨🇦',
         type: 'custom',
         drawFlag: (ctx, r) => {
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(0, 0, r, 0, Math.PI * 2);
-            ctx.clip();
-
-            // Red sides, white center
+            ctx.fillStyle = '#FF0000'; ctx.fillRect(-r, -r, r*2, r*2);
+            ctx.fillStyle = '#fff'; ctx.fillRect(-r*0.5, -r, r, r*2);
+            // Maple leaf - simplified circle
             ctx.fillStyle = '#FF0000';
-            ctx.fillRect(-r, -r, r * 2, r * 2);
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(-r * 0.5, -r, r * 1.0, r * 2);
-
-            // Maple Leaf emblem
-            ctx.fillStyle = '#FF0000';
-            ctx.beginPath();
-            ctx.arc(0, 0, r * 0.28, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.restore();
+            ctx.beginPath(); ctx.arc(0, 0, r*0.27, 0, Math.PI*2); ctx.fill();
         }
     },
     {
@@ -269,51 +161,22 @@ export const COUNTRYBALLS = [
         flagEmoji: '🇰🇷',
         type: 'custom',
         drawFlag: (ctx, r) => {
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(0, 0, r, 0, Math.PI * 2);
-            ctx.clip();
-
-            // White
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(-r, -r, r * 2, r * 2);
-
-            // Taegeuk Circle (Red top, Blue bottom)
-            ctx.fillStyle = '#CD2E3A';
-            ctx.beginPath();
-            ctx.arc(0, 0, r * 0.42, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = '#0047A0';
-            ctx.beginPath();
-            ctx.arc(0, 0, r * 0.42, 0, Math.PI);
-            ctx.fill();
-
-            ctx.restore();
+            ctx.fillStyle = '#fff'; ctx.fillRect(-r, -r, r*2, r*2);
+            ctx.fillStyle = '#CD2E3A'; ctx.beginPath(); ctx.arc(0,0,r*.42,0,Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#0047A0'; ctx.beginPath(); ctx.arc(0,0,r*.42,0,Math.PI); ctx.fill();
         }
     }
 ];
 
-function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
-    let rot = (Math.PI / 2) * 3;
-    let x = cx;
-    let y = cy;
-    let step = Math.PI / spikes;
-
+function _star(ctx, cx, cy, spikes, outer, inner) {
+    let rot = -(Math.PI / 2);
+    const step = Math.PI / spikes;
     ctx.beginPath();
-    ctx.moveTo(cx, cy - outerRadius);
-    for (let i = 0; i < spikes; i++) {
-        x = cx + Math.cos(rot) * outerRadius;
-        y = cy + Math.sin(rot) * outerRadius;
-        ctx.lineTo(x, y);
-        rot += step;
-
-        x = cx + Math.cos(rot) * innerRadius;
-        y = cy + Math.sin(rot) * innerRadius;
-        ctx.lineTo(x, y);
+    for (let i = 0; i < spikes * 2; i++) {
+        const rad = i % 2 === 0 ? outer : inner;
+        ctx.lineTo(cx + Math.cos(rot) * rad, cy + Math.sin(rot) * rad);
         rot += step;
     }
-    ctx.lineTo(cx, cy - outerRadius);
     ctx.closePath();
     ctx.fill();
 }
