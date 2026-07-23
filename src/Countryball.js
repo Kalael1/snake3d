@@ -129,26 +129,30 @@ export class Countryball {
         const r = this.radius;
         const bounceSx = isFinite(this.squishX) ? this.squishX : 1.0;
         const bounceSy = isFinite(this.squishY) ? this.squishY : 1.0;
+        
+        // 🔹 Rhythmic Walk Cycle (Bobbing) 🔹
+        const speed = Math.hypot(this.vx, this.vy);
+        if (speed > 0.5) {
+            this.walkTimer = (this.walkTimer || 0) + speed * 0.05;
+        } else if (this.walkTimer) {
+            this.walkTimer += (0 - this.walkTimer) * 0.2; // Return to standing gracefully
+            if (Math.abs(this.walkTimer) < 0.01) this.walkTimer = 0;
+        }
+
+        let walkSx = 1.0, walkSy = 1.0;
+        if (this.walkTimer) {
+            // Math.abs(Math.sin) creates a bouncing rhythm (0 to 1)
+            const bob = Math.abs(Math.sin(this.walkTimer));
+            const squashIntensity = Math.min(speed * 0.015, 0.18); // Max 18% squash
+            
+            // "üstden basılsın" - Squash from top, stretch from sides rhythmically
+            walkSx = 1.0 + bob * squashIntensity;
+            walkSy = 1.0 - bob * squashIntensity;
+        }
 
         ctx.save();                         // save-1: outer transform
         ctx.translate(this.x, this.y);
-        
-        // 🔹 Movement Squish (Directional) 🔹
-        const speed = Math.hypot(this.vx, this.vy);
-        if (speed > 0.5) {
-            const moveAngle = Math.atan2(this.vy, this.vx);
-            const stretchAmount = Math.min(speed * 0.015, 0.4); // Scale stretch with speed, max 40%
-            
-            // Rotate to velocity vector, stretch, and rotate back.
-            // This stretches the body into an ellipse pointing in the movement direction
-            // WITHOUT rotating the flag texture inside it!
-            ctx.rotate(moveAngle);
-            ctx.scale(1.0 + stretchAmount, 1.0 - stretchAmount * 0.4);
-            ctx.rotate(-moveAngle);
-        }
-
-        // Apply wall bounce squish (aligned to world axes)
-        ctx.scale(bounceSx, bounceSy);
+        ctx.scale(bounceSx * walkSx, bounceSy * walkSy);
 
         // ── shadow ──
         ctx.save();
