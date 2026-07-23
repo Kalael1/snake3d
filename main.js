@@ -77,25 +77,6 @@ const otherPlayers = {}; // id -> Countryball instance
 const botPlayers = [];
 function spawnBotCountryballs() {
     botPlayers.length = 0;
-    const botSkins = ['poland', 'germany', 'france', 'usa', 'japan', 'brazil', 'uk', 'italy', 'sweden', 'south_korea'];
-    const count = 8;
-    for (let i = 0; i < count; i++) {
-        const skinId = botSkins[i % botSkins.length];
-        const angle = (i / count) * Math.PI * 2;
-        const dist = Math.min(canvas.width, canvas.height) * 0.32;
-        const bot = new Countryball(
-            canvas.width / 2 + Math.cos(angle) * dist,
-            canvas.height / 2 + Math.sin(angle) * dist,
-            botSkins[i % botSkins.length].charAt(0).toUpperCase() + botSkins[i % botSkins.length].slice(1),
-            skinId
-        );
-        // Give each bot a random initial velocity
-        const speed = 1.5 + Math.random() * 2.5;
-        const dir = Math.random() * Math.PI * 2;
-        bot.vx = Math.cos(dir) * speed;
-        bot.vy = Math.sin(dir) * speed;
-        botPlayers.push(bot);
-    }
 }
 // Spawn bots immediately so canvas shows something even before game start
 spawnBotCountryballs();
