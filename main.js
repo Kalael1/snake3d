@@ -925,7 +925,11 @@ function gameLoop(now) {
     const delta = Math.min((now - lastTime) / 1000, 0.05);
     lastTime = now;
 
-    const bounds = { minX: 0, minY: 0, maxX: canvas.width, maxY: canvas.height };
+    let bounds = { minX: 0, minY: 0, maxX: canvas.width, maxY: canvas.height };
+    if (window.currentRoom === 'football') {
+        bounds.maxX = Math.max(1400, canvas.width);
+        bounds.maxY = Math.max(800, canvas.height);
+    }
     const noInput = { left: false, right: false, up: false, down: false, isMouseDown: false, mouseTarget: null };
 
     // 1. Background
@@ -1105,14 +1109,22 @@ function drawPlaygroundBackground(ctx) {
         ctx.stroke();
     }
     else if (window.currentRoom === 'football') {
+        const W = 1400;
+        const H = 800;
+        
+        // Draw the rest of the screen dark slate if canvas is larger
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(0, 0, w, h);
+        
+        ctx.save();
         // Grass
         ctx.fillStyle = '#4ade80';
-        ctx.fillRect(0, 0, w, h);
+        ctx.fillRect(0, 0, W, H);
         
         // Stripes
         ctx.fillStyle = 'rgba(0,0,0,0.05)';
-        for (let i = 0; i < w; i += 100) {
-            if (i % 200 === 0) ctx.fillRect(i, 0, 100, h);
+        for (let i = 0; i < W; i += 100) {
+            if (i % 200 === 0) ctx.fillRect(i, 0, 100, H);
         }
         
         // Lines
@@ -1121,22 +1133,24 @@ function drawPlaygroundBackground(ctx) {
         ctx.beginPath();
         
         // Center line
-        ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h);
+        ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H);
         // Center circle
-        ctx.moveTo(w/2 + 150, h/2);
-        ctx.arc(w/2, h/2, 150, 0, Math.PI*2);
+        ctx.moveTo(W/2 + 150, H/2);
+        ctx.arc(W/2, H/2, 150, 0, Math.PI*2);
         
         // Left penalty
-        ctx.rect(0, h/2 - 250, 200, 500);
+        ctx.rect(0, H/2 - 250, 200, 500);
         // Right penalty
-        ctx.rect(w - 200, h/2 - 250, 200, 500);
+        ctx.rect(W - 200, H/2 - 250, 200, 500);
         ctx.stroke();
         
         // Goals (Red / Blue)
         ctx.fillStyle = '#ef4444'; // Red Goal
-        ctx.fillRect(0, h/2 - 150, 40, 300);
+        ctx.fillRect(0, H/2 - 150, 40, 300);
         ctx.fillStyle = '#3b82f6'; // Blue Goal
-        ctx.fillRect(w - 40, h/2 - 150, 40, 300);
+        ctx.fillRect(W - 40, H/2 - 150, 40, 300);
+        
+        ctx.restore();
     }
     else { // Lobby / Default - CALM COMIC PAPER
         // Base color - Soft comic book paper (muted grey)

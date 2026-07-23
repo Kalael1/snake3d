@@ -36,7 +36,7 @@ const spyfallGame = new SpyfallGame(
     (id) => players[id] || { name: 'Oyuncu' }
 );
 
-const footballState = { ball: { x: 1500, y: 1000, vx: 0, vy: 0 }, redScore: 0, blueScore: 0 };
+const footballState = { ball: { x: 700, y: 400, vx: 0, vy: 0 }, redScore: 0, blueScore: 0 };
 const BALL_RADIUS = 25;
 const PLAYER_RADIUS = 30;
 
@@ -188,8 +188,8 @@ io.on('connection', (socket) => {
         if (p) {
             p.team = team;
             // Place player in their team's half
-            p.x = team === 'red' ? 700 : 2300;
-            p.y = 1000;
+            p.x = team === 'red' ? 350 : 1050;
+            p.y = 400;
         }
     });
 
@@ -275,8 +275,8 @@ setInterval(() => {
                     ball.x += ball.vx;
                     ball.y += ball.vy;
                     
-                    const W = 3000, H = 2000;
-                    const goalTop = H/2 - 250, goalBottom = H/2 + 250;
+                    const W = 1400, H = 800;
+                    const goalTop = H/2 - 150, goalBottom = H/2 + 150;
                     
                     if (ball.x < BALL_RADIUS) {
                         if (ball.y > goalTop && ball.y < goalBottom) {
