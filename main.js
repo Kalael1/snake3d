@@ -1069,34 +1069,52 @@ function drawPlaygroundBackground(ctx) {
         for (let d of doors) {
             const rect = getDoorRect(d);
             
-            // Door rect
+            ctx.save();
+            // Solid Drop Shadow
+            ctx.fillStyle = '#000000';
+            const shadowOffset = 8;
+            ctx.fillRect(rect.x + shadowOffset, rect.y + shadowOffset, rect.w, rect.h);
+            
+            // Door rect (solid, not alpha)
             ctx.fillStyle = d.color;
-            ctx.globalAlpha = 0.8;
             ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-            ctx.globalAlpha = 1.0;
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 4;
+            
+            // Thick Black Border
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 6;
             ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+            
             // Label
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 20px Fredoka';
+            ctx.fillStyle = '#000000'; // Black text for comic style
+            // If the door is dark, maybe white text? Let's just use white text with black stroke for maximum comic pop.
+            ctx.font = '28px Bangers, cursive';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             
-            // Vertical text for left/right doors
-            if (d.align === 'left' || d.align === 'right') {
-                ctx.save();
-                ctx.translate(rect.x + rect.w/2, rect.y + rect.h/2);
-                ctx.rotate(d.align === 'left' ? -Math.PI/2 : Math.PI/2);
+            const drawLabel = () => {
+                // White text with thick black stroke
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = '#000000';
+                ctx.strokeText(d.label, 0, 0);
+                ctx.fillStyle = '#ffffff';
                 ctx.fillText(d.label, 0, 0);
-                ctx.restore();
-            } else {
-                ctx.fillText(d.label, rect.x + rect.w/2, rect.y + rect.h/2);
-            }
+            };
             
-            // Draw a glowing portal effect inside the door
-            ctx.fillStyle = 'rgba(255, 255, 255, ' + (0.2 + Math.sin(Date.now() / 200) * 0.1) + ')';
-            ctx.fillRect(rect.x + 5, rect.y + 5, rect.w - 10, rect.h - 10);
+            // Vertical text for left/right doors
+            ctx.save();
+            ctx.translate(rect.x + rect.w/2, rect.y + rect.h/2);
+            if (d.align === 'left' || d.align === 'right') {
+                ctx.rotate(d.align === 'left' ? -Math.PI/2 : Math.PI/2);
+            }
+            drawLabel();
+            ctx.restore();
+            
+            // Draw a glowing portal effect inside the door (comic style: white dots or simple inner box)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 10]);
+            ctx.strokeRect(rect.x + 8, rect.y + 8, rect.w - 16, rect.h - 16);
+            ctx.restore();
         }
     }
 

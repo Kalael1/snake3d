@@ -1536,3 +1536,14 @@ input, select { background: #fff !important; color: #000 !important; border: 3px
 
 .icon-btn { background: #fff !important; color: #000 !important; border: 3px solid #000 !important; box-shadow: 4px 4px 0px #000 !important; }
 .icon-btn:hover { background: #fbbf24 !important; transform: translateY(-2px) rotate(5deg); box-shadow: 6px 6px 0px #000 !important; }
+
+/* EXTRA COMIC FIXES */
+#controls-hint { background: #ffffff !important; color: #000000 !important; border: 4px solid #000 !important; box-shadow: 6px 6px 0px #000 !important; border-radius: 4px !important; font-family: 'Bangers', cursive; font-size: 16px; font-weight: normal; }
+#vignette-overlay { background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.3) 100%) !important; }
+.chat-emoji-btn { background: #fff !important; border: 3px solid #000 !important; box-shadow: 2px 2px 0px #000 !important; border-radius: 4px !important; font-size: 18px !important; }
+#send-btn, #mobile-send-btn { background: #fbbf24 !important; color: #000 !important; border: 3px solid #000 !important; font-family: 'Bangers', cursive !important; letter-spacing: 1px; font-size: 18px; box-shadow: 4px 4px 0px #000 !important; border-radius: 4px !important; text-transform: uppercase; }
+.icon-btn i, .icon-btn svg { font-size: 20px !important; }
+#leaderboard-list { font-family: 'Bangers', cursive !important; font-size: 18px !important; }
+.lb-item { border-bottom: 2px dashed #000 !important; }
+.hud-label, .gallery-title-bar h2 { font-size: 22px !important; }
+.hud-value { font-size: 28px !important; }
