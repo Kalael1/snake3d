@@ -76,6 +76,7 @@ function getDoorRect(d) {
 
 // Input state
 const keysPressed = {};
+window.cameraOffset = { x: 0, y: 0 };
 const globalMousePos = { x: canvas.width / 2, y: canvas.height / 2 };
 const inputState = {
     left: false,
@@ -616,14 +617,14 @@ window.addEventListener('keyup', (e) => {
 
 canvas.addEventListener('mousedown', (e) => {
     inputState.isMouseDown = true;
-    inputState.mouseTarget = { x: e.clientX, y: e.clientY };
+    inputState.mouseTarget = { x: e.clientX - window.cameraOffset.x, y: e.clientY - window.cameraOffset.y };
 });
 
 canvas.addEventListener('mousemove', (e) => {
-    globalMousePos.x = e.clientX;
-    globalMousePos.y = e.clientY;
+    globalMousePos.x = e.clientX - window.cameraOffset.x;
+    globalMousePos.y = e.clientY - window.cameraOffset.y;
     if (inputState.isMouseDown) {
-        inputState.mouseTarget = { x: e.clientX, y: e.clientY };
+        inputState.mouseTarget = { x: e.clientX - window.cameraOffset.x, y: e.clientY - window.cameraOffset.y };
     }
 });
 
@@ -636,15 +637,15 @@ window.addEventListener('mouseup', () => {
 canvas.addEventListener('touchstart', (e) => {
     if (e.touches.length > 0) {
         inputState.isMouseDown = true;
-        inputState.mouseTarget = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        inputState.mouseTarget = { x: e.touches[0].clientX - window.cameraOffset.x, y: e.touches[0].clientY - window.cameraOffset.y };
     }
 }, { passive: true });
 
 canvas.addEventListener('touchmove', (e) => {
     if (e.touches.length > 0) {
-        globalMousePos.x = e.touches[0].clientX;
-        globalMousePos.y = e.touches[0].clientY;
-        inputState.mouseTarget = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        globalMousePos.x = e.touches[0].clientX - window.cameraOffset.x;
+        globalMousePos.y = e.touches[0].clientY - window.cameraOffset.y;
+        inputState.mouseTarget = { x: e.touches[0].clientX - window.cameraOffset.x, y: e.touches[0].clientY - window.cameraOffset.y };
     }
 }, { passive: true });
 
@@ -927,10 +928,18 @@ function gameLoop(now) {
 
     let bounds = { minX: 0, minY: 0, maxX: canvas.width, maxY: canvas.height };
     if (window.currentRoom === 'football') {
-        bounds.maxX = Math.max(1400, canvas.width);
-        bounds.maxY = Math.max(800, canvas.height);
+        window.cameraOffset.x = Math.max(0, (canvas.width - 1400) / 2);
+        window.cameraOffset.y = Math.max(0, (canvas.height - 800) / 2);
+        bounds.maxX = 1400;
+        bounds.maxY = 800;
+    } else {
+        window.cameraOffset.x = 0;
+        window.cameraOffset.y = 0;
     }
     const noInput = { left: false, right: false, up: false, down: false, isMouseDown: false, mouseTarget: null };
+
+    ctx.save();
+    ctx.translate(window.cameraOffset.x, window.cameraOffset.y);
 
     // 1. Background
     drawPlaygroundBackground(ctx);
@@ -1042,7 +1051,9 @@ function gameLoop(now) {
     // 3. Draw all balls
     botPlayers.forEach(bot => bot.draw(ctx));
     Object.values(otherPlayers).forEach(op => op.draw(ctx));
-    if (isGameRunning) localPlayer.draw(ctx, globalMousePos);
+    if (isGameRunning) localPlayer.draw(ctx, { x: globalMousePos.x - window.cameraOffset.x, y: globalMousePos.y - window.cameraOffset.y });
+
+    ctx.restore();
 }
 
 function drawPlaygroundBackground(ctx) {
@@ -1114,7 +1125,7 @@ function drawPlaygroundBackground(ctx) {
         
         // Draw the rest of the screen dark slate if canvas is larger
         ctx.fillStyle = '#1e293b';
-        ctx.fillRect(0, 0, w, h);
+        ctx.fillRect(-window.cameraOffset.x, -window.cameraOffset.y, w, h);
         
         ctx.save();
         // Grass
