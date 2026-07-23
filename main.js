@@ -36,7 +36,8 @@ window.DOORS = {
     lobby: [
         { id: 'beach', rx: 0.1, ry: 0.1, rw: 180, rh: 80, label: '🏖️ Sahil', color: '#fde047' },
         { id: 'coffeeshop', rx: 0.7, ry: 0.1, rw: 180, rh: 80, label: '☕ Kafe', color: '#78350f' },
-        { id: 'disco', rx: 0.4, ry: 0.8, rw: 180, rh: 80, label: '🕺 Disko', color: '#ec4899' }
+        { id: 'disco', rx: 0.4, ry: 0.8, rw: 180, rh: 80, label: '🕺 Disko', color: '#ec4899' },
+        { id: 'spyfall', rx: 0.4, ry: 0.4, rw: 200, rh: 100, label: '🕵️ Casus Kim?', color: '#ef4444' }
     ],
     beach: [
         { id: 'lobby', rx: 0.4, ry: 0.8, rw: 180, rh: 80, label: '🚪 Lobiye Dön', color: '#3b82f6' }
@@ -46,6 +47,9 @@ window.DOORS = {
     ],
     disco: [
         { id: 'lobby', rx: 0.4, ry: 0.1, rw: 180, rh: 80, label: '🚪 Lobiye Dön', color: '#3b82f6' }
+    ],
+    spyfall: [
+        { id: 'lobby', rx: 0.4, ry: 0.9, rw: 180, rh: 80, label: '🚪 Lobiye Dön', color: '#3b82f6' }
     ]
 };
 
@@ -127,6 +131,47 @@ const closeMobileChatBtn = document.getElementById('close-mobile-chat-btn');
 const mobileChatInput = document.getElementById('mobile-chat-input');
 const mobileSendChatBtn = document.getElementById('mobile-send-chat-btn');
 const mobileChatMessages = document.getElementById('mobile-chat-messages');
+
+// SPYFALL UI ELEMENTS
+const spyfallUi = document.getElementById('spyfall-ui');
+const spyfallStatusText = document.getElementById('spyfall-status-text');
+const spyfallRole = document.getElementById('spyfall-role');
+const spyfallLocation = document.getElementById('spyfall-location');
+const spyfallStartBtn = document.getElementById('spyfall-start-btn');
+const spyfallForceNightBtn = document.getElementById('spyfall-force-night-btn');
+const spyfallTurnIndicator = document.getElementById('spyfall-turn-indicator');
+const spyfallTurnName = document.getElementById('spyfall-turn-name');
+const spyfallActionPanel = document.getElementById('spyfall-action-panel');
+const spyfallPlayerSelect = document.getElementById('spyfall-player-select');
+const spyfallQuestionInput = document.getElementById('spyfall-question-input');
+const spyfallAskBtn = document.getElementById('spyfall-ask-btn');
+const spyfallVoteBtn = document.getElementById('spyfall-vote-btn');
+const spyfallKillBtn = document.getElementById('spyfall-kill-btn');
+
+if (spyfallStartBtn) spyfallStartBtn.addEventListener('click', () => socket.emit('spyfall_action', { action: 'start' }));
+if (spyfallForceNightBtn) spyfallForceNightBtn.addEventListener('click', () => socket.emit('spyfall_action', { action: 'force_night' }));
+if (spyfallAskBtn) {
+    spyfallAskBtn.addEventListener('click', () => {
+        const toId = spyfallPlayerSelect.value;
+        const q = spyfallQuestionInput.value;
+        if (toId && q) {
+            socket.emit('spyfall_action', { action: 'ask', toId, question: q });
+            spyfallQuestionInput.value = '';
+        }
+    });
+}
+if (spyfallVoteBtn) {
+    spyfallVoteBtn.addEventListener('click', () => {
+        const toId = spyfallPlayerSelect.value;
+        if (toId) socket.emit('spyfall_action', { action: 'vote', targetId: toId });
+    });
+}
+if (spyfallKillBtn) {
+    spyfallKillBtn.addEventListener('click', () => {
+        const toId = spyfallPlayerSelect.value;
+        if (toId) socket.emit('spyfall_action', { action: 'night_kill', targetId: toId });
+    });
+}
 
 const openScreenBtn = document.getElementById('open-screen-btn');
 const screenPopover = document.getElementById('screen-input-popover');
@@ -596,6 +641,40 @@ socket.on('screenVideo', (data) => {
     }
 });
 
+socket.on('spyfallState', (state) => {
+    if (!spyfallUi) return;
+    spyfallStatusText.innerText = state.status === 'waiting' ? 'Bekleniyor...' : (state.status === 'playing' ? 'Sorgu / Oylama' : (state.status === 'night' ? 'Gece' : 'Oyun Bitti'));
+    spyfallRole.innerText = state.role;
+    spyfallLocation.innerText = state.location;
+    
+    spyfallStartBtn.classList.toggle('hidden', state.status !== 'waiting');
+    spyfallForceNightBtn.classList.toggle('hidden', state.status !== 'playing');
+    spyfallTurnIndicator.classList.toggle('hidden', state.status !== 'playing' && state.status !== 'night');
+    spyfallActionPanel.classList.toggle('hidden', state.status !== 'playing' && state.status !== 'night');
+    
+    if (state.status === 'playing' || state.status === 'night') {
+        const turnP = state.turnPlayerId === localSocketId ? localPlayer : (otherPlayers[state.turnPlayerId]);
+        spyfallTurnName.innerText = turnP ? turnP.name : '---';
+        
+        const currentSelected = spyfallPlayerSelect.value;
+        spyfallPlayerSelect.innerHTML = '<option value="">Hedef Seçin...</option>';
+        state.alivePlayers.forEach(id => {
+            if (id === localSocketId) return;
+            const p = otherPlayers[id];
+            if (p) {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.innerText = p.name;
+                if (id === currentSelected) opt.selected = true;
+                spyfallPlayerSelect.appendChild(opt);
+            }
+        });
+        
+        spyfallKillBtn.classList.toggle('hidden', state.status !== 'night' || state.role !== 'Casus');
+        spyfallAskBtn.disabled = (state.turnPlayerId !== localSocketId);
+    }
+});
+
 socket.on('chatReceived', (data) => {
     if (data.id === localSocketId) return;
     addChatMessage(data.name, data.text);
@@ -774,6 +853,11 @@ function gameLoop(now) {
 
     // 1. Background
     drawPlaygroundBackground(ctx);
+    
+    if (spyfallUi) {
+        if (window.currentRoom === 'spyfall') spyfallUi.classList.remove('hidden');
+        else spyfallUi.classList.add('hidden');
+    }
 
     // Always update & draw bots (even on start screen — they bounce around as decoration)
     botPlayers.forEach(bot => {
@@ -893,6 +977,23 @@ function drawPlaygroundBackground(ctx) {
             }
         }
         ctx.restore();
+    }
+    else if (window.currentRoom === 'spyfall') {
+        // Dark mysterious background
+        const grad = ctx.createRadialGradient(w/2, h/2, 50, w/2, h/2, Math.max(w, h));
+        grad.addColorStop(0, '#334155');
+        grad.addColorStop(1, '#020617');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+        
+        // Circular Table
+        ctx.fillStyle = '#451a03'; // Wooden table
+        ctx.beginPath();
+        ctx.arc(w/2, h/2, 200, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = 10;
+        ctx.strokeStyle = '#290f01';
+        ctx.stroke();
     }
     else { // Lobby / Default
         const grad = ctx.createLinearGradient(0, 0, w, h);

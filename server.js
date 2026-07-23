@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import fs from 'fs';
+import { SpyfallGame } from './spyfallGame.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -29,6 +30,11 @@ app.use((req, res) => {
 const TICK_RATE = 20;
 
 const players = {};
+const spyfallGame = new SpyfallGame(
+    io,
+    (room) => Array.from(io.sockets.adapter.rooms.get(room) || []),
+    (id) => players[id] || { name: 'Oyuncu' }
+);
 
 function round1(n) { return Math.round(n * 10) / 10; }
 
@@ -150,9 +156,27 @@ io.on('connection', (socket) => {
     socket.on('changeRoom', (newRoom) => {
         const p = players[socket.id];
         if (!p) return;
+        
+        if (p.room === 'spyfall' && newRoom !== 'spyfall') {
+            spyfallGame.playerLeft(socket.id);
+        }
+        
         socket.leave(p.room);
         p.room = newRoom;
         socket.join(newRoom);
+        
+        if (newRoom === 'spyfall') {
+            spyfallGame.broadcast();
+        }
+    });
+    
+    socket.on('spyfall_action', (data) => {
+        if (!data) return;
+        if (data.action === 'start') spyfallGame.start();
+        else if (data.action === 'ask') spyfallGame.askQuestion(socket.id, data.toId, data.question);
+        else if (data.action === 'vote') spyfallGame.voteEliminate(socket.id, data.targetId);
+        else if (data.action === 'night_kill') spyfallGame.spyKill(socket.id, data.targetId);
+        else if (data.action === 'force_night') spyfallGame.triggerNight();
     });
 
     socket.on('playerInput', (data) => {
@@ -190,6 +214,7 @@ io.on('connection', (socket) => {
 
     socket.on('disconnect', () => {
         console.log(`[-] Player disconnected: ${socket.id}`);
+        spyfallGame.playerLeft(socket.id);
         delete players[socket.id];
     });
 });
