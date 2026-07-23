@@ -1104,6 +1104,40 @@ function drawPlaygroundBackground(ctx) {
         ctx.strokeStyle = '#290f01';
         ctx.stroke();
     }
+    else if (window.currentRoom === 'football') {
+        // Grass
+        ctx.fillStyle = '#4ade80';
+        ctx.fillRect(0, 0, w, h);
+        
+        // Stripes
+        ctx.fillStyle = 'rgba(0,0,0,0.05)';
+        for (let i = 0; i < w; i += 100) {
+            if (i % 200 === 0) ctx.fillRect(i, 0, 100, h);
+        }
+        
+        // Lines
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        
+        // Center line
+        ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h);
+        // Center circle
+        ctx.moveTo(w/2 + 150, h/2);
+        ctx.arc(w/2, h/2, 150, 0, Math.PI*2);
+        
+        // Left penalty
+        ctx.rect(0, h/2 - 250, 200, 500);
+        // Right penalty
+        ctx.rect(w - 200, h/2 - 250, 200, 500);
+        ctx.stroke();
+        
+        // Goals (Red / Blue)
+        ctx.fillStyle = '#ef4444'; // Red Goal
+        ctx.fillRect(0, h/2 - 150, 40, 300);
+        ctx.fillStyle = '#3b82f6'; // Blue Goal
+        ctx.fillRect(w - 40, h/2 - 150, 40, 300);
+    }
     else { // Lobby / Default - CALM COMIC PAPER
         // Base color - Soft comic book paper (muted grey)
         ctx.fillStyle = '#cbd5e1'; // Muted grey (slate-300)
