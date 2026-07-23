@@ -713,28 +713,28 @@ function animate() {
             const tpsDist = 14 * currentZoom;
             const tpsHeight = 5.5 * currentZoom;
 
-            const camX = hp.x - Math.sin(localCar.heading) * tpsDist;
-            const camZ = hp.z - Math.cos(localCar.heading) * tpsDist;
+            const camX = headPos.x - Math.sin(localCar.heading) * tpsDist;
+            const camZ = headPos.z - Math.cos(localCar.heading) * tpsDist;
             const camY = tpsHeight;
 
             camera.position.x += (camX - camera.position.x) * 0.2;
             camera.position.y += (camY - camera.position.y) * 0.2;
             camera.position.z += (camZ - camera.position.z) * 0.2;
-            camera.lookAt(hp.x + Math.sin(localCar.heading) * (8 * currentZoom), 2.0 * currentZoom, hp.z + Math.cos(localCar.heading) * (8 * currentZoom));
+            camera.lookAt(headPos.x + Math.sin(localCar.heading) * (8 * currentZoom), 2.0 * currentZoom, headPos.z + Math.cos(localCar.heading) * (8 * currentZoom));
         } else {
-            const camX = hp.x - Math.sin(localCar.heading) * 12 * currentZoom;
-            const camZ = hp.z - Math.cos(localCar.heading) * 12 * currentZoom;
+            const camX = headPos.x - Math.sin(localCar.heading) * 12 * currentZoom;
+            const camZ = headPos.z - Math.cos(localCar.heading) * 12 * currentZoom;
             const camY = 22 * currentZoom;
 
             camera.position.x += (camX - camera.position.x) * 0.15;
             camera.position.y += (camY - camera.position.y) * 0.15;
             camera.position.z += (camZ - camera.position.z) * 0.15;
-            camera.lookAt(hp.x, 0, hp.z);
+            camera.lookAt(headPos.x, 0, headPos.z);
         }
 
         if (isNaN(camera.position.x) || isNaN(camera.position.y) || isNaN(camera.position.z)) {
-            camera.position.set(hp.x, 22, hp.z - 12);
-            camera.lookAt(hp.x, 0, hp.z);
+            camera.position.set(headPos.x, 22, headPos.z - 12);
+            camera.lookAt(headPos.x, 0, headPos.z);
         }
     } else {
         // MENU MODE: STATIC CALM CAMERA OVERLOOK (ZERO DIZZINESS / NO SPINNING!)
