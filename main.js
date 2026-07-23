@@ -822,6 +822,8 @@ function animate() {
                     return;
                 } else {
                     localCar.currentSpeed *= -0.5;
+                    localCar.position.x -= Math.sin(localCar.velocityAngle) * 1.0;
+                    localCar.position.z -= Math.cos(localCar.velocityAngle) * 1.0;
                 }
             }
 
@@ -832,6 +834,8 @@ function animate() {
                     return;
                 } else {
                     localCar.currentSpeed *= -0.5;
+                    localCar.position.x -= Math.sin(localCar.velocityAngle) * 1.0;
+                    localCar.position.z -= Math.cos(localCar.velocityAngle) * 1.0;
                 }
             }
 
@@ -842,6 +846,8 @@ function animate() {
                     return;
                 } else {
                     localCar.currentSpeed *= -0.5;
+                    localCar.position.x -= Math.sin(localCar.velocityAngle) * 1.0;
+                    localCar.position.z -= Math.cos(localCar.velocityAngle) * 1.0;
                 }
             }
 
@@ -853,9 +859,8 @@ function animate() {
                     return;
                 } else {
                     localCar.currentSpeed *= -0.5; // Bounce
-                    // push it slightly back so it doesn't get stuck
-                    localCar.position.x = Math.max(-maxD, Math.min(maxD, localCar.position.x));
-                    localCar.position.z = Math.max(-maxD, Math.min(maxD, localCar.position.z));
+                    localCar.position.x = Math.max(-maxD + 1.0, Math.min(maxD - 1.0, localCar.position.x));
+                    localCar.position.z = Math.max(-maxD + 1.0, Math.min(maxD - 1.0, localCar.position.z));
                 }
             }
         }
