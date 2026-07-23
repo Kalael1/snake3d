@@ -32,26 +32,41 @@ let bounceScore = 0;
 let highscore = parseInt(localStorage.getItem('countryball_highscore') || '0', 10);
 
 window.currentRoom = 'lobby';
+window.pendingDoor = null;
+
 window.DOORS = {
     lobby: [
-        { id: 'beach', rx: 0.1, ry: 0.1, rw: 180, rh: 80, label: '🏖️ Sahil', color: '#fde047' },
-        { id: 'coffeeshop', rx: 0.7, ry: 0.1, rw: 180, rh: 80, label: '☕ Kafe', color: '#78350f' },
-        { id: 'disco', rx: 0.4, ry: 0.8, rw: 180, rh: 80, label: '🕺 Disko', color: '#ec4899' },
-        { id: 'spyfall', rx: 0.4, ry: 0.4, rw: 200, rh: 100, label: '🕵️ Casus Kim?', color: '#ef4444' }
+        { id: 'beach', align: 'left', label: '🏖️ Sahil', color: '#fde047' },
+        { id: 'coffeeshop', align: 'right', label: '☕ Kafe', color: '#78350f' },
+        { id: 'spyfall', align: 'top', label: '🕵️ Casus Kim?', color: '#ef4444' },
+        { id: 'disco', align: 'bottom', label: '🕺 Disko', color: '#ec4899' }
     ],
     beach: [
-        { id: 'lobby', rx: 0.4, ry: 0.8, rw: 180, rh: 80, label: '🚪 Lobiye Dön', color: '#3b82f6' }
+        { id: 'lobby', align: 'right', label: '🚪 Lobiye Dön', color: '#3b82f6' }
     ],
     coffeeshop: [
-        { id: 'lobby', rx: 0.4, ry: 0.8, rw: 180, rh: 80, label: '🚪 Lobiye Dön', color: '#3b82f6' }
+        { id: 'lobby', align: 'left', label: '🚪 Lobiye Dön', color: '#3b82f6' }
     ],
     disco: [
-        { id: 'lobby', rx: 0.4, ry: 0.1, rw: 180, rh: 80, label: '🚪 Lobiye Dön', color: '#3b82f6' }
+        { id: 'lobby', align: 'top', label: '🚪 Lobiye Dön', color: '#3b82f6' }
     ],
     spyfall: [
-        { id: 'lobby', rx: 0.4, ry: 0.9, rw: 180, rh: 80, label: '🚪 Lobiye Dön', color: '#3b82f6' }
+        { id: 'lobby', align: 'bottom', label: '🚪 Lobiye Dön', color: '#3b82f6' }
     ]
 };
+
+function getDoorRect(d) {
+    const cw = canvas.width;
+    const ch = canvas.height;
+    const thickness = 80;
+    const length = 250;
+    
+    if (d.align === 'left') return { x: 0, y: ch/2 - length/2, w: thickness, h: length };
+    if (d.align === 'right') return { x: cw - thickness, y: ch/2 - length/2, w: thickness, h: length };
+    if (d.align === 'top') return { x: cw/2 - length/2, y: 0, w: length, h: thickness };
+    if (d.align === 'bottom') return { x: cw/2 - length/2, y: ch - thickness, w: length, h: thickness };
+    return { x: 0, y: 0, w: 0, h: 0 };
+}
 
 // Input state
 const keysPressed = {};
@@ -163,6 +178,35 @@ const jumbotron = document.getElementById('arena-screen-jumbotron');
 const jumboIframe = document.getElementById('arena-screen-iframe');
 const jumboMuteBtn = document.getElementById('jumbo-mute-btn');
 const jumboMinBtn = document.getElementById('jumbo-minimize-btn');
+
+const doorConfirmModal = document.getElementById('door-confirm-modal');
+const doorConfirmTitle = document.getElementById('door-confirm-title');
+const doorConfirmYes = document.getElementById('door-confirm-yes');
+const doorConfirmNo = document.getElementById('door-confirm-no');
+
+if (doorConfirmYes) {
+    doorConfirmYes.addEventListener('click', () => {
+        if (window.pendingDoor) {
+            window.currentRoom = window.pendingDoor.id;
+            localPlayer.x = canvas.width / 2;
+            localPlayer.y = canvas.height / 2;
+            localPlayer.vx = 0;
+            localPlayer.vy = 0;
+            if (socket && socket.connected) {
+                socket.emit('changeRoom', window.pendingDoor.id);
+            }
+            addChatMessage('SİSTEM', `🚪 ${window.pendingDoor.label} kapısından geçtiniz!`, true);
+        }
+        window.pendingDoor = null;
+        doorConfirmModal.classList.add('hidden');
+    });
+}
+if (doorConfirmNo) {
+    doorConfirmNo.addEventListener('click', () => {
+        window.pendingDoor = null;
+        doorConfirmModal.classList.add('hidden');
+    });
+}
 
 // UI Init
 if (playerNameInput) {
@@ -855,32 +899,31 @@ function gameLoop(now) {
         localPlayer.update(delta, inputState, bounds);
         
         // Door Collisions
-        if (window.DOORS && window.DOORS[window.currentRoom]) {
+        if (window.DOORS && window.DOORS[window.currentRoom] && !window.pendingDoor) {
             const doors = window.DOORS[window.currentRoom];
             for (let d of doors) {
-                const w = canvas.width;
-                const h = canvas.height;
-                const dx = d.rx * w;
-                const dy = d.ry * h;
-                const dw = d.rw;
-                const dh = d.rh;
+                const rect = getDoorRect(d);
                 
                 // Simple AABB collision for circle
-                if (localPlayer.x + localPlayer.radius > dx &&
-                    localPlayer.x - localPlayer.radius < dx + dw &&
-                    localPlayer.y + localPlayer.radius > dy &&
-                    localPlayer.y - localPlayer.radius < dy + dh) {
+                if (localPlayer.x + localPlayer.radius > rect.x &&
+                    localPlayer.x - localPlayer.radius < rect.x + rect.w &&
+                    localPlayer.y + localPlayer.radius > rect.y &&
+                    localPlayer.y - localPlayer.radius < rect.y + rect.h) {
                     
-                    // Transition to new room!
-                    window.currentRoom = d.id;
-                    localPlayer.x = w / 2;
-                    localPlayer.y = h / 2;
-                    localPlayer.vx = 0;
-                    localPlayer.vy = 0;
-                    if (socket && socket.connected) {
-                        socket.emit('changeRoom', d.id);
-                    }
-                    addChatMessage('SİSTEM', `🚪 ${d.id.toUpperCase()} odasına geçtiniz!`, true);
+                    window.pendingDoor = d;
+                    doorConfirmTitle.innerText = `${d.label.replace('🚪', '').trim()} odasına girmek istiyor musunuz?`;
+                    doorConfirmModal.classList.remove('hidden');
+                    
+                    // Bounce player back to prevent re-trigger loop
+                    localPlayer.vx *= -1;
+                    localPlayer.vy *= -1;
+                    localPlayer.x += (localPlayer.vx * 0.1);
+                    localPlayer.y += (localPlayer.vy * 0.1);
+                    
+                    // Release keys to prevent infinite running into door
+                    inputState.up = false; inputState.down = false;
+                    inputState.left = false; inputState.right = false;
+                    Object.keys(keysPressed).forEach(k => keysPressed[k] = false);
                     break;
                 }
             }
@@ -1000,26 +1043,36 @@ function drawPlaygroundBackground(ctx) {
     if (window.DOORS && window.DOORS[window.currentRoom]) {
         const doors = window.DOORS[window.currentRoom];
         for (let d of doors) {
-            const dx = d.rx * w;
-            const dy = d.ry * h;
+            const rect = getDoorRect(d);
+            
             // Door rect
             ctx.fillStyle = d.color;
             ctx.globalAlpha = 0.8;
-            ctx.fillRect(dx, dy, d.rw, d.rh);
+            ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
             ctx.globalAlpha = 1.0;
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 4;
-            ctx.strokeRect(dx, dy, d.rw, d.rh);
+            ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
             // Label
             ctx.fillStyle = '#ffffff';
             ctx.font = 'bold 20px Fredoka';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(d.label, dx + d.rw/2, dy + d.rh/2);
+            
+            // Vertical text for left/right doors
+            if (d.align === 'left' || d.align === 'right') {
+                ctx.save();
+                ctx.translate(rect.x + rect.w/2, rect.y + rect.h/2);
+                ctx.rotate(d.align === 'left' ? -Math.PI/2 : Math.PI/2);
+                ctx.fillText(d.label, 0, 0);
+                ctx.restore();
+            } else {
+                ctx.fillText(d.label, rect.x + rect.w/2, rect.y + rect.h/2);
+            }
             
             // Draw a glowing portal effect inside the door
             ctx.fillStyle = 'rgba(255, 255, 255, ' + (0.2 + Math.sin(Date.now() / 200) * 0.1) + ')';
-            ctx.fillRect(dx + 5, dy + 5, d.rw - 10, d.rh - 10);
+            ctx.fillRect(rect.x + 5, rect.y + 5, rect.w - 10, rect.h - 10);
         }
     }
 
