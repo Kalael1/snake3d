@@ -298,8 +298,32 @@ export const GLASSES = [
     {
         id: 'cigarette', name: 'Sigara 🚬',
         draw: (ctx, r) => {
-            const img = getOrLoadImage('cigarette', '/assets/cigarette.svg');
-            if (img.complete) ctx.drawImage(img, r*0.1, r*0.1, r*1.4, r*1.4);
+            ctx.save();
+            ctx.translate(r*0.0, r*0.25);
+            ctx.rotate(-10 * Math.PI / 180);
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, -r*0.06, r*0.7, r*0.12);
+            ctx.fillStyle = '#d28c50';
+            ctx.fillRect(-r*0.2, -r*0.06, r*0.2, r*0.12);
+            ctx.fillStyle = '#ff3300';
+            ctx.fillRect(r*0.7, -r*0.06, r*0.05, r*0.12);
+            ctx.fillStyle = '#555555';
+            ctx.fillRect(r*0.75, -r*0.06, r*0.08, r*0.12);
+            
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = Math.max(1, r*0.02);
+            ctx.strokeRect(-r*0.2, -r*0.06, r*1.03, r*0.12);
+            
+            ctx.beginPath();
+            ctx.moveTo(r*0.8, -r*0.06);
+            ctx.quadraticCurveTo(r*0.7, -r*0.3, r*0.9, -r*0.5);
+            ctx.quadraticCurveTo(r*0.7, -r*0.8, r*0.9, -r*1.0);
+            ctx.strokeStyle = 'rgba(200, 200, 200, 0.7)';
+            ctx.lineWidth = Math.max(1, r*0.05);
+            ctx.stroke();
+
+            ctx.restore();
         }
     },
     {
