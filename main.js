@@ -508,6 +508,7 @@ function checkBallCollision(b1, b2) {
 
 // ============== GAME LOOP ==============
 let lastTime = performance.now();
+let lastNetworkEmitTime = 0;
 
 function gameLoop(now) {
     requestAnimationFrame(gameLoop);

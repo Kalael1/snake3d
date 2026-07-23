@@ -26,11 +26,9 @@ app.use((req, res) => {
 });
 
 // ============== CONSTANTS ==============
-const ARENA_SIZE = 500;
-const TICK_RATE = 15;
+const TICK_RATE = 20;
 
 const players = {};
-const activeTrails = []; // { id, playerId, x, z, angle, age }
 
 function round1(n) { return Math.round(n * 10) / 10; }
 
@@ -88,7 +86,7 @@ io.on('connection', (socket) => {
         }
 
         const p = players[socket.id];
-        const setByName = (p && p.name) || (data && data.name) || 'Bir sürücü';
+        const setByName = (p && p.name) || (data && data.name) || 'Bir oyuncu';
         screenVideo = { videoId, setByName, setAt: now };
 
         io.emit('screenVideo', {
@@ -123,7 +121,7 @@ io.on('connection', (socket) => {
         if (!p || !data) return;
         if (typeof data.x === 'number') {
             p.x = round1(data.x);
-            p.y = round1(data.y || data.z || 0);
+            p.y = round1(data.y || 0);
             p.vx = round1(data.vx || 0);
             p.vy = round1(data.vy || 0);
             if (typeof data.score === 'number') p.score = data.score;
@@ -149,57 +147,18 @@ io.on('connection', (socket) => {
 
 // ============== GAME LOOP ==============
 const TICK_MS = 1000 / TICK_RATE;
-const limit = ARENA_SIZE / 2 - 5;
 
 setInterval(() => {
-    const dt = TICK_MS / 1000;
-
-    // Age server-side trails
-    for (let i = activeTrails.length - 1; i >= 0; i--) {
-        activeTrails[i].age += dt;
-        if (activeTrails[i].age > 4.0) {
-            activeTrails.splice(i, 1);
-        }
+    try {
+        // 1. BROADCAST SNAPSHOT
+        // Use normal emit instead of volatile to prevent packet drops and ensure delivery
+        io.emit('state', players);
+    } catch (err) {
+        console.error("Error in game loop broadcast:", err);
     }
-
-    // 1. WALL DEATH
-    for (const id in players) {
-        const p = players[id];
-        if (Math.abs(p.x) > limit || Math.abs(p.z) > limit) {
-            io.to(id).emit('gameOver', { reason: '💥 Duvara çarptın!' });
-            delete players[id];
-        }
-    }
-
-    // 2. TRON LIGHT TRAIL COLLISION
-    for (const id in players) {
-        const p = players[id];
-        if (!p) continue;
-
-        for (let i = 0; i < activeTrails.length; i++) {
-            const seg = activeTrails[i];
-            if (seg.playerId === id && seg.age < 0.8) continue; // Don't hit your own fresh trail
-
-            const dx = p.x - seg.x;
-            const dz = p.z - seg.z;
-            if (dx * dx + dz * dz < 5.0) { // Collision radius ~2.2 units
-                const owner = players[seg.playerId];
-                const killerName = owner ? owner.name : 'Tron Neon İzi';
-                
-                io.to(id).emit('gameOver', { reason: `⚡ ${killerName}'nin Tron Neon İzi'ne çarptın ve patladın!` });
-                if (owner) owner.driftScore += 300; // Bonus score for killing player with trail!
-
-                delete players[id];
-                break;
-            }
-        }
-    }
-
-    // 3. BROADCAST SNAPSHOT
-    io.volatile.emit('gameState', { players });
 }, TICK_MS);
 
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
-    console.log(`⚡ Tron.io Server Active on port ${PORT}`);
+    console.log(`🚀 Countryballs Server Active on port ${PORT}`);
 });
