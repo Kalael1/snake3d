@@ -32,10 +32,6 @@ export class CityMap {
 
     _onLoaded(gltf) {
         const root = gltf.scene;
-        
-        // Scale the entire city up by 2x!
-        root.scale.set(2, 2, 2);
-        
         root.updateWorldMatrix(true, true);
 
         // 1. Recenter the model so its XZ centre sits on the origin (ground stays ~y=0)
@@ -68,14 +64,14 @@ export class CityMap {
             const footprint = Math.min(bs.x, bs.z);
             // Skip anything floating above the road (signs, wires, the elevated monitor):
             // 2D collision can't tell height, so only ground-touching meshes are obstacles.
-            if (tmpBox.min.y > 8) return;
+            if (tmpBox.min.y > 4) return;
             // Buildings / buses / big props: tall enough and with real footprint
-            if (height > 12 && footprint > 7) {
+            if (height > 6 && footprint > 3.5) {
                 this.buildings.push({
-                    minX: tmpBox.min.x - 2.2,
-                    maxX: tmpBox.max.x + 2.2,
-                    minZ: tmpBox.min.z - 2.2,
-                    maxZ: tmpBox.max.z + 2.2
+                    minX: tmpBox.min.x - 1.1,
+                    maxX: tmpBox.max.x + 1.1,
+                    minZ: tmpBox.min.z - 1.1,
+                    maxZ: tmpBox.max.z + 1.1
                 });
             }
         });
@@ -98,7 +94,7 @@ export class CityMap {
 
     findSpawn() {
         if (!this.checkBuildingCollision(0, 0)) return { x: 0, z: 0 };
-        for (let r = 16; r <= 240; r += 16) {
+        for (let r = 8; r <= 120; r += 8) {
             for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
                 const x = Math.cos(a) * r, z = Math.sin(a) * r;
                 if (!this.checkBuildingCollision(x, z)) return { x, z };

@@ -26,7 +26,7 @@ app.use((req, res) => {
 });
 
 // ============== CONSTANTS ==============
-const ARENA_SIZE = 2000;
+const ARENA_SIZE = 500;
 const TICK_RATE = 15;
 
 const players = {};
