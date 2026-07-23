@@ -148,6 +148,7 @@ function renderSkinGallery() {
             localStorage.setItem('countryball_selected_skin', cb.id);
             localPlayer.setSkin(cb.id);
             if (playerSkinNameEl) playerSkinNameEl.innerText = cb.name;
+            if (typeof refreshMenuPreview === 'function') refreshMenuPreview();
         });
         skinCardsGrid.appendChild(card);
     });
@@ -166,6 +167,7 @@ if (hatSelector) {
         selectedHatId = e.target.value;
         localStorage.setItem('countryball_selected_hat', selectedHatId);
         localPlayer.setCosmetics(selectedHatId, selectedGlassesId);
+        if (typeof refreshMenuPreview === 'function') refreshMenuPreview();
     });
 }
 
@@ -180,6 +182,7 @@ if (glassesSelector) {
         selectedGlassesId = e.target.value;
         localStorage.setItem('countryball_selected_glasses', selectedGlassesId);
         localPlayer.setCosmetics(selectedHatId, selectedGlassesId);
+        if (typeof refreshMenuPreview === 'function') refreshMenuPreview();
     });
 }
 
@@ -206,6 +209,41 @@ if (editGlassesSelector) {
     });
 }
 
+// ============== PREVIEW RENDERING ==============
+window.updatePreviewCanvas = function(canvasId, skinId, hatId, glassesId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2 + 15);
+    const mockBall = new Countryball(0, 0, 40, skinId);
+    mockBall.setCosmetics(hatId, glassesId);
+    mockBall.draw(ctx);
+    ctx.restore();
+}
+
+window.refreshMenuPreview = function() {
+    updatePreviewCanvas('menu-preview-canvas', selectedSkinId, selectedHatId, selectedGlassesId);
+}
+
+window.refreshEditPreview = function() {
+    const sId = editSkinSelector ? editSkinSelector.value : selectedSkinId;
+    const hId = editHatSelector ? editHatSelector.value : selectedHatId;
+    const gId = editGlassesSelector ? editGlassesSelector.value : selectedGlassesId;
+    updatePreviewCanvas('edit-preview-canvas', sId, hId, gId);
+}
+
+if (editSkinSelector) editSkinSelector.addEventListener('change', refreshEditPreview);
+if (editHatSelector) editHatSelector.addEventListener('change', refreshEditPreview);
+if (editGlassesSelector) editGlassesSelector.addEventListener('change', refreshEditPreview);
+
+// Trigger initial previews
+setTimeout(() => {
+    refreshMenuPreview();
+}, 100);
+
 window.addEventListener('keydown', (e) => {
     if (e.code === 'Escape' && isGameRunning) {
         if (ingameEditModal.classList.contains('hidden')) {
@@ -215,6 +253,7 @@ window.addEventListener('keydown', (e) => {
             editHatSelector.value = selectedHatId;
             editGlassesSelector.value = selectedGlassesId;
             ingameEditModal.classList.remove('hidden');
+            if (typeof refreshEditPreview === 'function') refreshEditPreview();
         } else {
             // Close menu
             ingameEditModal.classList.add('hidden');
