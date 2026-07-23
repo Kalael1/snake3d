@@ -1027,20 +1027,7 @@ function drawPlaygroundBackground(ctx) {
         ctx.fillStyle = '#cbd5e1'; // Muted grey (slate-300)
         ctx.fillRect(0, 0, w, h);
         
-        // Soft pop-art halftone overlay (very faint, no spinning)
         ctx.save();
-        ctx.fillStyle = '#94a3b8'; // Darker grey dots (slate-400)
-        const dotSpacing = 24;
-        for (let y = 0; y < h; y += dotSpacing) {
-            for (let x = 0; x < w; x += dotSpacing) {
-                // Offset every other row for a hex pattern
-                const offsetX = (y / dotSpacing) % 2 === 0 ? 0 : dotSpacing / 2;
-                ctx.beginPath();
-                ctx.arc(x + offsetX, y, 3, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-        
         // Subtle comic edge shading
         const grad = ctx.createRadialGradient(w/2, h/2, Math.max(w, h) * 0.3, w/2, h/2, Math.max(w, h));
         grad.addColorStop(0, 'rgba(0,0,0,0)');
