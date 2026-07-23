@@ -188,19 +188,41 @@ export class Countryball {
         const ex = r * 0.30;
         const ey = -r * 0.10;
         const er = r * 0.23;
+        const lookRadius = er * 0.55; // Max distance pupil can travel from eye center
         
-        let lx = 0, ly = 0;
+        let lxL = 0, lyL = 0; // Left eye look offset
+        let lxR = 0, lyR = 0; // Right eye look offset
+        
         if (targetPos) {
-            const dx = targetPos.x - this.x;
-            const dy = targetPos.y - this.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist > 0) {
-                lx = (dx / dist) * 3.5;
-                ly = (dy / dist) * 3.5;
+            // 🔹 Left Eye Math
+            const dxL = targetPos.x - (this.x - ex);
+            const dyL = targetPos.y - (this.y + ey);
+            const distL = Math.hypot(dxL, dyL);
+            const intensityL = Math.min(distL / (r * 1.5), 1.0); // Max pupil stretch when mouse is 1.5 radii away
+            
+            if (distL > 0) {
+                lxL = (dxL / distL) * lookRadius * intensityL;
+                lyL = (dyL / distL) * lookRadius * intensityL;
+            }
+
+            // 🔹 Right Eye Math
+            const dxR = targetPos.x - (this.x + ex);
+            const dyR = targetPos.y - (this.y + ey);
+            const distR = Math.hypot(dxR, dyR);
+            const intensityR = Math.min(distR / (r * 1.5), 1.0);
+            
+            if (distR > 0) {
+                lxR = (dxR / distR) * lookRadius * intensityR;
+                lyR = (dyR / distR) * lookRadius * intensityR;
             }
         } else {
-            lx = Math.max(-3, Math.min(3, this.vx * 0.35));
-            ly = Math.max(-3, Math.min(3, this.vy * 0.35));
+            // Default look based on velocity
+            const speed = Math.hypot(this.vx, this.vy);
+            const intensity = Math.min(speed / 5, 1.0);
+            if (speed > 0) {
+                lxL = lxR = (this.vx / speed) * lookRadius * intensity;
+                lyL = lyR = (this.vy / speed) * lookRadius * intensity;
+            }
         }
 
         ctx.strokeStyle = '#111';
@@ -208,28 +230,32 @@ export class Countryball {
 
         // Left eye
         ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.ellipse(-ex + lx, ey + ly, er, er * 1.15, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(-ex + lxL*0.3, ey + lyL*0.3, er, er * 1.15, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
         // pupil
         ctx.fillStyle = '#111';
-        ctx.beginPath(); ctx.arc(-ex + lx * 1.3, ey + ly * 1.3, er * 0.45, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(-ex + lxL, ey + lyL, er * 0.45, 0, Math.PI * 2); ctx.fill();
 
         // Right eye
         ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.ellipse(ex + lx, ey + ly, er, er * 1.15, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(ex + lxR*0.3, ey + lyR*0.3, er, er * 1.15, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        // pupil
         ctx.fillStyle = '#111';
-        ctx.beginPath(); ctx.arc(ex + lx * 1.3, ey + ly * 1.3, er * 0.45, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(ex + lxR, ey + lyR, er * 0.45, 0, Math.PI * 2); ctx.fill();
 
         // Angry brow
         if (this.expression === 'angry') {
             ctx.strokeStyle = '#111';
             ctx.lineWidth = 3;
+            // Brows shift slightly with the eyes too
+            const bx = (lxL + lxR) * 0.5 * 0.5;
+            const by = (lyL + lyR) * 0.5 * 0.5;
             ctx.beginPath();
-            ctx.moveTo(-ex - er * 1.1 + lx, ey - er * 1.15 + ly);
-            ctx.lineTo(-ex + er * 1.1 + lx, ey - er * 0.3 + ly);
+            ctx.moveTo(-ex - er * 1.1 + bx, ey - er * 1.15 + by);
+            ctx.lineTo(-ex + er * 1.1 + bx, ey - er * 0.3 + by);
             ctx.stroke();
             ctx.beginPath();
-            ctx.moveTo(ex + er * 1.1 + lx, ey - er * 1.15 + ly);
-            ctx.lineTo(ex - er * 1.1 + lx, ey - er * 0.3 + ly);
+            ctx.moveTo(ex + er * 1.1 + bx, ey - er * 1.15 + by);
+            ctx.lineTo(ex - er * 1.1 + bx, ey - er * 0.3 + by);
             ctx.stroke();
         }
     }
