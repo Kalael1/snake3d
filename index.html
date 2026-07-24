@@ -17,6 +17,26 @@
     <link rel="stylesheet" href="./style.css">
   </head>
   <body>
+    <!-- VISION PRO PROFILE SETUP MODAL -->
+    <div id="vision-login-modal" class="vision-modal-overlay">
+        <div class="vision-login-card">
+            <h2>Hoş Geldiniz</h2>
+            <p>Uzamsal sohbete katılmak için profilinizi oluşturun.</p>
+            
+            <div class="avatar-setup">
+                <div class="avatar-preview-container">
+                    <img id="login-avatar-preview" src="https://api.dicebear.com/9.x/avataaars/svg?seed=Oyuncu" alt="Avatar Preview">
+                </div>
+                <button id="randomize-avatar-btn" class="vision-icon-btn" title="Rastgele Üret"><i class="fa-solid fa-dice"></i></button>
+            </div>
+            
+            <div class="login-input-group">
+                <input type="text" id="login-name-input" placeholder="İsminiz..." autocomplete="off">
+            </div>
+            
+            <button id="join-space-btn" class="vision-primary-btn">Sohbete Katıl</button>
+        </div>
+    </div>
     <!-- NEW GLASSMORPHISM CHAT UI (VISION PRO STYLE) -->
     <div class="chat-app-wrapper">
        <!-- FLOATING ACTION BAR -->

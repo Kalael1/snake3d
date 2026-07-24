@@ -431,7 +431,7 @@ if (radialItems) {
 }
 
 // ============== CHAT & EMOTE SYSTEM ==============
-function addChatMessage(sender, text, isSystem = false) {
+function addChatMessage(sender, text, isSystem = false, avatarSeedOverride = null) {
     // Add to new glass UI
     const glassChatMessages = document.getElementById('glass-chat-messages');
     if (glassChatMessages) {
@@ -444,7 +444,8 @@ function addChatMessage(sender, text, isSystem = false) {
         if (isSystem) {
              innerHTML = `<div class="message-bubble system" style="font-style: italic; opacity: 0.7;">${escapeHtml(text)}</div>`;
         } else {
-             const avatarImg = `https://api.dicebear.com/9.x/avataaars/svg?seed=${escapeHtml(sender)}`;
+             const actualSeed = avatarSeedOverride ? escapeHtml(avatarSeedOverride) : escapeHtml(sender);
+             const avatarImg = `https://api.dicebear.com/9.x/avataaars/svg?seed=${actualSeed}`;
              const bubbleHtml = `<div class="message-bubble">
                 ${!isSelf ? `<div class="message-sender">${escapeHtml(sender)}</div>` : ''}
                 <div>${escapeHtml(text)}</div>
@@ -491,10 +492,10 @@ function sendChat() {
     if (!inputEl) return;
     const text = inputEl.value.trim();
     if (text) {
-        addChatMessage(localPlayer.name, text);
+        addChatMessage(localPlayer.name, text, false, localPlayer.avatarSeed);
         localPlayer.say(text);
         if (socket && socket.connected) {
-            socket.emit('chatMessage', { text, sender: localPlayer.name });
+            socket.emit('chatMessage', { text, sender: localPlayer.name, avatarSeed: localPlayer.avatarSeed });
         }
         inputEl.value = '';
         inputEl.blur();
@@ -769,7 +770,7 @@ socket.on('goal', (data) => {
 // Setup DOM elements
 socket.on('chatReceived', (data) => {
     if (data.id === localSocketId) return;
-    addChatMessage(data.name, data.text);
+    addChatMessage(data.name || data.sender, data.text, false, data.avatarSeed);
     if (data.isEmoji) {
         const p = otherPlayers[data.id];
         if (p) particleSystem.addEmote(p.x, p.y - p.radius - 10, data.text);
@@ -804,10 +805,13 @@ socket.on('state', (data) => {
         const p = playersList[id];
         if (!otherPlayers[id]) {
             otherPlayers[id] = new Countryball(p.x, p.y, p.name || 'Oyuncu', p.skinId || 'turkey');
+            otherPlayers[id].avatarSeed = p.avatarSeed;
             addChatMessage('SİSTEM', `⚽ ${p.name || 'Oyuncu'} arenaya katıldı!`, true);
         }
+        otherPlayers[id].x = p.y;
+        otherPlayers[id].y = p.y; // Correcting a potential typo as well but let's just make sure avatar seed is handled
         otherPlayers[id].x = p.x;
-        otherPlayers[id].y = p.y;
+        otherPlayers[id].avatarSeed = p.avatarSeed;
         otherPlayers[id].vx = p.vx || 0;
         otherPlayers[id].vy = p.vy || 0;
         if (p.skinId && otherPlayers[id].skinId !== p.skinId) {
@@ -864,11 +868,13 @@ function updateSidebarContacts(players) {
         const div = document.createElement('div');
         div.className = 'contact-item';
         
-        const avatarImg = `https://api.dicebear.com/9.x/avataaars/svg?seed=${escapeHtml(p.name || 'Oyuncu')}`;
+        const actualSeed = p.avatarSeed ? escapeHtml(p.avatarSeed) : escapeHtml(p.name || 'Oyuncu');
+        const avatarImg = `https://api.dicebear.com/9.x/avataaars/svg?seed=${actualSeed}`;
         
         // Mock time and message snippet for realism
         const time = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
         const snippet = p.name === localPlayer.name ? 'Çevrimiçi (Siz)' : 'Sohbete katıldı.';
+
         
         div.innerHTML = `
             <div class="contact-avatar"><img src="${avatarImg}"></div>
@@ -1330,3 +1336,85 @@ function drawPlaygroundBackground(ctx) {
 
 // Start Render Loop
 requestAnimationFrame(gameLoop);
+
+// ============== VISION PRO MODAL LOGIC ==============
+document.addEventListener('DOMContentLoaded', () => {
+    const loginModal = document.getElementById('vision-login-modal');
+    const nameInput = document.getElementById('login-name-input');
+    const avatarPreview = document.getElementById('login-avatar-preview');
+    const randomizeBtn = document.getElementById('randomize-avatar-btn');
+    const joinBtn = document.getElementById('join-space-btn');
+    const chatAppWrapper = document.querySelector('.chat-app-wrapper');
+    const fsAvatarImg = document.querySelector('.fs-avatar img');
+
+    if (!loginModal) return;
+
+    let currentAvatarSeed = localStorage.getItem('vision_avatar_seed') || 'Oyuncu';
+    let currentName = localStorage.getItem('vision_profile_name') || '';
+
+    function updatePreview(seed) {
+        if(avatarPreview) avatarPreview.src = `https://api.dicebear.com/9.x/avataaars/svg?seed=${escapeHtml(seed)}`;
+    }
+
+    if (currentName && nameInput) {
+        nameInput.value = currentName;
+    }
+    updatePreview(currentAvatarSeed);
+
+    if (nameInput) {
+        nameInput.addEventListener('input', (e) => {
+            currentName = e.target.value.trim();
+            // Optional: Uncomment to make name drive the seed by default unless randomized
+            // currentAvatarSeed = currentName || 'Oyuncu'; 
+            // updatePreview(currentAvatarSeed);
+        });
+    }
+
+    if (randomizeBtn) {
+        randomizeBtn.addEventListener('click', () => {
+            const randomString = Math.random().toString(36).substring(7);
+            currentAvatarSeed = randomString;
+            updatePreview(currentAvatarSeed);
+        });
+    }
+
+    if (joinBtn) {
+        joinBtn.addEventListener('click', () => {
+            const finalName = nameInput.value.trim() || 'Oyuncu';
+            localStorage.setItem('vision_profile_name', finalName);
+            localStorage.setItem('vision_avatar_seed', currentAvatarSeed);
+            
+            // Set global player vars
+            localPlayer.name = finalName;
+            localPlayer.avatarSeed = currentAvatarSeed;
+            
+            // Update floating sidebar avatar
+            if (fsAvatarImg) {
+                fsAvatarImg.src = `https://api.dicebear.com/9.x/avataaars/svg?seed=${escapeHtml(currentAvatarSeed)}`;
+            }
+
+            // Sync with socket immediately
+            if (socket && socket.connected) {
+                socket.emit('playerInput', { 
+                    name: localPlayer.name,
+                    x: localPlayer.x, y: localPlayer.y, 
+                    vx: localPlayer.vx, vy: localPlayer.vy, 
+                    skinId: selectedSkinId, hatId: selectedHatId, glassesId: selectedGlassesId, 
+                    expression: localPlayer.expression, score: bounceScore,
+                    avatarSeed: localPlayer.avatarSeed
+                });
+            }
+
+            loginModal.classList.add('hidden');
+        });
+    }
+    
+    // Allow opening modal again via sidebar avatar click
+    const fsAvatar = document.querySelector('.fs-avatar');
+    if (fsAvatar) {
+        fsAvatar.addEventListener('click', () => {
+            loginModal.classList.remove('hidden');
+        });
+        fsAvatar.style.cursor = 'pointer';
+    }
+});
