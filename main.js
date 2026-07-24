@@ -1,4 +1,4 @@
-const io = (typeof window !== 'undefined' && window.io) ? window.io : function() { return { on: () => {}, emit: () => {} }; };
+﻿const io = (typeof window !== 'undefined' && window.io) ? window.io : function() { return { on: () => {}, emit: () => {} }; };
 import { COUNTRYBALLS, getCountryballSkin, HATS, GLASSES } from './src/CountryballRegistry.js';
 import { Countryball } from './src/Countryball.js';
 import { ParticleSystem } from './src/Particles.js';
@@ -36,26 +36,26 @@ window.pendingDoor = null;
 
 window.DOORS = {
     lobby: [
-        { id: 'beach', align: 'left', label: '🏖️ Sahil', color: '#fde047' },
-        { id: 'coffeeshop', align: 'right', label: '☕ Kafe', color: '#78350f' },
-        { id: 'spyfall', align: 'top', label: '🕵️ Casus Kim?', color: '#ef4444' },
-        { id: 'disco', align: 'bottom-left', label: '🕺 Disko', color: '#ec4899' },
-        { id: 'football', align: 'bottom-right', label: '⚽ Futbol', color: '#4ade80' }
+        { id: 'beach', align: 'left', label: 'ðŸ–ï¸ Sahil', color: '#fde047' },
+        { id: 'coffeeshop', align: 'right', label: 'â˜• Kafe', color: '#78350f' },
+        { id: 'spyfall', align: 'top', label: 'ðŸ•µï¸ Casus Kim?', color: '#ef4444' },
+        { id: 'disco', align: 'bottom-left', label: 'ðŸ•º Disko', color: '#ec4899' },
+        { id: 'football', align: 'bottom-right', label: 'âš½ Futbol', color: '#4ade80' }
     ],
     beach: [
-        { id: 'lobby', align: 'right', label: '🚪 Lobiye Dön', color: '#3b82f6' }
+        { id: 'lobby', align: 'right', label: 'ðŸšª Lobiye DÃ¶n', color: '#3b82f6' }
     ],
     coffeeshop: [
-        { id: 'lobby', align: 'left', label: '🚪 Lobiye Dön', color: '#3b82f6' }
+        { id: 'lobby', align: 'left', label: 'ðŸšª Lobiye DÃ¶n', color: '#3b82f6' }
     ],
     disco: [
-        { id: 'lobby', align: 'top', label: '🚪 Lobiye Dön', color: '#3b82f6' }
+        { id: 'lobby', align: 'top', label: 'ðŸšª Lobiye DÃ¶n', color: '#3b82f6' }
     ],
     spyfall: [
-        { id: 'lobby', align: 'bottom', label: '🚪 Lobiye Dön', color: '#3b82f6' }
+        { id: 'lobby', align: 'bottom', label: 'ðŸšª Lobiye DÃ¶n', color: '#3b82f6' }
     ],
     football: [
-        { id: 'lobby', align: 'bottom', label: '🚪 Lobiye Dön', color: '#3b82f6' }
+        { id: 'lobby', align: 'bottom', label: 'ðŸšª Lobiye DÃ¶n', color: '#3b82f6' }
     ]
 };
 
@@ -202,7 +202,7 @@ if (doorConfirmYes) {
             if (socket && socket.connected) {
                 socket.emit('changeRoom', window.pendingDoor.id);
             }
-            addChatMessage('SİSTEM', `🚪 ${window.pendingDoor.label} kapısından geçtiniz!`, true);
+            addChatMessage('SÄ°STEM', `ðŸšª ${window.pendingDoor.label} kapÄ±sÄ±ndan geÃ§tiniz!`, true);
         }
         window.pendingDoor = null;
         doorConfirmModal.classList.add('hidden');
@@ -583,12 +583,12 @@ function parseYouTubeId(input) {
     return null;
 }
 
-function playYouTubeVideo(videoId, title = 'YouTube Müzik') {
+function playYouTubeVideo(videoId, title = 'YouTube MÃ¼zik') {
     if (!jumboIframe || !jumbotron) return;
     const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&controls=1`;
     jumboIframe.src = embedUrl;
     jumbotron.classList.remove('hidden');
-    addChatMessage('SİSTEM', `📺 Arena ekranında müzik çalıyor: ${title}`, true);
+    addChatMessage('SÄ°STEM', `ðŸ“º Arena ekranÄ±nda mÃ¼zik Ã§alÄ±yor: ${title}`, true);
 }
 
 if (screenSetBtn) {
@@ -603,7 +603,7 @@ if (screenSetBtn) {
             screenPopover.classList.add('hidden');
             screenUrlInput.value = '';
         } else {
-            screenStatus.innerText = '❌ Geçersiz YouTube adresi!';
+            screenStatus.innerText = 'âŒ GeÃ§ersiz YouTube adresi!';
             setTimeout(() => screenStatus.innerText = '', 3000);
         }
     });
@@ -612,7 +612,7 @@ if (screenSetBtn) {
 if (jumboMuteBtn) {
     jumboMuteBtn.addEventListener('click', () => {
         isJumboMuted = !isJumboMuted;
-        jumboMuteBtn.innerText = isJumboMuted ? '🔇' : '🔊';
+        jumboMuteBtn.innerText = isJumboMuted ? 'ðŸ”‡' : 'ðŸ”Š';
         if (jumboIframe.contentWindow) {
             const func = isJumboMuted ? 'mute' : 'unMute';
             jumboIframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func }), '*');
@@ -624,7 +624,7 @@ if (jumboMinBtn) {
     jumboMinBtn.addEventListener('click', () => {
         isJumboMinimized = !isJumboMinimized;
         jumbotron.classList.toggle('minimized', isJumboMinimized);
-        jumboMinBtn.innerText = isJumboMinimized ? '🗖' : '—';
+        jumboMinBtn.innerText = isJumboMinimized ? 'ðŸ—–' : 'â€”';
     });
 }
 
@@ -733,7 +733,7 @@ socket.on('spyfallState', (state) => {
         spyfallTurnName.innerText = turnP ? turnP.name : '---';
         
         const currentSelected = spyfallPlayerSelect.value;
-        spyfallPlayerSelect.innerHTML = '<option value="">Hedef Seçin...</option>';
+        spyfallPlayerSelect.innerHTML = '<option value="">Hedef SeÃ§in...</option>';
         state.alivePlayers.forEach(id => {
             if (id === localSocketId) return;
             const p = otherPlayers[id];
@@ -763,8 +763,8 @@ socket.on('goal', (data) => {
         document.getElementById('red-team-score').innerText = data.score.redScore;
         document.getElementById('blue-team-score').innerText = data.score.blueScore;
     }
-    const teamName = data.team === 'red' ? 'Kırmızı' : 'Mavi';
-    addChatMessage('SİSTEM', `⚽ GOOOOOL! ${teamName} takım gol attı! ⚽`, false);
+    const teamName = data.team === 'red' ? 'KÄ±rmÄ±zÄ±' : 'Mavi';
+    addChatMessage('SÄ°STEM', `âš½ GOOOOOL! ${teamName} takÄ±m gol attÄ±! âš½`, false);
 });
 
 // Setup DOM elements
@@ -806,7 +806,7 @@ socket.on('state', (data) => {
         if (!otherPlayers[id]) {
             otherPlayers[id] = new Countryball(p.x, p.y, p.name || 'Oyuncu', p.skinId || 'turkey');
             otherPlayers[id].avatarSeed = p.avatarSeed;
-            addChatMessage('SİSTEM', `⚽ ${p.name || 'Oyuncu'} arenaya katıldı!`, true);
+            addChatMessage('SÄ°STEM', `âš½ ${p.name || 'Oyuncu'} arenaya katÄ±ldÄ±!`, true);
         }
         otherPlayers[id].x = p.y;
         otherPlayers[id].y = p.y; // Correcting a potential typo as well but let's just make sure avatar seed is handled
@@ -828,7 +828,7 @@ socket.on('state', (data) => {
 
     for (const id in otherPlayers) {
         if (!players[id]) {
-            addChatMessage('SİSTEM', `⚽ ${otherPlayers[id].name} ayrıldı.`, true);
+            addChatMessage('SÄ°STEM', `âš½ ${otherPlayers[id].name} ayrÄ±ldÄ±.`, true);
             delete otherPlayers[id];
         }
     }
@@ -865,7 +865,7 @@ function renderSidebarRooms(roomState) {
     container.dataset.lastState = stateStr;
 
     let html = '';
-    const displayRooms = ['Global', 'TR Sohbet', 'Oyun', 'Müzik', 'spyfall', 'football'];
+    const displayRooms = ['Global', 'TR Sohbet', 'Oyun', 'MÃ¼zik', 'spyfall', 'football'];
     
     displayRooms.forEach(room => {
         const occupants = roomState[room] || [];
@@ -946,7 +946,7 @@ function startGame() {
 
     isGameRunning = true;
     if (overlay) overlay.classList.add('hidden');
-    addChatMessage('SİSTEM', '⚽ Arenaya girdiniz! WASD / Yön tuşları veya fare ile hareket edin, SPACE ile zıplayıp atılın!', true);
+    addChatMessage('SÄ°STEM', 'âš½ Arenaya girdiniz! WASD / YÃ¶n tuÅŸlarÄ± veya fare ile hareket edin, SPACE ile zÄ±playÄ±p atÄ±lÄ±n!', true);
 }
 
 if (startBtn) startBtn.addEventListener('click', startGame);
@@ -1086,7 +1086,7 @@ function gameLoop(now) {
         }
     }
 
-    // Always update & draw bots (even on start screen — they bounce around as decoration)
+    // Always update & draw bots (even on start screen â€” they bounce around as decoration)
     botPlayers.forEach(bot => {
         bot.update(delta, noInput, bounds);
     });
@@ -1113,7 +1113,7 @@ function gameLoop(now) {
                     localPlayer.y - localPlayer.radius < rect.y + rect.h) {
                     
                     window.pendingDoor = d;
-                    doorConfirmTitle.innerText = `${d.label.replace('🚪', '').trim()} odasına girmek istiyor musunuz?`;
+                    doorConfirmTitle.innerText = `${d.label.replace('ðŸšª', '').trim()} odasÄ±na girmek istiyor musunuz?`;
                     doorConfirmModal.classList.remove('hidden');
                     
                     // Bounce player back to prevent re-trigger loop
@@ -1518,6 +1518,6 @@ document.addEventListener('DOMContentLoaded', () => {
         'Global': [],
         'TR Sohbet': [],
         'Oyun': [],
-        'M�zik': []
+        'Müzik': []
     });
 });
