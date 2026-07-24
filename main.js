@@ -1512,3 +1512,12 @@ function joinRoom(newRoom) {
     const container = document.getElementById('sidebar-contacts');
     if (container) container.dataset.lastState = ''; // force update
 }
+// Initialize empty sidebar immediately so UI shows up
+document.addEventListener('DOMContentLoaded', () => {
+    renderSidebarRooms({
+        'Global': [],
+        'TR Sohbet': [],
+        'Oyun': [],
+        'Müzik': []
+    });
+});
