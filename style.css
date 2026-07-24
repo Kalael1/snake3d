@@ -1917,3 +1917,8 @@ body {
         height: 70vh;
     }
 }
+
+/* Force modern font everywhere */
+* {
+    font-family: 'Inter', sans-serif !important;
+}
