@@ -835,7 +835,6 @@ socket.on('state', (data) => {
 });
 
 function updateLeaderboard(players) {
-    updateSidebarContacts(players); // Hook for new UI
 
     if (!lbList) return;
     lbList.innerHTML = '';
@@ -851,39 +850,81 @@ function updateLeaderboard(players) {
     });
 }
 
-function updateSidebarContacts(players) {
-    const sidebarContacts = document.getElementById('sidebar-contacts');
-    if (!sidebarContacts) return;
-    sidebarContacts.innerHTML = '';
-    
-    const list = Object.values(players || {});
-    
-    // Add local player to the top if we want, or just others. Let's just show others to simulate online contacts.
-    let othersCount = 0;
-    
-    list.forEach(p => {
-        if(p.name === localPlayer.name && list.length > 1) return; // Skip self if there are others
-        
-        othersCount++;
-        const div = document.createElement('div');
-        div.className = 'contact-item';
-        
-        const actualSeed = p.avatarSeed ? escapeHtml(p.avatarSeed) : escapeHtml(p.name || 'Oyuncu');
-        const avatarImg = `https://api.dicebear.com/9.x/avataaars/svg?seed=${actualSeed}`;
-        
-        // Mock time and message snippet for realism
-        const time = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-        const snippet = p.name === localPlayer.name ? 'Çevrimiçi (Siz)' : 'Sohbete katıldı.';
+let expandedRooms = { 'Global': true };
 
+socket.on('globalRooms', (roomState) => {
+    renderSidebarRooms(roomState);
+});
+
+function renderSidebarRooms(roomState) {
+    const container = document.getElementById('sidebar-contacts');
+    if (!container) return;
+    
+    const stateStr = JSON.stringify(roomState);
+    if (container.dataset.lastState === stateStr) return;
+    container.dataset.lastState = stateStr;
+
+    let html = '';
+    const displayRooms = ['Global', 'TR Sohbet', 'Oyun', 'Müzik', 'spyfall', 'football'];
+    
+    displayRooms.forEach(room => {
+        const occupants = roomState[room] || [];
+        const isExpanded = expandedRooms[room];
+        const arrowClass = isExpanded ? 'fa-chevron-down' : 'fa-chevron-right';
         
-        div.innerHTML = `
-            <div class="contact-avatar"><img src="${avatarImg}"></div>
-            <div class="contact-info">
-                <div class="contact-name">
-                    <span>${escapeHtml(p.name || 'Oyuncu')}</span>
-                    <span class="contact-time">${time}</span>
-                </div>
-                <div class="contact-msg">${snippet}</div>
+        let headerClass = "room-accordion-header";
+        
+        html += `<div class="room-accordion">
+            <div class="${headerClass}" data-room="${room}">
+                <span class="room-name" data-room="${room}">${room} <span class="room-count">(${occupants.length})</span></span>
+                <i class="fa-solid ${arrowClass} room-toggle" data-room="${room}"></i>
+            </div>`;
+            
+        if (isExpanded) {
+            html += `<div class="room-accordion-content">`;
+            if (occupants.length === 0) {
+                html += `<div class="contact-item empty" style="opacity: 0.5; text-align: center; font-size: 12px; margin-top: 10px;">Odada kimse yok</div>`;
+            } else {
+                occupants.forEach(p => {
+                    const actualSeed = p.avatarSeed ? escapeHtml(p.avatarSeed) : escapeHtml(p.name || 'Oyuncu');
+                    const avatarImg = `https://api.dicebear.com/9.x/avataaars/svg?seed=${actualSeed}`;
+                    html += `
+                        <div class="contact-item">
+                            <div class="contact-avatar"><img src="${avatarImg}"></div>
+                            <div class="contact-info">
+                                <div class="contact-name">
+                                    <span>${escapeHtml(p.name || 'Oyuncu')}</span>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+            }
+            html += `</div>`;
+        }
+        html += `</div>`;
+    });
+    
+    container.innerHTML = html;
+    
+    container.querySelectorAll('.room-name').forEach(nameEl => {
+        nameEl.addEventListener('click', (e) => {
+            const room = nameEl.getAttribute('data-room');
+            if (window.currentGlobalRoom !== room) {
+                joinRoom(room);
+            }
+        });
+    });
+
+    container.querySelectorAll('.room-toggle').forEach(arrowEl => {
+        arrowEl.addEventListener('click', (e) => {
+            const room = arrowEl.getAttribute('data-room');
+            expandedRooms[room] = !expandedRooms[room];
+            container.dataset.lastState = ''; // force re-render
+        });
+    });
+}
+
+function updateSidebarContacts() {} // Empty function to prevent errors from leftover callsppet}</div>
             </div>
         `;
         sidebarContacts.appendChild(div);
@@ -1449,3 +1490,34 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+window.currentGlobalRoom = 'Global';
+
+function joinRoom(newRoom) {
+    if (window.currentGlobalRoom === newRoom) return;
+    window.currentGlobalRoom = newRoom;
+    
+    const glassChatMessages = document.getElementById('glass-chat-messages');
+    if (glassChatMessages) {
+        glassChatMessages.innerHTML = '';
+    }
+    
+    addChatMessage('SISTEM', "=== " + newRoom + " odasina katildiniz ===", true);
+    
+    const headerTitle = document.getElementById('current-chat-name');
+    if (headerTitle) {
+        headerTitle.innerText = newRoom;
+    }
+    
+    if (socket && socket.connected) {
+        socket.emit('changeRoom', newRoom);
+    }
+    
+    Object.keys(otherPlayers).forEach(id => {
+        delete otherPlayers[id];
+    });
+    
+    expandedRooms[newRoom] = true;
+    
+    const container = document.getElementById('sidebar-contacts');
+    if (container) container.dataset.lastState = ''; // force update
+}

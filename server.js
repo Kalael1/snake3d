@@ -239,6 +239,8 @@ const TICK_MS = 1000 / TICK_RATE;
 setInterval(() => {
     try {
         const rooms = ['Global', 'TR Sohbet', 'Oyun', 'Müzik', 'spyfall', 'football'];
+        const globalRoomState = {};
+
         rooms.forEach(room => {
             const roomPlayers = {};
             for (let id in players) {
@@ -246,6 +248,12 @@ setInterval(() => {
                     roomPlayers[id] = players[id];
                 }
             }
+            
+            globalRoomState[room] = Object.values(roomPlayers).map(p => ({
+                id: p.id,
+                name: p.name,
+                avatarSeed: p.avatarSeed
+            }));
             
             if (room === 'football') {
                 const fPlayers = Object.values(roomPlayers);
@@ -303,6 +311,8 @@ setInterval(() => {
                 io.to(room).emit('state', roomPlayers);
             }
         });
+        
+        io.emit('globalRooms', globalRoomState);
     } catch (err) {
         console.error("Error in game loop broadcast:", err);
     }
