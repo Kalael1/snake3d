@@ -1520,7 +1520,8 @@ canvas {
 .play-btn:active { transform: translateY(2px) rotate(1deg); box-shadow: 2px 2px 0px #000 !important; }
 .hud-label { font-family: 'Bangers', cursive; font-size: 16px; letter-spacing: 1px; }
 .gallery-title, h1, h2, #spyfall-header { font-family: 'Bangers', cursive; letter-spacing: 2px; }
-padding: 10px;
+#screen-set-btn {
+  padding: 10px;
   border: none;
   border-radius: 9px;
   background: linear-gradient(90deg, #00f3ff, #0088ff);

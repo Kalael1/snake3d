@@ -924,16 +924,7 @@ function renderSidebarRooms(roomState) {
     });
 }
 
-function updateSidebarContacts() {} // Empty function to prevent errors from leftover callsppet}</div>
-            </div>
-        `;
-        sidebarContacts.appendChild(div);
-    });
-    
-    if (othersCount === 0) {
-        sidebarContacts.innerHTML = `<div style="text-align:center; padding: 20px; color: rgba(255,255,255,0.5);">Odada yalnızsınız</div>`;
-    }
-}
+function updateSidebarContacts() {}
 
 // ============== GAME START / RESET ==============
 function startGame() {

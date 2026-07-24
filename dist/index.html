@@ -8,14 +8,111 @@
     <meta name="orientation" content="landscape">
     <title>Countryballs.io — 2D Bouncy Playground & Chat</title>
     <meta name="description" content="Countryballs.io — 2D eğlenceli ülke topları oyunu. Topunu seç, sek, sohbet et ve müzik dinle!">
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Outfit:wght@500;700;800;900&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
-    <script type="module" crossorigin src="/assets/index-DB_FtO53.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-BF2V5k5P.css">
+    <script type="module" crossorigin src="/assets/index-CRiwvlNP.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BeQt_cFM.css">
   </head>
   <body>
+    <!-- VISION PRO PROFILE SETUP MODAL -->
+    <div id="vision-login-modal" class="vision-modal-overlay">
+        <div class="vision-login-card">
+            <h2>Hoş Geldiniz</h2>
+            <p>Uzamsal sohbete katılmak için profilinizi oluşturun.</p>
+            
+            <div class="avatar-setup">
+                <div class="avatar-preview-container">
+                    <img id="login-avatar-preview" src="https://api.dicebear.com/9.x/avataaars/svg?seed=Oyuncu" alt="Avatar Preview">
+                </div>
+                <button id="randomize-avatar-btn" class="vision-icon-btn" title="Rastgele Üret"><i class="fa-solid fa-dice"></i></button>
+            </div>
+            
+            <div class="login-input-group">
+                <input type="text" id="login-name-input" placeholder="İsminiz..." autocomplete="off">
+            </div>
+            
+            <button id="join-space-btn" class="vision-primary-btn">Sohbete Katıl</button>
+        </div>
+    </div>
+    <!-- NEW GLASSMORPHISM CHAT UI (VISION PRO STYLE) -->
+    <div class="chat-app-wrapper">
+       <!-- FLOATING ACTION BAR -->
+       <div class="floating-sidebar">
+           <div class="fs-avatar">
+               <img src="https://api.dicebear.com/9.x/avataaars/svg?seed=Felix" alt="My Avatar">
+           </div>
+           <button class="fs-btn active"><i class="fa-solid fa-comment"></i></button>
+           <button class="fs-btn"><i class="fa-solid fa-user-group"></i></button>
+           <button class="fs-btn"><i class="fa-solid fa-cube"></i></button>
+           <button class="fs-btn"><i class="fa-regular fa-folder"></i></button>
+           <div class="fs-spacer"></div>
+           <button class="fs-btn"><i class="fa-solid fa-gear"></i></button>
+       </div>
+
+       <div class="glass-container vision-glass">
+           <!-- LEFT SIDEBAR -->
+           <div class="sidebar vision-sidebar">
+               <div class="sidebar-header vision-search-header">
+                   <div class="search-bar">
+                       <i class="fa-solid fa-microphone"></i>
+                       <input type="text" placeholder="Search (Arama)">
+                   </div>
+                   <button class="vision-plus-btn"><i class="fa-solid fa-plus"></i></button>
+               </div>
+               <div class="contact-list" id="sidebar-contacts">
+                   <!-- Dynamic Contacts will go here -->
+               </div>
+           </div>
+
+           <!-- RIGHT MAIN CHAT -->
+           <div class="main-chat vision-main">
+                <div class="chat-header vision-header">
+                    <div class="header-left">
+                        <div class="header-title" id="current-chat-name">Global Room</div>
+                    </div>
+                   <div class="header-right">
+                       <button class="vision-icon-btn"><i class="fa-solid fa-ellipsis"></i></button>
+                   </div>
+               </div>
+
+               <div class="chat-messages vision-messages" id="glass-chat-messages">
+                   <!-- Chat bubbles here -->
+               </div>
+
+               <div class="chat-input-area vision-input-area">
+                   <div class="vision-input-pill">
+                       <input type="text" id="glass-chat-input" placeholder="Mesaj yazın... (Enter)" autocomplete="off">
+                       <div class="input-actions">
+                           <button class="fs-btn"><i class="fa-solid fa-microphone-lines"></i></button>
+                           <button class="fs-btn"><i class="fa-regular fa-face-smile"></i></button>
+                           <button class="fs-btn"><i class="fa-regular fa-folder"></i></button>
+                           <button class="fs-btn"><i class="fa-solid fa-video"></i></button>
+                           <button id="glass-send-btn" class="vision-send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+                       </div>
+                   </div>
+               </div>
+           </div>
+       </div>
+    </div>
+
+    <!-- OLD GAME UI (HIDDEN) -->
+    <div id="legacy-game-container" style="display: none;">
     <div id="app">
       <canvas id="gameCanvas"></canvas>
+      
+      <!-- Radial Emote Menu -->
+      <div id="radial-menu" class="hidden">
+        <div class="radial-center">İfade Seç</div>
+        <div class="radial-item" data-emote="normal" style="--i: 0;">😐 Normal</div>
+        <div class="radial-item" data-emote="happy" style="--i: 1;">😁 Sevinçli</div>
+        <div class="radial-item" data-emote="sad" style="--i: 2;">😢 Üzgün</div>
+        <div class="radial-item" data-emote="surprised" style="--i: 3;">😲 Şaşkın</div>
+        <div class="radial-item" data-emote="angry" style="--i: 4;">😡 Kızgın</div>
+      </div>
     </div>
 
     <!-- Portrait Warning -->
@@ -51,6 +148,52 @@
             <span class="hud-label">SEKME SAYISI</span>
             <span id="score" class="hud-value">0</span>
           </div>
+        </div>
+      </div>
+      
+      <!-- FOOTBALL SCOREBOARD -->
+      <div id="football-scoreboard" class="hidden" style="position: absolute; top: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; align-items: center; justify-content: center; z-index: 10;">
+        <div id="red-score-card" class="hud-pill" style="background: #ef4444 !important; border-color: #000 !important; color: #fff !important; width: 120px; justify-content: center;">
+          <div class="hud-info" style="align-items: center;">
+            <span class="hud-label" style="color: #fff !important;">KIRMIZI</span>
+            <span id="red-team-score" class="hud-value" style="color: #fff !important; font-size: 32px !important;">0</span>
+          </div>
+        </div>
+        <div style="font-family: 'Bangers', cursive; font-size: 36px; color: #fff; text-shadow: 2px 2px 0 #000; -webkit-text-stroke: 2px #000;">VS</div>
+        <div id="blue-score-card" class="hud-pill" style="background: #3b82f6 !important; border-color: #000 !important; color: #fff !important; width: 120px; justify-content: center;">
+          <div class="hud-info" style="align-items: center;">
+            <span class="hud-label" style="color: #fff !important;">MAVİ</span>
+            <span id="blue-team-score" class="hud-value" style="color: #fff !important; font-size: 32px !important;">0</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- SPYFALL UI HUD -->
+      <div id="spyfall-ui" class="hidden">
+        <div id="spyfall-header">🕵️ CASUS KİM?</div>
+        <div class="spyfall-card">
+          <div class="spyfall-info">Durum: <span id="spyfall-status-text">Bekleniyor</span></div>
+          <div class="spyfall-info">Rolün: <span id="spyfall-role">İzleyici</span></div>
+          <div class="spyfall-info">Gizli Mekan: <span id="spyfall-location">BİLİNMİYOR</span></div>
+        </div>
+        <button id="spyfall-start-btn" class="play-btn" style="margin-top:10px; width:100%; padding:10px; font-size:14px;">OYUNU BAŞLAT</button>
+        <button id="spyfall-force-night-btn" class="play-btn hidden" style="margin-top:10px; width:100%; background:#4f46e5; padding:10px; font-size:14px;">GECEYİ ÇÖKTÜR (Oylama Pas)</button>
+        
+        <div id="spyfall-turn-indicator" class="spyfall-card hidden" style="margin-top:10px; text-align:center; background:rgba(234,179,8,0.2); border:1px solid #eab308;">
+          Sıra Kimde: <br><strong id="spyfall-turn-name" style="font-size:18px; color:#fde047;">---</strong>
+        </div>
+        
+        <div id="spyfall-action-panel" class="spyfall-card hidden" style="margin-top:10px;">
+            <h3 style="margin:0 0 10px 0; font-size:14px; text-align:center; color:#fff;">Hedef İşlemleri</h3>
+            <select id="spyfall-player-select" style="width:100%; padding:8px; margin-bottom:10px; border-radius:5px; background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.3); outline:none;">
+                <option value="">Hedef Seçin...</option>
+            </select>
+            <input type="text" id="spyfall-question-input" placeholder="Sorunuzu yazın..." style="width:100%; padding:8px; margin-bottom:10px; border-radius:5px; background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.3); outline:none;">
+            <div style="display:flex; gap:10px;">
+                <button id="spyfall-ask-btn" class="play-btn" style="flex:1; padding:8px; font-size:12px;">SORU SOR</button>
+                <button id="spyfall-vote-btn" class="play-btn" style="flex:1; padding:8px; font-size:12px; background:#dc2626;">OY VER (ELE)</button>
+            </div>
+            <button id="spyfall-kill-btn" class="play-btn hidden" style="width:100%; margin-top:10px; padding:8px; font-size:12px; background:#000; color:#ef4444; border:1px solid #ef4444;">GECE: HEDEFİ ÖLDÜR</button>
         </div>
       </div>
 
@@ -129,6 +272,19 @@
       </div>
     </div>
 
+    <!-- Football Team Selection Modal -->
+    <div id="football-team-modal" class="hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 500; display: flex; justify-content: center; align-items: center;">
+      <div class="stylized-modal" style="text-align: center; max-width: 400px; padding: 30px;">
+        <h1 style="font-size: 36px; margin-bottom: 20px;">TAKIMINI SEÇ</h1>
+        <p style="font-family: 'Fredoka', sans-serif; margin-bottom: 30px; font-weight: 600;">Futbol arenasına girmek için bir takım seçmelisin!</p>
+        <div style="display: flex; gap: 20px; justify-content: center;">
+          <button id="btn-team-red" class="play-btn" style="background: #ef4444 !important; flex: 1; padding: 20px 0; font-size: 28px !important; border-radius: 12px !important;">KIRMIZI</button>
+          <button id="btn-team-blue" class="play-btn" style="background: #3b82f6 !important; flex: 1; padding: 20px 0; font-size: 28px !important; border-radius: 12px !important;">MAVİ</button>
+        </div>
+        <button id="btn-leave-football" class="play-btn" style="background: #94a3b8 !important; width: 100%; margin-top: 20px; font-size: 18px !important; padding: 10px !important;">LOBİYE DÖN</button>
+      </div>
+    </div>
+
     <!-- Start / Countryball Skin Selection Gallery Overlay -->
     <div id="overlay">
       <div class="stylized-modal">
@@ -150,6 +306,21 @@
           <div id="skin-cards-grid"></div>
         </div>
 
+        <div class="preview-container">
+          <canvas id="menu-preview-canvas" width="120" height="120"></canvas>
+        </div>
+
+        <div class="cosmetics-selectors">
+          <div class="cosmetic-group">
+            <label>Şapka:</label>
+            <select id="hat-selector"></select>
+          </div>
+          <div class="cosmetic-group">
+            <label>Gözlük:</label>
+            <select id="glasses-selector"></select>
+          </div>
+        </div>
+
         <button id="start-btn" class="play-btn">
           <span class="play-icon">▶</span> ARENAYA GİR
         </button>
@@ -162,6 +333,55 @@
       <button id="mobile-engine-toggle-btn" class="touch-ctrl-btn engine-btn">⚡ ATIL (DASH)</button>
       <button id="mobile-right-btn" class="touch-ctrl-btn steer-btn">SAĞ ▶</button>
     </div>
+
+    <!-- ESC / IN-GAME EDIT MODAL -->
+    <div id="ingame-edit-modal" class="hidden">
+      <div class="edit-modal-content">
+        <h2>🛠️ Görünümü Düzenle</h2>
+        <div class="player-input-wrapper">
+          <span class="input-icon">👤</span>
+          <input type="text" id="edit-player-name" placeholder="İsim" maxlength="14">
+        </div>
+        
+        <div class="preview-container">
+          <canvas id="edit-preview-canvas" width="120" height="120"></canvas>
+        </div>
+
+        <div class="edit-select-row">
+          <label>Top/Ülke:</label>
+          <select id="edit-skin-selector"></select>
+        </div>
+        <div class="edit-select-row">
+          <label>Şapka:</label>
+          <select id="edit-hat-selector"></select>
+        </div>
+        <div class="edit-select-row">
+          <label>Gözlük:</label>
+          <select id="edit-glasses-selector"></select>
+        </div>
+
+        <button id="save-edit-btn" class="play-btn" style="margin-top: 20px; font-size: 14px; padding: 10px 20px;">
+          KAYDET VE DEVAM ET
+        </button>
+        <div class="esc-hint">İptal etmek için tekrar ESC'ye basın</div>
+      </div>
+    </div>
+
+    <!-- DOOR CONFIRM MODAL -->
+    <div id="door-confirm-modal" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; align-items: center; justify-content: center;">
+      <div class="edit-modal-content" style="text-align: center;">
+        <h2 id="door-confirm-title" style="margin-top:0;">Odaya Gir?</h2>
+        <p id="door-confirm-desc" style="margin-bottom: 20px;">Bu kapıdan geçmek istediğine emin misin?</p>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+          <button id="door-confirm-yes" class="play-btn" style="background: #22c55e;">EVET, GEÇ</button>
+          <button id="door-confirm-no" class="play-btn" style="background: #ef4444;">HAYIR, İPTAL</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- POST PROCESSING OVERLAY -->
+    <div id="vignette-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100;"></div>
+    </div> <!-- END HIDDEN GAME CONTAINER -->
 
   </body>
 </html>
