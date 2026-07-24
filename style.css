@@ -1723,8 +1723,8 @@ body {
 .vision-main { flex: 1; display: flex; flex-direction: column; background: transparent; }
 .vision-header { padding: 24px 30px 15px 30px; display: flex; justify-content: space-between; align-items: center; }
 .header-title { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }
-.icon-btn { background: rgba(255, 255, 255, 0.15); border: none; border-radius: 50%; width: 40px; height: 40px; color: #fff; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: background 0.3s; }
-.icon-btn:hover { background: rgba(255, 255, 255, 0.25); }
+.vision-icon-btn { background: rgba(255, 255, 255, 0.15); border: none; border-radius: 50%; width: 40px; height: 40px; color: #fff; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: background 0.3s; }
+.vision-icon-btn:hover { background: rgba(255, 255, 255, 0.25); }
 
 .vision-messages { flex: 1; padding: 20px 30px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
 .vision-messages::-webkit-scrollbar { width: 0px; }
