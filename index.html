@@ -11,10 +11,64 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Fredoka:wght@500;600;700&family=Outfit:wght@500;700;800;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
     <link rel="stylesheet" href="./style.css">
   </head>
   <body>
+    <!-- NEW GLASSMORPHISM CHAT UI -->
+    <div class="chat-app-wrapper">
+       <div class="glass-container">
+           <!-- LEFT SIDEBAR -->
+           <div class="sidebar">
+               <div class="sidebar-header">
+                   <h2>Messages</h2>
+               </div>
+               <div class="contact-list" id="sidebar-contacts">
+                   <!-- Dynamic Contacts will go here -->
+               </div>
+               <div class="sidebar-footer">
+                   <button class="add-contact-btn"><i class="fa-solid fa-user-plus"></i> Add Contact</button>
+               </div>
+           </div>
+
+           <!-- RIGHT MAIN CHAT -->
+           <div class="main-chat">
+               <div class="chat-header">
+                   <div class="header-left">
+                       <button class="back-btn"><i class="fa-solid fa-arrow-left"></i></button>
+                       <div class="header-avatar" id="current-chat-avatar">🌍</div>
+                       <div class="header-info">
+                           <h3 id="current-chat-name">Global Room</h3>
+                           <p id="current-chat-status">Herkese Açık Sohbet</p>
+                       </div>
+                   </div>
+                   <div class="header-right">
+                       <button class="icon-btn"><i class="fa-solid fa-phone"></i></button>
+                       <button class="icon-btn"><i class="fa-solid fa-video"></i></button>
+                       <button class="icon-btn"><i class="fa-solid fa-circle-info"></i></button>
+                   </div>
+               </div>
+
+               <div class="chat-messages" id="glass-chat-messages">
+                   <!-- Chat bubbles here -->
+               </div>
+
+               <div class="chat-input-area">
+                   <button class="attach-btn"><i class="fa-solid fa-ellipsis"></i></button>
+                   <div class="input-wrapper">
+                       <input type="text" id="glass-chat-input" placeholder="Mesaj yazın... (Enter)" autocomplete="off">
+                       <button class="mic-btn"><i class="fa-solid fa-microphone"></i></button>
+                   </div>
+                   <button id="glass-send-btn" class="send-btn">Send</button>
+               </div>
+           </div>
+       </div>
+    </div>
+
+    <!-- OLD GAME UI (HIDDEN) -->
+    <div id="legacy-game-container" style="display: none;">
     <div id="app">
       <canvas id="gameCanvas"></canvas>
       
@@ -295,6 +349,7 @@
 
     <!-- POST PROCESSING OVERLAY -->
     <div id="vignette-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100;"></div>
+    </div> <!-- END HIDDEN GAME CONTAINER -->
 
     <script type="module" src="/main.js"></script>
   </body>

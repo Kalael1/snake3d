@@ -432,6 +432,28 @@ if (radialItems) {
 
 // ============== CHAT & EMOTE SYSTEM ==============
 function addChatMessage(sender, text, isSystem = false) {
+    // Add to new glass UI
+    const glassChatMessages = document.getElementById('glass-chat-messages');
+    if (glassChatMessages) {
+        const div = document.createElement('div');
+        const isSelf = sender === localPlayer.name;
+        div.className = `message-bubble ${isSelf ? 'outgoing' : 'incoming'} ${isSystem ? 'system' : ''}`;
+        
+        let innerHTML = '';
+        if (!isSelf && !isSystem) {
+            innerHTML += `<div class="message-sender">${escapeHtml(sender)}</div>`;
+        }
+        if (isSystem) {
+            innerHTML += `<div style="font-style: italic; opacity: 0.7;">${escapeHtml(text)}</div>`;
+        } else {
+            innerHTML += `<div>${escapeHtml(text)}</div>`;
+        }
+        
+        div.innerHTML = innerHTML;
+        glassChatMessages.appendChild(div);
+        glassChatMessages.scrollTop = glassChatMessages.scrollHeight;
+    }
+
     if (!chatMessages) return;
     const div = document.createElement('div');
     div.className = `chat-msg ${isSystem ? 'system-msg' : ''}`;
@@ -455,22 +477,34 @@ function escapeHtml(str) {
 }
 
 function sendChat() {
-    if (!chatInput) return;
-    const text = chatInput.value.trim();
+    const glassInput = document.getElementById('glass-chat-input');
+    const inputEl = (glassInput && glassInput.offsetParent !== null) ? glassInput : chatInput;
+    if (!inputEl) return;
+    const text = inputEl.value.trim();
     if (text) {
         addChatMessage(localPlayer.name, text);
         localPlayer.say(text);
         if (socket && socket.connected) {
             socket.emit('chatMessage', { text, sender: localPlayer.name });
         }
-        chatInput.value = '';
-        chatInput.blur();
+        inputEl.value = '';
+        inputEl.blur();
     }
 }
 
 if (sendChatBtn) sendChatBtn.addEventListener('click', sendChat);
 if (chatInput) {
     chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') sendChat();
+    });
+}
+
+// Glass UI Event Listeners
+const glassSendBtn = document.getElementById('glass-send-btn');
+if (glassSendBtn) glassSendBtn.addEventListener('click', sendChat);
+const glassChatInput = document.getElementById('glass-chat-input');
+if (glassChatInput) {
+    glassChatInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') sendChat();
     });
 }
@@ -788,6 +822,8 @@ socket.on('state', (data) => {
 });
 
 function updateLeaderboard(players) {
+    updateSidebarContacts(players); // Hook for new UI
+
     if (!lbList) return;
     lbList.innerHTML = '';
     const list = Object.values(players || {}).slice(0, 5);
@@ -800,6 +836,37 @@ function updateLeaderboard(players) {
         li.innerText = `${idx + 1}. ${p.name || 'Oyuncu'}`;
         lbList.appendChild(li);
     });
+}
+
+function updateSidebarContacts(players) {
+    const sidebarContacts = document.getElementById('sidebar-contacts');
+    if (!sidebarContacts) return;
+    sidebarContacts.innerHTML = '';
+    
+    const list = Object.values(players || {});
+    
+    // Add local player to the top if we want, or just others. Let's just show others to simulate online contacts.
+    let othersCount = 0;
+    
+    list.forEach(p => {
+        if(p.name === localPlayer.name && list.length > 1) return; // Skip self if there are others
+        
+        othersCount++;
+        const div = document.createElement('div');
+        div.className = 'contact-item';
+        div.innerHTML = `
+            <div class="contact-avatar">👤</div>
+            <div class="contact-info">
+                <div class="contact-name">${escapeHtml(p.name || 'Oyuncu')}</div>
+                <div class="contact-msg">Çevrimiçi ${p.name === localPlayer.name ? '(Siz)' : ''}</div>
+            </div>
+        `;
+        sidebarContacts.appendChild(div);
+    });
+    
+    if (othersCount === 0) {
+        sidebarContacts.innerHTML = `<div style="text-align:center; padding: 20px; color: rgba(255,255,255,0.5);">Odada yalnızsınız</div>`;
+    }
 }
 
 // ============== GAME START / RESET ==============
@@ -921,6 +988,7 @@ document.getElementById('btn-team-blue').addEventListener('click', () => {
 });
 
 function gameLoop(now) {
+    return; // GAME LOGIC DISABLED FOR CHAT UI
     requestAnimationFrame(gameLoop);
 
     const delta = Math.min((now - lastTime) / 1000, 0.05);
