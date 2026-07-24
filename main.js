@@ -583,7 +583,7 @@ function parseYouTubeId(input) {
     return null;
 }
 
-function playYouTubeVideo(videoId, title = 'YouTube MÃ¼zik') {
+function playYouTubeVideo(videoId, title = 'YouTube Müzik') {
     if (!jumboIframe || !jumbotron) return;
     const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&controls=1`;
     jumboIframe.src = embedUrl;
@@ -865,7 +865,7 @@ function renderSidebarRooms(roomState) {
     container.dataset.lastState = stateStr;
 
     let html = '';
-    const displayRooms = ['Global', 'TR Sohbet', 'Oyun', 'MÃ¼zik', 'spyfall', 'football'];
+    const displayRooms = ['Global', 'TR Sohbet', 'Oyun', 'Müzik', 'spyfall', 'football'];
     
     displayRooms.forEach(room => {
         const occupants = roomState[room] || [];
