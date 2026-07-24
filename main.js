@@ -1418,3 +1418,34 @@ document.addEventListener('DOMContentLoaded', () => {
         fsAvatar.style.cursor = 'pointer';
     }
 });
+
+// ============== ROOM SELECTOR LOGIC ==============
+document.addEventListener('DOMContentLoaded', () => {
+    const roomSelector = document.getElementById('room-selector');
+    const glassChatMessages = document.getElementById('glass-chat-messages');
+
+    if (roomSelector) {
+        roomSelector.addEventListener('change', (e) => {
+            const newRoom = e.target.value;
+            
+            // Clear current chat
+            if (glassChatMessages) {
+                glassChatMessages.innerHTML = '';
+            }
+            
+            // Add system message
+            addChatMessage('SISTEM', "=== " + newRoom + " odasina katildiniz ===", true);
+            
+            // Notify server
+            if (socket && socket.connected) {
+                socket.emit('changeRoom', newRoom);
+            }
+            
+            // We should also clear local players list so it re-syncs
+            Object.keys(otherPlayers).forEach(id => {
+                delete otherPlayers[id];
+            });
+            updateSidebarContacts({});
+        });
+    }
+});

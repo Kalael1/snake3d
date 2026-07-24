@@ -145,7 +145,7 @@ io.on('connection', (socket) => {
             hatId,
             glassesId,
             expression: 'normal',
-            room: 'lobby',
+            room: 'Global',
             x: 400,
             y: 300,
             vx: 0,
@@ -153,7 +153,7 @@ io.on('connection', (socket) => {
             score: 0
         };
 
-        socket.join('lobby');
+        socket.join('Global');
         socket.emit('init', { id: socket.id });
     });
 
@@ -238,7 +238,7 @@ const TICK_MS = 1000 / TICK_RATE;
 
 setInterval(() => {
     try {
-        const rooms = ['lobby', 'beach', 'coffeeshop', 'disco', 'spyfall', 'football'];
+        const rooms = ['Global', 'TR Sohbet', 'Oyun', 'Müzik', 'spyfall', 'football'];
         rooms.forEach(room => {
             const roomPlayers = {};
             for (let id in players) {

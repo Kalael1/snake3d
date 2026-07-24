@@ -1892,3 +1892,32 @@ body {
 .vision-primary-btn:active {
     transform: scale(0.97);
 }
+/* ROOM SELECTOR */
+.vision-room-select {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+    font-family: 'Inter', sans-serif;
+    padding: 8px 16px;
+    border-radius: 20px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg fill="%23ffffff" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+    background-repeat: no-repeat;
+    background-position-x: calc(100% - 10px);
+    background-position-y: center;
+    padding-right: 36px;
+    transition: background 0.3s;
+}
+.vision-room-select:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+.vision-room-select option {
+    background: #222;
+    color: #fff;
+}
