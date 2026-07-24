@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="screen-orientation" content="landscape">
+    <meta name="orientation" content="landscape">
+    <title>Countryballs.io — 2D Bouncy Playground & Chat</title>
+    <meta name="description" content="Countryballs.io — 2D eğlenceli ülke topları oyunu. Topunu seç, sek, sohbet et ve müzik dinle!">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Outfit:wght@500;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+    <script type="module" crossorigin src="/assets/index-DB_FtO53.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BF2V5k5P.css">
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <!-- Portrait Warning -->
+    <div id="rotate-device-overlay" class="hidden">
+      <div class="rotate-card">
+        <div class="phone-rotate-icon">📱🔄</div>
+        <h2>Lütfen Cihazınızı Yatay Döndürün</h2>
+        <p>Countryballs.io en iyi yatay (Landscape) modda çalışır.</p>
+      </div>
+    </div>
+
+    <!-- Virtual Joystick for Mobile -->
+    <div id="virtual-joystick" class="hidden">
+      <div id="joystick-ring">
+        <div id="joystick-knob"></div>
+      </div>
+    </div>
+
+    <!-- HUD Layer -->
+    <div id="ui-layer">
+      <div id="top-left-hud">
+        <div id="score-card" class="hud-pill">
+          <span class="hud-icon">⚽</span>
+          <div class="hud-info">
+            <span class="hud-label">OYUNCU TOPU</span>
+            <span id="player-skin-name" class="hud-value">Türkiye 🇹🇷</span>
+          </div>
+        </div>
+
+        <div id="high-score-card" class="hud-pill gold-pill">
+          <span class="hud-icon">🏆</span>
+          <div class="hud-info">
+            <span class="hud-label">SEKME SAYISI</span>
+            <span id="score" class="hud-value">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leaderboard & Controls -->
+      <div id="top-right-bar">
+        <button id="fullscreen-btn" class="icon-btn" title="Tam Ekran">⛶</button>
+        <button id="sound-btn" class="icon-btn" title="Ses">🔊</button>
+        <button id="open-screen-btn" class="icon-btn" title="YouTube Müzik / Video Aç">📺</button>
+        <div id="leaderboard">
+          <div class="lb-header">⚽ ÜLKE TOPLARI</div>
+          <ul id="lb-list">
+            <li>1. Bekleniyor...</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Chat -->
+      <div id="chat-container">
+        <div id="chat-messages">
+          <div class="chat-msg system-msg">⚽ Countryballs.io arenasına hoş geldiniz!</div>
+        </div>
+        <div id="quick-emoji-bar">
+          <button class="emoji-btn" data-emoji="😂">😂</button>
+          <button class="emoji-btn" data-emoji="🔥">🔥</button>
+          <button class="emoji-btn" data-emoji="👑">👑</button>
+          <button class="emoji-btn" data-emoji="💩">💩</button>
+          <button class="emoji-btn" data-emoji="😡">😡</button>
+          <button class="emoji-btn" data-emoji="🚀">🚀</button>
+          <button class="emoji-btn" data-emoji="🇹🇷">🇹🇷</button>
+          <button class="emoji-btn" data-emoji="⚽">⚽</button>
+        </div>
+        <div id="chat-input-wrapper">
+          <input type="text" id="chat-input" placeholder="Mesaj yazın... (Enter)" maxlength="50" autocomplete="off">
+          <button id="send-chat-btn">Gönder</button>
+        </div>
+      </div>
+
+      <div id="controls-hint">
+        <span>🎮 W A S D / YÖN: HAREKET</span> • <span>⚡ SPACE: HIZLI ATILMA (DASH)</span> • <span>🖱️ FARE: SÜRÜKLE</span>
+      </div>
+    </div>
+
+    <!-- Arena Screen: shared YouTube jumbotron -->
+    <div id="arena-screen-jumbotron" class="hidden">
+      <div class="jumbo-header">
+        <span id="arena-screen-label">📺 YOUTUBE MÜZİK OYNATICI</span>
+        <button id="jumbo-mute-btn" title="Sesi Aç/Kapat">🔊</button>
+        <button id="jumbo-minimize-btn" title="Küçült / Büyüt">—</button>
+      </div>
+      <div class="jumbo-video-wrap">
+        <iframe id="arena-screen-iframe" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen frameborder="0"></iframe>
+      </div>
+    </div>
+
+    <!-- YouTube link input popover -->
+    <div id="screen-input-popover" class="hidden">
+      <div class="screen-pop-title">📺 MÜZİK / VİDEO YÜKLE</div>
+      <p class="screen-pop-desc">Bir YouTube linki yapıştırın — herkes aynı müziği dinlesin!</p>
+      <input type="text" id="screen-url-input" placeholder="https://youtube.com/watch?v=..." autocomplete="off">
+      <button id="screen-set-btn">▶ MÜZİĞİ BAŞLAT</button>
+      <div id="screen-status" class="screen-status"></div>
+    </div>
+
+    <!-- Mobile Chat Modal -->
+    <div id="mobile-chat-modal" class="hidden">
+      <div class="mobile-chat-card">
+        <div class="mobile-chat-header">
+          <span>💬 SOHBET</span>
+          <button id="close-mobile-chat-btn">✕</button>
+        </div>
+        <div id="mobile-chat-messages"></div>
+        <div class="mobile-chat-input-row">
+          <input type="text" id="mobile-chat-input" placeholder="Mesajınızı yazın..." maxlength="50" autocomplete="off">
+          <button id="mobile-send-chat-btn">Gönder</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Start / Countryball Skin Selection Gallery Overlay -->
+    <div id="overlay">
+      <div class="stylized-modal">
+        <div class="modal-header">
+          <div class="brand-badge">⚽ 2D BOUNCY PLAYGROUND</div>
+          <h1 class="game-title">COUNTRYBALLS<span class="dot">.</span>IO</h1>
+          <p class="subtitle" id="overlay-desc">Ülke topunu seç, sekmeye başla ve sohbet et!</p>
+        </div>
+        
+        <div class="player-input-wrapper">
+          <span class="input-icon">👤</span>
+          <input type="text" id="player-name" placeholder="Oyuncu Adınız..." maxlength="14" value="OyuncuTopu">
+        </div>
+
+        <div id="skin-gallery-container">
+          <div class="gallery-title-bar">
+            <span class="gallery-title">⚽ ÜLKE TOPUNU SEÇ</span>
+          </div>
+          <div id="skin-cards-grid"></div>
+        </div>
+
+        <button id="start-btn" class="play-btn">
+          <span class="play-icon">▶</span> ARENAYA GİR
+        </button>
+      </div>
+    </div>
+
+    <!-- MOBILE EASY TOUCH CONTROLS -->
+    <div id="mobile-touch-controls">
+      <button id="mobile-left-btn" class="touch-ctrl-btn steer-btn">◀ SOL</button>
+      <button id="mobile-engine-toggle-btn" class="touch-ctrl-btn engine-btn">⚡ ATIL (DASH)</button>
+      <button id="mobile-right-btn" class="touch-ctrl-btn steer-btn">SAĞ ▶</button>
+    </div>
+
+  </body>
+</html>
