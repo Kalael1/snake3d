@@ -435,22 +435,31 @@ function addChatMessage(sender, text, isSystem = false) {
     // Add to new glass UI
     const glassChatMessages = document.getElementById('glass-chat-messages');
     if (glassChatMessages) {
-        const div = document.createElement('div');
+        const wrapper = document.createElement('div');
         const isSelf = sender === localPlayer.name;
-        div.className = `message-bubble ${isSelf ? 'outgoing' : 'incoming'} ${isSystem ? 'system' : ''}`;
+        wrapper.className = `msg-wrapper ${isSelf ? 'outgoing' : 'incoming'} ${isSystem ? 'system' : ''}`;
         
         let innerHTML = '';
-        if (!isSelf && !isSystem) {
-            innerHTML += `<div class="message-sender">${escapeHtml(sender)}</div>`;
-        }
+        
         if (isSystem) {
-            innerHTML += `<div style="font-style: italic; opacity: 0.7;">${escapeHtml(text)}</div>`;
+             innerHTML = `<div class="message-bubble system" style="font-style: italic; opacity: 0.7;">${escapeHtml(text)}</div>`;
         } else {
-            innerHTML += `<div>${escapeHtml(text)}</div>`;
+             const avatarImg = `https://api.dicebear.com/9.x/avataaars/svg?seed=${escapeHtml(sender)}`;
+             const bubbleHtml = `<div class="message-bubble">
+                ${!isSelf ? `<div class="message-sender">${escapeHtml(sender)}</div>` : ''}
+                <div>${escapeHtml(text)}</div>
+             </div>`;
+             const avatarHtml = `<div class="msg-avatar"><img src="${avatarImg}" alt="${escapeHtml(sender)}"></div>`;
+             
+             if (isSelf) {
+                 innerHTML = bubbleHtml + avatarHtml;
+             } else {
+                 innerHTML = avatarHtml + bubbleHtml;
+             }
         }
         
-        div.innerHTML = innerHTML;
-        glassChatMessages.appendChild(div);
+        wrapper.innerHTML = innerHTML;
+        glassChatMessages.appendChild(wrapper);
         glassChatMessages.scrollTop = glassChatMessages.scrollHeight;
     }
 
@@ -854,11 +863,21 @@ function updateSidebarContacts(players) {
         othersCount++;
         const div = document.createElement('div');
         div.className = 'contact-item';
+        
+        const avatarImg = `https://api.dicebear.com/9.x/avataaars/svg?seed=${escapeHtml(p.name || 'Oyuncu')}`;
+        
+        // Mock time and message snippet for realism
+        const time = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+        const snippet = p.name === localPlayer.name ? 'Çevrimiçi (Siz)' : 'Sohbete katıldı.';
+        
         div.innerHTML = `
-            <div class="contact-avatar">👤</div>
+            <div class="contact-avatar"><img src="${avatarImg}"></div>
             <div class="contact-info">
-                <div class="contact-name">${escapeHtml(p.name || 'Oyuncu')}</div>
-                <div class="contact-msg">Çevrimiçi ${p.name === localPlayer.name ? '(Siz)' : ''}</div>
+                <div class="contact-name">
+                    <span>${escapeHtml(p.name || 'Oyuncu')}</span>
+                    <span class="contact-time">${time}</span>
+                </div>
+                <div class="contact-msg">${snippet}</div>
             </div>
         `;
         sidebarContacts.appendChild(div);
