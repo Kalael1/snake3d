@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">TUNTUNE</string>
+    <string name="admin_label">TUNTUNE Kiosk</string>
+    <string name="admin_description">TUNTUNE\'nun telefonu sadece müzik çalar olarak kilitlemesini sağlar.</string>
+</resources>
