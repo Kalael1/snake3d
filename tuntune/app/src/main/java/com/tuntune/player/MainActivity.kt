@@ -20,6 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import com.tuntune.player.kiosk.KioskManager
@@ -43,7 +44,18 @@ class MainActivity : ComponentActivity() {
     /** Ekran kapanınca bir sonraki açılışta kilit ekranımız gelsin. */
     private val screenOffReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            if (viewModel.store.lockScreen.value) lockVisible.value = true
+            if (!viewModel.store.lockScreen.value) return
+            lockVisible.value = true
+            // Başka bir ekrandaysak TUNTUNE'u öne getir: ekran açılınca ilk o görünsün.
+            if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                try {
+                    startActivity(
+                        Intent(this@MainActivity, MainActivity::class.java)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                    )
+                } catch (_: Exception) {
+                }
+            }
         }
     }
 
