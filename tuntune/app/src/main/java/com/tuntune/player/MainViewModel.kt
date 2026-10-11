@@ -80,7 +80,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             while (isActive) {
                 delay(500)
                 val c = controller ?: continue
-                if (c.isPlaying) {
+                // Ekran kapalıyken (kimse izlemiyorken) konumu hiç okuma; pil dostu.
+                if (c.isPlaying && _position.subscriptionCount.value > 0) {
                     _position.value = c.currentPosition
                 }
             }
