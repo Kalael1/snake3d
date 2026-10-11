@@ -256,9 +256,10 @@ fun TunTuneApp(
                     .background(Brush.verticalGradient(listOf(Color.Transparent, TT.Background.copy(alpha = 0.95f), TT.Background))),
             ) {
                 Spacer(Modifier.height(24.dp))
-                if (player.hasSong) {
+                if (player.hasSong) Isolated {
+                    val position by vm.position.collectAsStateWithLifecycle()
                     MiniPlayer(
-                        state = player,
+                        state = player.copy(positionMs = position),
                         isFavorite = player.songId in favoriteSet,
                         onOpen = { showNowPlaying = true },
                         onPlayPause = vm::togglePlayPause,
@@ -278,8 +279,9 @@ fun TunTuneApp(
                 exit = slideOutVertically(tween(250)) { it },
             ) {
                 val albumName = player.songId?.let { library.byId[it]?.album } ?: ""
+                val position by vm.position.collectAsStateWithLifecycle()
                 NowPlayingScreen(
-                    state = player,
+                    state = player.copy(positionMs = position),
                     isFavorite = player.songId in favoriteSet,
                     albumName = albumName,
                     sleepTimerEndsAt = sleepEndsAt,
@@ -420,3 +422,7 @@ private fun PermissionScreen(onRequest: () -> Unit) {
         PillButton("İzin ver", onRequest)
     }
 }
+
+/** İçindeki sık değişen değerler sadece bu küçük bölümü yeniden çizdirir. */
+@Composable
+private fun Isolated(content: @Composable () -> Unit) = content()

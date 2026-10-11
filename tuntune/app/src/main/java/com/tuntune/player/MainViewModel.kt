@@ -61,6 +61,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _sleepTimerEndsAt = MutableStateFlow<Long?>(null)
     val sleepTimerEndsAt: StateFlow<Long?> = _sleepTimerEndsAt.asStateFlow()
 
+    // Çalma konumu ayrı tutulur ki saniyede iki kez bütün ekran yeniden çizilmesin.
+    private val _position = MutableStateFlow(0L)
+    val position: StateFlow<Long> = _position.asStateFlow()
+
     private var controller: MediaController? = null
     private var sleepJob: Job? = null
     private var refreshJob: Job? = null
@@ -77,7 +81,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 delay(500)
                 val c = controller ?: continue
                 if (c.isPlaying) {
-                    _player.value = _player.value.copy(positionMs = c.currentPosition, durationMs = c.duration.coerceAtLeast(0))
+                    _position.value = c.currentPosition
                 }
             }
         }
@@ -131,6 +135,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             repeatMode = c.repeatMode,
             upNext = buildUpNext(c),
         )
+        _position.value = c.currentPosition
     }
 
     private fun buildUpNext(c: MediaController): List<QueueEntry> {
@@ -204,7 +209,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun seekTo(positionMs: Long) {
         controller?.seekTo(positionMs)
-        _player.value = _player.value.copy(positionMs = positionMs)
+        _position.value = positionMs
     }
 
     fun toggleShuffle() {
