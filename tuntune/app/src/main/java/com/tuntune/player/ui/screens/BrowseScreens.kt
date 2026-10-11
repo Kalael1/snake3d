@@ -108,7 +108,7 @@ fun HomeScreen(
     onPlaySong: (Song) -> Unit,
 ) {
     val recentSongs = recent.mapNotNull { library.byId[it] }
-    val recentlyAdded = remember(library) { library.songs.sortedByDescending { it.dateAdded }.take(15) }
+    val recentlyAdded = library.recentlyAdded
     val recentAlbums = remember(recentSongs) { recentSongs.map { it.albumId }.distinct().mapNotNull { library.album(it) }.take(12) }
 
     LazyColumn(
@@ -184,7 +184,7 @@ fun HomeScreen(
         item { SectionTitle("Sanatçılar") }
         item {
             LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(library.artists.sortedByDescending { it.songs.size }.take(20), key = { it.name }) {
+                items(library.topArtists, key = { it.name }) {
                     ArtistCard(it, onClick = { onOpenArtist(it.name) })
                 }
             }

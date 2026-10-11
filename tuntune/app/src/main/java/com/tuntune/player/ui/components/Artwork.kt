@@ -35,12 +35,15 @@ import com.tuntune.player.playback.albumArtUri
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+private const val ART_SIZE = 400
+
 /** Albüm kapaklarını bir kez yükleyip bellekte tutar. */
 object ArtworkCache {
     private val cache = object : LruCache<Long, Bitmap>(24 * 1024 * 1024) {
         override fun sizeOf(key: Long, value: Bitmap) = value.byteCount
     }
     private val missing = HashSet<Long>()
+    private val colors = HashMap<Long, Color>()
 
     fun peek(albumId: Long): Bitmap? = cache.get(albumId)
 
@@ -55,19 +58,30 @@ object ArtworkCache {
 
     fun clearMisses() = synchronized(missing) { missing.clear() }
 
+    fun peekColor(albumId: Long): Color? = synchronized(colors) { colors[albumId] }
+
+    /** Kapağın ortalama rengi; bir kez hesaplanır, arka planda. */
+    suspend fun color(context: Context, albumId: Long): Color? {
+        synchronized(colors) { colors[albumId]?.let { return it } }
+        val bitmap = load(context, albumId) ?: return null
+        val color = withContext(Dispatchers.Default) { bitmap.averageColor() }
+        synchronized(colors) { colors[albumId] = color }
+        return color
+    }
+
     private fun decode(context: Context, albumId: Long): Bitmap? {
         val resolver = context.contentResolver
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             try {
                 val uri = ContentUris.withAppendedId(MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI, albumId)
-                return resolver.loadThumbnail(uri, Size(512, 512), null)
+                return resolver.loadThumbnail(uri, Size(ART_SIZE, ART_SIZE), null)
             } catch (_: Exception) {
             }
         }
         return try {
             resolver.openInputStream(albumArtUri(albumId))?.use { stream ->
                 val opts = BitmapFactory.Options().apply { inSampleSize = 1 }
-                BitmapFactory.decodeStream(stream, null, opts)?.let { scaleDown(it, 512) }
+                BitmapFactory.decodeStream(stream, null, opts)?.let { scaleDown(it, ART_SIZE) }
             }
         } catch (_: Exception) {
             null

@@ -58,6 +58,12 @@ data class Library(
         }
         .sortedBy { it.name.lowercase() }
 
+    /** En çok şarkısı olan sanatçılar (ana sayfa için önceden hesaplanır). */
+    val topArtists: List<Artist> = artists.sortedByDescending { it.songs.size }.take(20)
+
+    /** En son eklenen şarkılar. */
+    val recentlyAdded: List<Song> = songs.sortedByDescending { it.dateAdded }.take(15)
+
     fun album(id: Long): Album? = albums.firstOrNull { it.id == id }
     fun artist(name: String): Artist? = artists.firstOrNull { it.name == name }
 

@@ -78,8 +78,9 @@ import kotlinx.coroutines.delay
 @Composable
 fun rememberArtColor(albumId: Long, loadArt: Boolean = true): Color {
     val context = LocalContext.current
-    val raw by produceState(placeholderColor(albumId), albumId, loadArt) {
-        value = (if (loadArt) ArtworkCache.load(context, albumId)?.averageColor() else null) ?: placeholderColor(albumId)
+    val initial = (if (loadArt) ArtworkCache.peekColor(albumId) else null) ?: placeholderColor(albumId)
+    val raw by produceState(initial, albumId, loadArt) {
+        value = (if (loadArt) ArtworkCache.color(context, albumId) else null) ?: placeholderColor(albumId)
     }
     val target = lerp(raw, Color.Black, 0.45f)
     val animated by animateColorAsState(target, tween(600), label = "artColor")

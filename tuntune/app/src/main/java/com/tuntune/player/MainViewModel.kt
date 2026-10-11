@@ -20,6 +20,7 @@ import com.tuntune.player.data.Song
 import com.tuntune.player.playback.EXTRA_ALBUM_ID
 import com.tuntune.player.playback.PlaybackService
 import com.tuntune.player.playback.toMediaItem
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 data class QueueEntry(val mediaIndex: Int, val songId: Long, val title: String, val artist: String, val albumId: Long)
 
@@ -95,7 +97,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         refreshJob = viewModelScope.launch {
             if (debounce) delay(2_000)
             _loading.value = _library.value.songs.isEmpty()
-            _library.value = Library(MusicRepository.loadSongs(getApplication()))
+            val songs = MusicRepository.loadSongs(getApplication())
+            // Albüm/sanatçı gruplama ana iş parçacığında yapılmasın.
+            _library.value = withContext(Dispatchers.Default) { Library(songs) }
             _loading.value = false
         }
     }
