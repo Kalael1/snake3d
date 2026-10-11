@@ -1,6 +1,7 @@
 package com.tuntune.player.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -23,7 +24,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Album
@@ -49,9 +49,9 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,10 +61,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.tuntune.player.data.Album
@@ -73,22 +71,44 @@ import com.tuntune.player.data.Library
 import com.tuntune.player.data.Playlist
 import com.tuntune.player.data.Song
 import com.tuntune.player.ui.components.Artwork
-import com.tuntune.player.ui.components.CircleIcon
+import com.tuntune.player.ui.components.CornerTriangle
+import com.tuntune.player.ui.components.CyberButton
+import com.tuntune.player.ui.components.CyberIconButton
+import com.tuntune.player.ui.components.DotGrid
 import com.tuntune.player.ui.components.EmptyState
 import com.tuntune.player.ui.components.ExtraMenuItem
+import com.tuntune.player.ui.components.HudLabel
 import com.tuntune.player.ui.components.PlaceholderArt
 import com.tuntune.player.ui.components.PlaylistCover
-import com.tuntune.player.ui.components.SectionTitle
+import com.tuntune.player.ui.components.SectionHeader
 import com.tuntune.player.ui.components.SongRow
 import com.tuntune.player.ui.components.formatTotal
+import com.tuntune.player.ui.components.panel
+import com.tuntune.player.ui.theme.Chamfer
 import com.tuntune.player.ui.theme.TT
 import java.util.Calendar
 
 /** Alttaki mini oynatıcı ve menü için listelerin sonuna boşluk. */
-val BottomInset = PaddingValues(bottom = 150.dp)
+val BottomInset = PaddingValues(bottom = 170.dp)
 
-private val LikedGradient = listOf(Color(0xFF450AF5), Color(0xFF8E8EE5))
-private val TopGradient = listOf(Color(0xFF1E3264), Color(0xFF1ED760))
+private val CardShape = Chamfer(10.dp)
+private val ThumbShape = Chamfer(8.dp)
+
+// ------------------------------------------------------------------ Sayfa başlığı
+
+@Composable
+private fun ScreenHeader(kicker: String, title: String, actions: @Composable () -> Unit = {}) {
+    Row(
+        Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 12.dp, top = 18.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            HudLabel(kicker, color = TT.Accent)
+            Text(title.uppercase(), style = MaterialTheme.typography.headlineLarge, color = TT.TextPrimary)
+        }
+        actions()
+    }
+}
 
 // ------------------------------------------------------------------ Ana sayfa
 
@@ -107,23 +127,38 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
     onPlaySong: (Song) -> Unit,
 ) {
-    val recentSongs = recent.mapNotNull { library.byId[it] }
-    val recentlyAdded = library.recentlyAdded
-    val recentAlbums = remember(recentSongs) { recentSongs.map { it.albumId }.distinct().mapNotNull { library.album(it) }.take(12) }
+    val recentAlbums = remember(recent, library) {
+        recent.mapNotNull { library.byId[it]?.albumId }.distinct().mapNotNull { library.album(it) }.take(12)
+    }
 
-    LazyColumn(
-        Modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFF1F3B2C), TT.Background), endY = 900f)),
-        contentPadding = BottomInset,
-    ) {
+    LazyColumn(Modifier.fillMaxSize().background(TT.Background), contentPadding = BottomInset) {
         item {
             Row(
-                Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 4.dp, top = 16.dp),
+                Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 12.dp, top = 18.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(greeting(), style = MaterialTheme.typography.headlineMedium, color = TT.TextPrimary, modifier = Modifier.weight(1f))
-                IconButton(onClick = onOpenSettings) { Icon(Icons.Rounded.Settings, "Ayarlar", tint = TT.TextPrimary) }
+                // Logo kutusu
+                Box(
+                    Modifier.panel(color = TT.Disc, border = null, shape = Chamfer(6.dp)).padding(horizontal = 8.dp, vertical = 2.dp),
+                ) {
+                    Text("T_T", style = MaterialTheme.typography.titleLarge, color = Color.Black)
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    HudLabel(greeting(), color = TT.Accent)
+                    Text("TUNTUNE", style = MaterialTheme.typography.headlineMedium, color = TT.TextPrimary)
+                }
+                CyberIconButton(Icons.Rounded.Settings, "Ayarlar", onOpenSettings, size = 40.dp)
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                HudLabel(
+                    "SYS // ${library.songs.size} TRK · ${library.albums.size} ALB · ${library.artists.size} ART",
+                    color = TT.TextDim,
+                    modifier = Modifier.weight(1f),
+                )
+                DotGrid(6, 1, spacing = 6.dp)
             }
         }
 
@@ -131,7 +166,7 @@ fun HomeScreen(
             item {
                 EmptyState(
                     Icons.Rounded.LibraryMusic,
-                    "Henüz müzik yok",
+                    "No signal",
                     "Telefonuna MP3 dosyaları kopyala, TUNTUNE onları otomatik bulur.",
                     Modifier.padding(top = 64.dp),
                 )
@@ -142,13 +177,13 @@ fun HomeScreen(
         // Hızlı erişim kutucukları (2 sütun)
         item {
             val tiles = buildList<@Composable () -> Unit> {
-                add { QuickTile("Beğenilen Şarkılar", onOpenFavorites) { GradientIcon(Icons.Rounded.Favorite, LikedGradient) } }
-                add { QuickTile("En Çok Dinlenenler", onOpenMostPlayed) { GradientIcon(Icons.Rounded.TrendingUp, TopGradient) } }
-                playlists.takeLast(4).reversed().forEach { p ->
-                    add { QuickTile(p.name, { onOpenPlaylist(p.id) }) { PlaylistCover(p, Modifier.fillMaxSize(), corner = 0.dp) } }
+                add { QuickTile(1, "Liked", onOpenFavorites) { IconArt(Icons.Rounded.Favorite) } }
+                add { QuickTile(2, "Top played", onOpenMostPlayed) { IconArt(Icons.Rounded.TrendingUp) } }
+                playlists.takeLast(4).reversed().forEachIndexed { i, p ->
+                    add { QuickTile(3 + i, p.name, { onOpenPlaylist(p.id) }) { PlaylistCover(p, Modifier.fillMaxSize(), corner = 0.dp) } }
                 }
             }
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 tiles.chunked(2).forEach { pair ->
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         pair.forEach { tile -> Box(Modifier.weight(1f)) { tile() } }
@@ -158,97 +193,107 @@ fun HomeScreen(
             }
         }
 
+        var section = 1
         if (recentAlbums.isNotEmpty()) {
-            item { SectionTitle("Son dinlediklerin") }
+            val n = section++
+            item { SectionHeader(n, "Recent") }
             item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     items(recentAlbums, key = { it.id }) { AlbumCard(it, onClick = { onOpenAlbum(it.id) }) }
                 }
             }
         }
 
         if (mostPlayed.isNotEmpty()) {
-            item { SectionTitle("En çok dinlediklerin") }
-            items(mostPlayed.take(5), key = { "top-${it.id}" }) { song ->
-                SongRow(song, isCurrent = false, onClick = { onPlaySong(song) })
+            val n = section++
+            item { SectionHeader(n, "Top tracks") }
+            itemsIndexed(mostPlayed.take(5), key = { _, s -> "top-${s.id}" }) { i, song ->
+                SongRow(song, isCurrent = false, onClick = { onPlaySong(song) }, index = i + 1)
             }
         }
 
-        item { SectionTitle("Albümler") }
+        val albumsN = section++
+        item { SectionHeader(albumsN, "Albums") }
         item {
-            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 items(library.albums.take(20), key = { it.id }) { AlbumCard(it, onClick = { onOpenAlbum(it.id) }) }
             }
         }
 
-        item { SectionTitle("Sanatçılar") }
+        val artistsN = section++
+        item { SectionHeader(artistsN, "Artists") }
         item {
-            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(library.topArtists, key = { it.name }) {
-                    ArtistCard(it, onClick = { onOpenArtist(it.name) })
-                }
+            LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                items(library.topArtists, key = { it.name }) { ArtistCard(it, onClick = { onOpenArtist(it.name) }) }
             }
         }
 
-        item { SectionTitle("Son eklenenler") }
-        items(recentlyAdded, key = { "new-${it.id}" }) { song ->
-            SongRow(song, isCurrent = false, onClick = { onPlaySong(song) })
+        val newN = section
+        item { SectionHeader(newN, "New arrivals") }
+        itemsIndexed(library.recentlyAdded, key = { _, s -> "new-${s.id}" }) { i, song ->
+            SongRow(song, isCurrent = false, onClick = { onPlaySong(song) }, index = i + 1)
         }
     }
 }
 
 private fun greeting(): String = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
-    in 5..11 -> "Günaydın"
-    in 12..17 -> "İyi günler"
-    in 18..22 -> "İyi akşamlar"
-    else -> "İyi geceler"
+    in 5..11 -> "◤ GOOD MORNING"
+    in 12..17 -> "◤ GOOD AFTERNOON"
+    in 18..22 -> "◤ GOOD EVENING"
+    else -> "◤ NIGHT MODE"
 }
 
 @Composable
-private fun QuickTile(title: String, onClick: () -> Unit, art: @Composable () -> Unit) {
+private fun IconArt(icon: ImageVector) {
+    PlaceholderArt(icon, iconScale = 0.45f, tint = TT.Accent)
+}
+
+@Composable
+private fun QuickTile(index: Int, title: String, onClick: () -> Unit, art: @Composable () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .height(56.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(Color.White.copy(alpha = 0.08f))
+            .height(60.dp)
+            .panel(color = TT.Panel, border = TT.Line, shape = CardShape)
             .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(56.dp)) { art() }
-        Text(
-            title,
-            style = MaterialTheme.typography.labelLarge,
-            color = TT.TextPrimary,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 8.dp),
-        )
+        Box(Modifier.size(60.dp)) { art() }
+        Column(Modifier.padding(horizontal = 10.dp)) {
+            HudLabel("%02d".format(index), color = TT.TextDim)
+            Text(
+                title.uppercase(),
+                style = MaterialTheme.typography.labelLarge,
+                color = TT.TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
-}
-
-@Composable
-private fun GradientIcon(icon: ImageVector, colors: List<Color>) {
-    PlaceholderArt(seed = 0, icon = icon, iconScale = 0.45f, colors = colors)
 }
 
 @Composable
 fun AlbumCard(album: Album, onClick: () -> Unit) {
     Column(Modifier.width(140.dp).clickable(onClick = onClick)) {
-        Artwork(album.id, Modifier.size(140.dp))
+        Box {
+            Artwork(album.id, Modifier.size(140.dp), shape = CardShape, fallbackIcon = Icons.Rounded.Album)
+            CornerTriangle(Modifier.align(Alignment.BottomStart).padding(6.dp), color = TT.Accent, side = 8.dp)
+        }
         Spacer(Modifier.height(8.dp))
-        Text(album.title, style = MaterialTheme.typography.labelLarge, color = TT.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(album.artist, style = MaterialTheme.typography.bodySmall, color = TT.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(album.title, style = MaterialTheme.typography.titleSmall, color = TT.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        HudLabel(album.artist)
     }
 }
 
 @Composable
 fun ArtistCard(artist: Artist, onClick: () -> Unit) {
-    Column(Modifier.width(120.dp).clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally) {
-        Artwork(artist.songs.first().albumId, Modifier.size(120.dp).clip(CircleShape), corner = 60.dp, fallbackIcon = Icons.Rounded.Person)
+    Column(Modifier.width(116.dp).clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(116.dp).border(1.dp, TT.LineBright, CircleShape).padding(5.dp)) {
+            Artwork(artist.songs.first().albumId, Modifier.fillMaxSize(), shape = CircleShape, fallbackIcon = Icons.Rounded.Person)
+        }
         Spacer(Modifier.height(8.dp))
-        Text(artist.name, style = MaterialTheme.typography.labelLarge, color = TT.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text("Sanatçı", style = MaterialTheme.typography.bodySmall, color = TT.TextSecondary)
+        Text(artist.name, style = MaterialTheme.typography.titleSmall, color = TT.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        HudLabel("Artist", color = TT.TextDim)
     }
 }
 
@@ -273,42 +318,34 @@ fun SearchScreen(
     val artists = remember(q, library) { if (q.isEmpty()) emptyList() else library.artists.filter { it.name.lowercase().contains(q) } }
 
     LazyColumn(Modifier.fillMaxSize().background(TT.Background), contentPadding = BottomInset) {
+        item { ScreenHeader("◤ QUERY", "Search") }
         item {
-            Text(
-                "Ara",
-                style = MaterialTheme.typography.headlineMedium,
-                color = TT.TextPrimary,
-                modifier = Modifier.statusBarsPadding().padding(start = 16.dp, top = 16.dp, bottom = 12.dp),
-            )
-        }
-        item {
-            TextField(
+            OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                placeholder = { Text("Ne dinlemek istiyorsun?", color = Color(0xFF555555)) },
-                leadingIcon = { Icon(Icons.Rounded.Search, null, tint = Color.Black) },
+                placeholder = { Text("> ŞARKI, SANATÇI, ALBÜM_", style = MaterialTheme.typography.labelLarge, color = TT.TextDim) },
+                leadingIcon = { Icon(Icons.Rounded.Search, null, tint = TT.Accent) },
                 trailingIcon = {
-                    if (query.isNotEmpty()) IconButton(onClick = { query = "" }) { Icon(Icons.Rounded.Clear, "Temizle", tint = Color.Black) }
+                    if (query.isNotEmpty()) IconButton(onClick = { query = "" }) { Icon(Icons.Rounded.Clear, "Temizle", tint = TT.TextSecondary) }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(6.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White,
-                    focusedTextColor = Color.Black,
-                    unfocusedTextColor = Color.Black,
-                    cursorColor = Color.Black,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
+                textStyle = MaterialTheme.typography.bodyLarge,
+                shape = CardShape,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = TT.Panel,
+                    unfocusedContainerColor = TT.Panel,
+                    focusedBorderColor = TT.Accent,
+                    unfocusedBorderColor = TT.LineBright,
+                    cursorColor = TT.Accent,
                 ),
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp),
             )
         }
 
         if (q.isEmpty()) {
-            item { SectionTitle("Sanatçılara göz at") }
+            item { SectionHeader(1, "Browse artists") }
             item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     items(library.artists, key = { it.name }) { ArtistCard(it, onClick = { onOpenArtist(it.name) }) }
                 }
             }
@@ -316,26 +353,30 @@ fun SearchScreen(
         }
 
         if (songs.isEmpty() && albums.isEmpty() && artists.isEmpty()) {
-            item { EmptyState(Icons.Rounded.Search, "\"$query\" bulunamadı", "Yazımı kontrol et ya da başka bir kelime dene.") }
+            item { EmptyState(Icons.Rounded.Search, "No match", "\"$query\" bulunamadı. Başka bir kelime dene.") }
         }
+        var section = 1
         if (artists.isNotEmpty()) {
-            item { SectionTitle("Sanatçılar") }
+            val n = section++
+            item { SectionHeader(n, "Artists") }
             item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     items(artists, key = { it.name }) { ArtistCard(it, onClick = { onOpenArtist(it.name) }) }
                 }
             }
         }
         if (albums.isNotEmpty()) {
-            item { SectionTitle("Albümler") }
+            val n = section++
+            item { SectionHeader(n, "Albums") }
             item {
-                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     items(albums, key = { it.id }) { AlbumCard(it, onClick = { onOpenAlbum(it.id) }) }
                 }
             }
         }
         if (songs.isNotEmpty()) {
-            item { SectionTitle("Şarkılar") }
+            val n = section
+            item { SectionHeader(n, "Tracks") }
             itemsIndexed(songs, key = { _, s -> s.id }) { i, song ->
                 SongRow(song, isCurrent = song.id == currentSongId, onClick = { onPlay(songs, i) })
             }
@@ -345,7 +386,7 @@ fun SearchScreen(
 
 // ------------------------------------------------------------------ Kitaplık
 
-enum class LibraryFilter(val label: String) { Playlists("Çalma listeleri"), Albums("Albümler"), Artists("Sanatçılar"), Songs("Şarkılar") }
+enum class LibraryFilter(val label: String) { Playlists("Playlists"), Albums("Albums"), Artists("Artists"), Songs("Tracks") }
 
 @Composable
 fun LibraryScreen(
@@ -362,35 +403,45 @@ fun LibraryScreen(
     onPlay: (List<Song>, Int) -> Unit,
 ) {
     var filter by rememberSaveable { mutableStateOf(LibraryFilter.Playlists) }
+    val accent = TT.Accent
 
     LazyColumn(Modifier.fillMaxSize().background(TT.Background), contentPadding = BottomInset) {
         item {
-            Row(
-                Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 4.dp, top = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("Kitaplığın", style = MaterialTheme.typography.headlineMedium, color = TT.TextPrimary, modifier = Modifier.weight(1f))
-                IconButton(onClick = onCreatePlaylist) { Icon(Icons.Rounded.Add, "Çalma listesi oluştur", tint = TT.TextPrimary) }
-                IconButton(onClick = onOpenSettings) { Icon(Icons.Rounded.Settings, "Ayarlar", tint = TT.TextPrimary) }
+            ScreenHeader("◤ COLLECTION", "Library") {
+                CyberIconButton(Icons.Rounded.Add, "Çalma listesi oluştur", onCreatePlaylist, size = 40.dp)
+                Spacer(Modifier.width(8.dp))
+                CyberIconButton(Icons.Rounded.Settings, "Ayarlar", onOpenSettings, size = 40.dp)
             }
         }
         item {
             Row(
-                Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 12.dp),
+                Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                LibraryFilter.entries.forEach { f ->
+                LibraryFilter.entries.forEachIndexed { i, f ->
                     val selected = f == filter
-                    Text(
-                        f.label,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (selected) Color.Black else TT.TextPrimary,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(if (selected) TT.Accent else TT.SurfaceHigh)
+                    Row(
+                        Modifier
+                            .panel(
+                                color = if (selected) accent else Color.Transparent,
+                                border = if (selected) null else TT.LineBright,
+                                shape = Chamfer(6.dp),
+                            )
                             .clickable { filter = f }
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
-                    )
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "%02d ".format(i + 1),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (selected) Color.Black.copy(alpha = 0.6f) else TT.TextDim,
+                        )
+                        Text(
+                            f.label.uppercase(),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (selected) Color.Black else TT.TextPrimary,
+                        )
+                    }
                 }
             }
         }
@@ -398,29 +449,29 @@ fun LibraryScreen(
         when (filter) {
             LibraryFilter.Playlists -> {
                 item {
-                    LibraryRow("Beğenilen Şarkılar", "Çalma listesi · $favoritesCount şarkı", onOpenFavorites) {
-                        GradientIcon(Icons.Rounded.Favorite, LikedGradient)
-                    }
+                    LibraryRow("Liked tracks", "Playlist · $favoritesCount tracks", onOpenFavorites) { IconArt(Icons.Rounded.Favorite) }
                 }
                 items(playlists.reversed(), key = { it.id }) { p ->
-                    LibraryRow(p.name, "Çalma listesi · ${p.songIds.size} şarkı", { onOpenPlaylist(p.id) }) {
-                        PlaylistCover(p, Modifier.fillMaxSize())
+                    LibraryRow(p.name, "Playlist · ${p.songIds.size} tracks", { onOpenPlaylist(p.id) }) {
+                        PlaylistCover(p, Modifier.fillMaxSize(), corner = 0.dp)
                     }
                 }
                 item {
-                    LibraryRow("Çalma listesi oluştur", "", onCreatePlaylist) {
-                        Box(Modifier.fillMaxSize().background(TT.SurfaceHigh), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.Add, null, tint = TT.TextPrimary, modifier = Modifier.size(32.dp))
+                    LibraryRow("Yeni çalma listesi", "Create", onCreatePlaylist) {
+                        Box(Modifier.fillMaxSize().background(TT.Panel), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Rounded.Add, null, tint = accent, modifier = Modifier.size(28.dp))
                         }
                     }
                 }
             }
             LibraryFilter.Albums -> items(library.albums, key = { it.id }) { a ->
-                LibraryRow(a.title, "Albüm · ${a.artist}", { onOpenAlbum(a.id) }) { Artwork(a.id, Modifier.fillMaxSize()) }
+                LibraryRow(a.title, "Album · ${a.artist}", { onOpenAlbum(a.id) }) {
+                    Artwork(a.id, Modifier.fillMaxSize(), fallbackIcon = Icons.Rounded.Album)
+                }
             }
             LibraryFilter.Artists -> items(library.artists, key = { it.name }) { a ->
-                LibraryRow(a.name, "Sanatçı · ${a.songs.size} şarkı", { onOpenArtist(a.name) }, round = true) {
-                    Artwork(a.songs.first().albumId, Modifier.fillMaxSize(), corner = 32.dp, fallbackIcon = Icons.Rounded.Person)
+                LibraryRow(a.name, "Artist · ${a.songs.size} tracks", { onOpenArtist(a.name) }, round = true) {
+                    Artwork(a.songs.first().albumId, Modifier.fillMaxSize(), shape = CircleShape, fallbackIcon = Icons.Rounded.Person)
                 }
             }
             LibraryFilter.Songs -> {
@@ -442,27 +493,29 @@ fun LibraryScreen(
 @Composable
 private fun LibraryRow(title: String, subtitle: String, onClick: () -> Unit, round: Boolean = false, art: @Composable () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(64.dp).clip(if (round) CircleShape else RoundedCornerShape(4.dp))) { art() }
-        Spacer(Modifier.width(12.dp))
+        Box(
+            Modifier
+                .size(60.dp)
+                .then(if (round) Modifier.border(1.dp, TT.LineBright, CircleShape).padding(3.dp).clip(CircleShape) else Modifier.panel(TT.Panel, TT.Line, ThumbShape)),
+        ) { art() }
+        Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.titleMedium, color = TT.TextPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (subtitle.isNotEmpty()) {
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TT.TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+            if (subtitle.isNotEmpty()) HudLabel(subtitle)
         }
     }
 }
 
 @Composable
 private fun PlayShuffleBar(text: String, onPlay: () -> Unit, onShuffle: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text, style = MaterialTheme.typography.bodySmall, color = TT.TextSecondary, modifier = Modifier.weight(1f))
-        IconButton(onClick = onShuffle) { Icon(Icons.Rounded.Shuffle, "Karışık çal", tint = TT.TextSecondary, modifier = Modifier.size(28.dp)) }
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        HudLabel(text, modifier = Modifier.weight(1f))
+        CyberIconButton(Icons.Rounded.Shuffle, "Karışık çal", onShuffle, size = 44.dp, tint = TT.TextSecondary)
         Spacer(Modifier.width(8.dp))
-        CircleIcon(Icons.Rounded.PlayArrow, TT.Accent, Color.Black, 52.dp, onPlay, "Çal")
+        CyberButton("Play", onPlay, icon = Icons.Rounded.PlayArrow)
     }
 }
 
@@ -489,62 +542,51 @@ fun CollectionScreen(
     onMoveInPlaylist: (Playlist, Int, Int) -> Unit = { _, _, _ -> },
 ) {
     val title: String
-    val subtitle: String
-    val accentSeed: Long
-    var hasAlbumArt = true
+    val kicker: String
     val header: @Composable () -> Unit
+    var round = false
     when (kind) {
         is CollectionKind.AlbumKind -> {
             title = kind.album.title
-            subtitle = "Albüm · ${kind.album.artist}"
-            accentSeed = kind.album.id
+            kicker = "◤ ALBUM · ${kind.album.artist}"
             header = { Artwork(kind.album.id, Modifier.fillMaxSize(), iconScale = 0.35f, fallbackIcon = Icons.Rounded.Album) }
         }
         is CollectionKind.ArtistKind -> {
             title = kind.artist.name
-            subtitle = "Sanatçı · ${kind.artist.albumCount} albüm"
-            accentSeed = kind.artist.songs.first().albumId
-            header = {
-                Artwork(kind.artist.songs.first().albumId, Modifier.fillMaxSize(), corner = 200.dp, fallbackIcon = Icons.Rounded.Person)
-            }
+            kicker = "◤ ARTIST · ${kind.artist.albumCount} ALBUMS"
+            round = true
+            header = { Artwork(kind.artist.songs.first().albumId, Modifier.fillMaxSize(), shape = CircleShape, fallbackIcon = Icons.Rounded.Person) }
         }
         is CollectionKind.PlaylistKind -> {
             title = kind.playlist.name
-            subtitle = "Çalma listesi"
-            accentSeed = kind.playlist.id
-            hasAlbumArt = false
-            header = { PlaylistCover(kind.playlist, Modifier.fillMaxSize()) }
+            kicker = "◤ PLAYLIST"
+            header = { PlaylistCover(kind.playlist, Modifier.fillMaxSize(), corner = 0.dp) }
         }
         CollectionKind.Favorites -> {
-            title = "Beğenilen Şarkılar"
-            subtitle = "Çalma listesi"
-            accentSeed = 3
-            hasAlbumArt = false
-            header = { GradientIcon(Icons.Rounded.Favorite, LikedGradient) }
+            title = "Liked tracks"
+            kicker = "◤ PLAYLIST"
+            header = { IconArt(Icons.Rounded.Favorite) }
         }
         CollectionKind.MostPlayed -> {
-            title = "En Çok Dinlenenler"
-            subtitle = "Senin için"
-            accentSeed = 2
-            hasAlbumArt = false
-            header = { GradientIcon(Icons.Rounded.TrendingUp, TopGradient) }
+            title = "Top played"
+            kicker = "◤ FOR YOU"
+            header = { IconArt(Icons.Rounded.TrendingUp) }
         }
     }
-    val bg = rememberArtColor(accentSeed, loadArt = hasAlbumArt)
     var menuOpen by remember { mutableStateOf(false) }
     val playlist = (kind as? CollectionKind.PlaylistKind)?.playlist
+    val isAlbum = kind is CollectionKind.AlbumKind
 
-    LazyColumn(
-        Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(bg, TT.Background), endY = 1400f)),
-        contentPadding = BottomInset,
-    ) {
+    LazyColumn(Modifier.fillMaxSize().background(TT.Background), contentPadding = BottomInset) {
         item {
-            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) { Icon(Icons.Rounded.ArrowBack, "Geri", tint = TT.TextPrimary) }
+            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                CyberIconButton(Icons.Rounded.ArrowBack, "Geri", onBack, size = 40.dp)
                 Spacer(Modifier.weight(1f))
+                DotGrid(5, 2, spacing = 7.dp)
                 if (playlist != null) {
+                    Spacer(Modifier.width(10.dp))
                     Box {
-                        IconButton(onClick = { menuOpen = true }) { Icon(Icons.Rounded.MoreVert, "Seçenekler", tint = TT.TextPrimary) }
+                        CyberIconButton(Icons.Rounded.MoreVert, "Seçenekler", { menuOpen = true }, size = 40.dp)
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                             DropdownMenuItem(
                                 text = { Text("Yeniden adlandır") },
@@ -563,14 +605,22 @@ fun CollectionScreen(
         }
         item {
             Box(Modifier.fillMaxWidth().padding(top = 8.dp), contentAlignment = Alignment.Center) {
-                Box(Modifier.fillMaxWidth(0.62f).aspectRatio(1f).clip(RoundedCornerShape(4.dp))) { header() }
+                Box(
+                    Modifier
+                        .fillMaxWidth(0.6f)
+                        .aspectRatio(1f)
+                        .then(
+                            if (round) Modifier.border(1.dp, TT.LineBright, CircleShape).padding(6.dp).clip(CircleShape)
+                            else Modifier.panel(TT.Panel, TT.LineBright, Chamfer(16.dp))
+                        ),
+                ) { header() }
             }
         }
         item {
-            Column(Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
-                Text(title, style = MaterialTheme.typography.headlineMedium, color = TT.TextPrimary, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(4.dp))
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = TT.TextSecondary)
+            Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 20.dp)) {
+                HudLabel(kicker, color = TT.Accent)
+                Spacer(Modifier.height(2.dp))
+                Text(title, style = MaterialTheme.typography.headlineMedium, color = TT.TextPrimary)
             }
         }
         item {
@@ -580,12 +630,13 @@ fun CollectionScreen(
                 onShuffle = { onPlay(songs, 0, true) },
             )
         }
+        item { Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(1.dp).background(TT.Line)) }
 
         if (songs.isEmpty()) {
             item {
                 EmptyState(
                     Icons.Rounded.MusicNote,
-                    "Burada henüz şarkı yok",
+                    "Empty",
                     if (kind is CollectionKind.Favorites) "Şarkıların yanındaki ♥ ile beğendiklerin burada toplanır."
                     else "Şarkı menüsünden \"Çalma listesine ekle\" ile şarkı ekleyebilirsin.",
                 )
@@ -599,25 +650,14 @@ fun CollectionScreen(
                 add(ExtraMenuItem("Bu listeden çıkar", Icons.Rounded.RemoveCircleOutline) { onRemoveFromPlaylist(playlist, i) })
             } else emptyList()
 
-            val leading: (@Composable () -> Unit)? = if (kind is CollectionKind.AlbumKind) {
-                {
-                    Box(Modifier.width(32.dp), contentAlignment = Alignment.Center) {
-                        Text(
-                            "${if (song.track > 0) song.track else i + 1}",
-                            color = if (song.id == currentSongId) TT.Accent else TT.TextSecondary,
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
-                    }
-                }
-            } else null
-
             SongRow(
                 song,
                 isCurrent = song.id == currentSongId,
                 onClick = { onPlay(songs, i, false) },
-                leading = leading,
+                index = if (isAlbum && song.track > 0) song.track else i + 1,
+                showArt = !isAlbum,
                 extraMenu = extras,
-                hideAlbumLink = kind is CollectionKind.AlbumKind,
+                hideAlbumLink = isAlbum,
                 hideArtistLink = kind is CollectionKind.ArtistKind,
             )
         }

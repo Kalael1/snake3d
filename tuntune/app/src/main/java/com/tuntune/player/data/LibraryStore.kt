@@ -145,6 +145,17 @@ class LibraryStore private constructor(context: Context) {
         )
     }
 
+    // ---- Tema ----
+
+    private val _accent = MutableStateFlow(prefs.getString(KEY_ACCENT, null))
+    /** Seçilen vurgu renginin adı (AccentTheme.name); null = varsayılan. */
+    val accent: StateFlow<String?> = _accent.asStateFlow()
+
+    fun setAccent(name: String) {
+        _accent.value = name
+        prefs.edit().putString(KEY_ACCENT, name).apply()
+    }
+
     // ---- Kiosk PIN ----
 
     var kioskPin: String
@@ -182,6 +193,7 @@ class LibraryStore private constructor(context: Context) {
         private const val KEY_REPEAT = "repeat"
         private const val KEY_PIN = "kiosk_pin"
         private const val KEY_KIOSK = "kiosk_enabled"
+        private const val KEY_ACCENT = "accent"
 
         @Volatile private var instance: LibraryStore? = null
 

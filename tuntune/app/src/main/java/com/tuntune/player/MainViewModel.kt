@@ -43,6 +43,8 @@ data class PlayerUiState(
     val shuffle: Boolean = false,
     val repeatMode: Int = Player.REPEAT_MODE_OFF,
     val upNext: List<QueueEntry> = emptyList(),
+    val index: Int = 0,
+    val count: Int = 0,
 ) {
     val hasSong: Boolean get() = songId != null
 }
@@ -139,6 +141,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             shuffle = c.shuffleModeEnabled,
             repeatMode = c.repeatMode,
             upNext = buildUpNext(c),
+            index = c.currentMediaItemIndex,
+            count = c.mediaItemCount,
         )
         _position.value = c.currentPosition
     }

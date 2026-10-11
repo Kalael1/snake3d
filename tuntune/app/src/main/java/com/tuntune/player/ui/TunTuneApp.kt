@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.LibraryMusic
@@ -52,7 +53,11 @@ import com.tuntune.player.ui.components.AddToPlaylistDialog
 import com.tuntune.player.ui.components.ArtworkCache
 import com.tuntune.player.ui.components.EmptyState
 import com.tuntune.player.ui.components.LocalSongActions
-import com.tuntune.player.ui.components.PillButton
+import com.tuntune.player.ui.components.CyberButton
+import com.tuntune.player.ui.components.CyberDialog
+import com.tuntune.player.ui.components.HudLabel
+import com.tuntune.player.ui.components.SpinningDisc
+import com.tuntune.player.ui.theme.AccentTheme
 import com.tuntune.player.ui.components.SongActions
 import com.tuntune.player.ui.components.TextInputDialog
 import com.tuntune.player.ui.screens.CollectionKind
@@ -67,9 +72,9 @@ import com.tuntune.player.ui.screens.SettingsScreen
 import com.tuntune.player.ui.theme.TT
 
 enum class Tab(val label: String, val icon: ImageVector) {
-    Home("Ana sayfa", Icons.Rounded.Home),
-    Search("Ara", Icons.Rounded.Search),
-    Library("Kitaplığın", Icons.Rounded.LibraryMusic),
+    Home("Home", Icons.Rounded.Home),
+    Search("Search", Icons.Rounded.Search),
+    Library("Library", Icons.Rounded.LibraryMusic),
 }
 
 sealed interface Route {
@@ -106,6 +111,8 @@ fun TunTuneApp(
     val recent by vm.store.recent.collectAsStateWithLifecycle()
     val playCounts by vm.store.playCounts.collectAsStateWithLifecycle()
     val sleepEndsAt by vm.sleepTimerEndsAt.collectAsStateWithLifecycle()
+    val accentName by vm.store.accent.collectAsStateWithLifecycle()
+    val accentTheme = AccentTheme.entries.firstOrNull { it.name == accentName } ?: AccentTheme.Yellow
 
     var tab by rememberSaveable { mutableStateOf(Tab.Home) }
     val stack = remember { mutableStateListOf<Route>() }
@@ -210,6 +217,8 @@ fun TunTuneApp(
                             onDisableKiosk = onDisableKiosk,
                             onRemoveKiosk = onRemoveKiosk,
                             onChangePin = { vm.store.kioskPin = it; pinVersion++ },
+                            accent = accentTheme,
+                            onAccentChange = { vm.store.setAccent(it.name) },
                         )
                     }
 
@@ -253,7 +262,7 @@ fun TunTuneApp(
                 Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .background(Brush.verticalGradient(listOf(Color.Transparent, TT.Background.copy(alpha = 0.95f), TT.Background))),
+                    .background(Brush.verticalGradient(listOf(Color.Transparent, TT.Background.copy(alpha = 0.92f), TT.Background, TT.Background))),
             ) {
                 Spacer(Modifier.height(24.dp))
                 if (player.hasSong) Isolated {
@@ -345,20 +354,18 @@ fun TunTuneApp(
             )
         }
         deleting?.let { p ->
-            AlertDialog(
-                onDismissRequest = { deleting = null },
-                containerColor = TT.SurfaceHigh,
-                title = { Text("Silinsin mi?") },
-                text = { Text("\"${p.name}\" çalma listesi silinecek. Şarkıların telefonda kalır.") },
-                confirmButton = {
-                    TextButton(onClick = {
-                        vm.store.deletePlaylist(p.id)
-                        deleting = null
-                        if (stack.lastOrNull() == Route.PlaylistRoute(p.id)) stack.removeAt(stack.lastIndex)
-                    }) { Text("Sil", color = TT.Accent) }
+            CyberDialog(
+                title = "Silinsin mi?",
+                onDismiss = { deleting = null },
+                confirmText = "Sil",
+                onConfirm = {
+                    vm.store.deletePlaylist(p.id)
+                    deleting = null
+                    if (stack.lastOrNull() == Route.PlaylistRoute(p.id)) stack.removeAt(stack.lastIndex)
                 },
-                dismissButton = { TextButton(onClick = { deleting = null }) { Text("Vazgeç", color = TT.TextSecondary) } },
-            )
+            ) {
+                Text("\"${p.name}\" çalma listesi silinecek. Şarkıların telefonda kalır.", color = TT.TextSecondary)
+            }
         }
     }
 }
@@ -379,24 +386,36 @@ private fun playlistIndex(p: Playlist, shown: List<Song>, shownIndex: Int, exist
 
 @Composable
 private fun BottomBar(selected: Tab, onSelect: (Tab) -> Unit) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(top = 6.dp, bottom = 6.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-    ) {
-        Tab.entries.forEach { t ->
-            val active = t == selected
-            Column(
-                Modifier
-                    .weight(1f)
-                    .clickable { onSelect(t) }
-                    .padding(vertical = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Icon(t.icon, t.label, tint = if (active) TT.TextPrimary else TT.TextSecondary, modifier = Modifier.size(26.dp))
-                Text(t.label, style = MaterialTheme.typography.labelMedium, color = if (active) TT.TextPrimary else TT.TextSecondary)
+    val accent = TT.Accent
+    Column(Modifier.fillMaxWidth()) {
+        Box(Modifier.fillMaxWidth().padding(top = 8.dp).height(1.dp).background(TT.Line))
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(top = 2.dp, bottom = 6.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            Tab.entries.forEachIndexed { i, t ->
+                val active = t == selected
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .clickable { onSelect(t) }
+                        .padding(bottom = 4.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    // aktif sekmenin üstünde neon blok
+                    Box(Modifier.width(28.dp).height(3.dp).background(if (active) accent else Color.Transparent))
+                    Spacer(Modifier.height(6.dp))
+                    Icon(t.icon, t.label, tint = if (active) accent else TT.TextSecondary, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        "%02d %s".format(i + 1, t.label.uppercase()),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (active) TT.TextPrimary else TT.TextDim,
+                    )
+                }
             }
         }
     }
@@ -409,9 +428,10 @@ private fun PermissionScreen(onRequest: () -> Unit) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(Icons.Rounded.LibraryMusic, null, tint = TT.Accent, modifier = Modifier.size(72.dp))
-        Spacer(Modifier.height(24.dp))
-        Text("TUNTUNE", style = MaterialTheme.typography.headlineLarge, color = TT.TextPrimary)
+        SpinningDisc(albumId = -1, isPlaying = true, modifier = Modifier.size(160.dp))
+        Spacer(Modifier.height(32.dp))
+        HudLabel("◤ ACCESS REQUIRED", color = TT.Accent)
+        Text("TUNTUNE", style = MaterialTheme.typography.displaySmall, color = TT.TextPrimary)
         Spacer(Modifier.height(12.dp))
         Text(
             "Müziklerini çalabilmek için telefondaki ses dosyalarına erişim izni gerekiyor.",
@@ -419,7 +439,7 @@ private fun PermissionScreen(onRequest: () -> Unit) {
             color = TT.TextSecondary,
         )
         Spacer(Modifier.height(32.dp))
-        PillButton("İzin ver", onRequest)
+        CyberButton("İzin ver", onRequest)
     }
 }
 

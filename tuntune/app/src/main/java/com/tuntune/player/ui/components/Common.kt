@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -47,12 +45,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
@@ -60,6 +56,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.tuntune.player.data.Playlist
 import com.tuntune.player.data.Song
+import com.tuntune.player.ui.theme.Chamfer
 import com.tuntune.player.ui.theme.TT
 
 /** Şarkı menüsündeki eylemler; ekranların hepsi aynı menüyü kullanır. */
@@ -80,16 +77,18 @@ fun formatDuration(ms: Long): String {
     val h = totalSec / 3600
     val m = (totalSec % 3600) / 60
     val s = totalSec % 60
-    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
+    return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%02d:%02d".format(m, s)
 }
 
 fun formatTotal(songs: List<Song>): String {
     val min = songs.sumOf { it.durationMs } / 60_000
-    val dur = if (min >= 60) "${min / 60} sa ${min % 60} dk" else "$min dk"
-    return "${songs.size} şarkı · $dur"
+    val dur = if (min >= 60) "${min / 60}H ${min % 60}M" else "${min}M"
+    return "${songs.size} TRACKS · $dur"
 }
 
 data class ExtraMenuItem(val label: String, val icon: ImageVector, val onClick: () -> Unit)
+
+private val ThumbShape = Chamfer(6.dp)
 
 @Composable
 fun SongRow(
@@ -97,12 +96,14 @@ fun SongRow(
     isCurrent: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    leading: (@Composable () -> Unit)? = null,
+    index: Int? = null,
+    showArt: Boolean = true,
     extraMenu: List<ExtraMenuItem> = emptyList(),
     hideAlbumLink: Boolean = false,
     hideArtistLink: Boolean = false,
 ) {
     val actions = LocalSongActions.current
+    val accent = TT.Accent
     var menuOpen by remember { mutableStateOf(false) }
     Row(
         modifier
@@ -111,30 +112,44 @@ fun SongRow(
             .padding(start = 16.dp, top = 6.dp, bottom = 6.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (leading != null) leading() else Artwork(song.albumId, Modifier.size(48.dp))
-        Spacer(Modifier.width(12.dp))
+        // Çalan şarkıda solda neon çizgi
+        Box(Modifier.width(2.dp).height(40.dp).background(if (isCurrent) accent else Color.Transparent))
+        Spacer(Modifier.width(8.dp))
+        if (index != null) {
+            Text(
+                "%02d".format(index),
+                style = MaterialTheme.typography.labelLarge,
+                color = if (isCurrent) accent else TT.TextDim,
+                modifier = Modifier.width(30.dp),
+            )
+        }
+        if (showArt) {
+            Artwork(song.albumId, Modifier.size(46.dp), shape = ThumbShape)
+            Spacer(Modifier.width(12.dp))
+        }
         Column(Modifier.weight(1f)) {
             Text(
                 song.title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (isCurrent) TT.Accent else TT.TextPrimary,
+                color = if (isCurrent) accent else TT.TextPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (actions.isFavorite(song)) {
-                    Icon(Icons.Rounded.Favorite, null, tint = TT.Accent, modifier = Modifier.size(12.dp))
+                    Icon(Icons.Rounded.Favorite, null, tint = accent, modifier = Modifier.size(11.dp))
                     Spacer(Modifier.width(4.dp))
                 }
                 Text(
-                    song.artist,
-                    style = MaterialTheme.typography.bodySmall,
+                    song.artist.uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
                     color = TT.TextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
         }
+        Text(formatDuration(song.durationMs), style = MaterialTheme.typography.labelMedium, color = TT.TextDim)
         Box {
             IconButton(onClick = { menuOpen = true }) {
                 Icon(Icons.Rounded.MoreVert, contentDescription = "Seçenekler", tint = TT.TextSecondary)
@@ -159,19 +174,9 @@ fun SongRow(
 @Composable
 private fun MenuItem(label: String, icon: ImageVector, onClick: () -> Unit) {
     DropdownMenuItem(
-        text = { Text(label) },
-        leadingIcon = { Icon(icon, null) },
+        text = { Text(label, style = MaterialTheme.typography.bodyMedium) },
+        leadingIcon = { Icon(icon, null, tint = TT.TextSecondary) },
         onClick = onClick,
-    )
-}
-
-@Composable
-fun SectionTitle(text: String, modifier: Modifier = Modifier) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleLarge,
-        color = TT.TextPrimary,
-        modifier = modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 12.dp),
     )
 }
 
@@ -182,35 +187,63 @@ fun EmptyState(icon: ImageVector, title: String, message: String, modifier: Modi
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(icon, null, tint = TT.TextSecondary, modifier = Modifier.size(56.dp))
+        Box(Modifier.size(84.dp).panel(), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = TT.TextSecondary, modifier = Modifier.size(40.dp))
+        }
         Spacer(Modifier.height(16.dp))
-        Text(title, style = MaterialTheme.typography.titleMedium, color = TT.TextPrimary)
+        Text(title.uppercase(), style = MaterialTheme.typography.titleSmall, color = TT.TextPrimary)
         Spacer(Modifier.height(6.dp))
         Text(message, style = MaterialTheme.typography.bodyMedium, color = TT.TextSecondary)
     }
 }
 
 @Composable
-fun PillButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, filled: Boolean = true) {
-    Box(
-        modifier
-            .heightIn(min = 40.dp)
-            .clip(RoundedCornerShape(50))
-            .background(if (filled) TT.TextPrimary else TT.SurfaceHigh)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 10.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(text, color = if (filled) Color.Black else TT.TextPrimary, fontWeight = FontWeight.Bold)
+private fun ttFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = TT.Accent,
+    unfocusedBorderColor = TT.LineBright,
+    cursorColor = TT.Accent,
+    focusedLabelColor = TT.Accent,
+)
+
+@Composable
+private fun DialogTitle(text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("//", color = TT.Accent, style = MaterialTheme.typography.titleSmall)
+        Spacer(Modifier.width(8.dp))
+        Text(text.uppercase(), style = MaterialTheme.typography.titleSmall)
     }
 }
 
 @Composable
-private fun ttFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = TT.Accent,
-    cursorColor = TT.Accent,
-    focusedLabelColor = TT.Accent,
-)
+private fun DialogAction(text: String, onClick: () -> Unit, primary: Boolean = true, enabled: Boolean = true) {
+    TextButton(onClick = onClick, enabled = enabled) {
+        Text(
+            text.uppercase(),
+            style = MaterialTheme.typography.labelLarge,
+            color = if (!enabled) TT.TextDim else if (primary) TT.Accent else TT.TextSecondary,
+        )
+    }
+}
+
+@Composable
+fun CyberDialog(
+    title: String,
+    onDismiss: () -> Unit,
+    confirmText: String? = null,
+    confirmEnabled: Boolean = true,
+    onConfirm: () -> Unit = {},
+    dismissText: String = "Vazgeç",
+    content: @Composable () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = TT.Panel,
+        title = { DialogTitle(title) },
+        text = content,
+        confirmButton = { if (confirmText != null) DialogAction(confirmText, onConfirm, enabled = confirmEnabled) },
+        dismissButton = { DialogAction(dismissText, onDismiss, primary = false) },
+    )
+}
 
 @Composable
 fun TextInputDialog(
@@ -223,24 +256,22 @@ fun TextInputDialog(
     var text by remember { mutableStateOf(initial) }
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = TT.SurfaceHigh,
-        title = { Text(title) },
-        text = {
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                singleLine = true,
-                colors = ttFieldColors(),
-                modifier = Modifier.fillMaxWidth().focusRequester(focus),
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(text) }, enabled = text.isNotBlank()) { Text(confirmText, color = TT.Accent) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Vazgeç", color = TT.TextSecondary) } },
-    )
+    CyberDialog(
+        title = title,
+        onDismiss = onDismiss,
+        confirmText = confirmText,
+        confirmEnabled = text.isNotBlank(),
+        onConfirm = { onConfirm(text) },
+    ) {
+        OutlinedTextField(
+            value = text,
+            onValueChange = { text = it },
+            singleLine = true,
+            colors = ttFieldColors(),
+            textStyle = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.fillMaxWidth().focusRequester(focus),
+        )
+    }
 }
 
 @Composable
@@ -250,48 +281,41 @@ fun AddToPlaylistDialog(
     onPick: (Playlist) -> Unit,
     onCreateNew: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = TT.SurfaceHigh,
-        title = { Text("Çalma listesine ekle") },
-        text = {
-            LazyColumn(Modifier.heightIn(max = 360.dp)) {
-                item {
-                    Row(
-                        Modifier.fillMaxWidth().clickable(onClick = onCreateNew).padding(vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(Modifier.size(44.dp).background(TT.Surface, RoundedCornerShape(4.dp)), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.Add, null, tint = TT.TextPrimary)
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Text("Yeni çalma listesi", style = MaterialTheme.typography.titleMedium)
+    CyberDialog(title = "Çalma listesine ekle", onDismiss = onDismiss, dismissText = "Kapat") {
+        LazyColumn(Modifier.heightIn(max = 360.dp)) {
+            item {
+                Row(
+                    Modifier.fillMaxWidth().clickable(onClick = onCreateNew).padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.size(44.dp).panel(border = TT.LineBright, shape = ThumbShape), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Rounded.Add, null, tint = TT.Accent)
                     }
+                    Spacer(Modifier.width(12.dp))
+                    Text("YENİ ÇALMA LİSTESİ", style = MaterialTheme.typography.labelLarge)
                 }
-                items(playlists, key = { it.id }) { p ->
-                    Row(
-                        Modifier.fillMaxWidth().clickable { onPick(p) }.padding(vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        PlaylistCover(p, Modifier.size(44.dp))
-                        Spacer(Modifier.width(12.dp))
-                        Column {
-                            Text(p.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text("${p.songIds.size} şarkı", style = MaterialTheme.typography.bodySmall, color = TT.TextSecondary)
-                        }
+            }
+            items(playlists, key = { it.id }) { p ->
+                Row(
+                    Modifier.fillMaxWidth().clickable { onPick(p) }.padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    PlaylistCover(p, Modifier.size(44.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(p.name, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        HudLabel("${p.songIds.size} tracks")
                     }
                 }
             }
-        },
-        confirmButton = {},
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Kapat", color = TT.TextSecondary) } },
-    )
+        }
+    }
 }
 
 @Composable
-fun PlaylistCover(playlist: Playlist, modifier: Modifier = Modifier, corner: Dp = 4.dp) {
-    Box(modifier.clip(RoundedCornerShape(corner))) {
-        PlaceholderArt(playlist.id, Icons.Rounded.QueueMusic)
+fun PlaylistCover(playlist: Playlist, modifier: Modifier = Modifier, corner: Dp = 6.dp) {
+    Box(modifier.panel(color = TT.PanelHigh, border = TT.Line, shape = Chamfer(corner)), contentAlignment = Alignment.Center) {
+        PlaceholderArt(Icons.Rounded.QueueMusic, iconScale = 0.4f, tint = TT.TextSecondary)
     }
 }
 
@@ -304,40 +328,27 @@ fun PinDialog(
     error: String? = null,
 ) {
     var pin by remember { mutableStateOf("") }
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = TT.SurfaceHigh,
-        title = { Text(title) },
-        text = {
-            Column {
-                Text(message, color = TT.TextSecondary)
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = pin,
-                    onValueChange = { if (it.length <= 8 && it.all(Char::isDigit)) pin = it },
-                    singleLine = true,
-                    label = { Text("PIN") },
-                    isError = error != null,
-                    supportingText = if (error != null) { { Text(error) } } else null,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    colors = ttFieldColors(),
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = { onConfirm(pin) }, enabled = pin.length >= 4) { Text("Tamam", color = TT.Accent) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Vazgeç", color = TT.TextSecondary) } },
-    )
-}
-
-@Composable
-fun CircleIcon(icon: ImageVector, background: Color, tint: Color, size: Dp, onClick: () -> Unit, contentDescription: String?) {
-    Box(
-        Modifier.size(size).clip(CircleShape).background(background).clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
+    CyberDialog(
+        title = title,
+        onDismiss = onDismiss,
+        confirmText = "Tamam",
+        confirmEnabled = pin.length >= 4,
+        onConfirm = { onConfirm(pin) },
     ) {
-        Icon(icon, contentDescription, tint = tint, modifier = Modifier.size(size * 0.5f))
+        Column {
+            Text(message, color = TT.TextSecondary, style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = pin,
+                onValueChange = { if (it.length <= 8 && it.all(Char::isDigit)) pin = it },
+                singleLine = true,
+                label = { Text("PIN") },
+                isError = error != null,
+                supportingText = if (error != null) { { Text(error) } } else null,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                colors = ttFieldColors(),
+            )
+        }
     }
 }

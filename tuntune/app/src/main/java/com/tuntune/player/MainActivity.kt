@@ -10,10 +10,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
 import com.tuntune.player.kiosk.KioskManager
 import com.tuntune.player.ui.TunTuneApp
+import com.tuntune.player.ui.theme.AccentTheme
 import com.tuntune.player.ui.theme.TunTuneTheme
 
 class MainActivity : ComponentActivity() {
@@ -40,7 +43,9 @@ class MainActivity : ComponentActivity() {
         if (!hasPermission.value) askPermissions()
 
         setContent {
-            TunTuneTheme {
+            val accentName by viewModel.store.accent.collectAsState()
+            val accent = AccentTheme.entries.firstOrNull { it.name == accentName } ?: AccentTheme.Yellow
+            TunTuneTheme(accent) {
                 TunTuneApp(
                     vm = viewModel,
                     hasPermission = hasPermission.value,

@@ -2,9 +2,12 @@ package com.tuntune.player.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -13,11 +16,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
@@ -25,25 +28,31 @@ import androidx.compose.material.icons.rounded.Password
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.PhonelinkErase
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import com.tuntune.player.ui.components.CyberDialog
+import com.tuntune.player.ui.components.CyberIconButton
+import com.tuntune.player.ui.components.HudLabel
 import com.tuntune.player.ui.components.PinDialog
+import com.tuntune.player.ui.components.SectionHeader
+import com.tuntune.player.ui.components.panel
+import com.tuntune.player.ui.theme.AccentTheme
+import com.tuntune.player.ui.theme.Chamfer
 import com.tuntune.player.ui.theme.TT
 
 const val DEVICE_OWNER_COMMAND = "adb shell dpm set-device-owner com.tuntune.player/.kiosk.AdminReceiver"
@@ -57,6 +66,8 @@ fun SettingsScreen(
     kioskEnabled: Boolean,
     currentPin: String,
     usingDefaultPin: Boolean,
+    accent: AccentTheme,
+    onAccentChange: (AccentTheme) -> Unit,
     onBack: () -> Unit,
     onRescan: () -> Unit,
     onEnableKiosk: () -> Unit,
@@ -68,6 +79,7 @@ fun SettingsScreen(
     var pinError by remember { mutableStateOf<String?>(null) }
     var confirmEnable by remember { mutableStateOf(false) }
     var pinDialogKey by remember { mutableIntStateOf(0) }
+    val context = LocalContext.current
 
     Column(
         Modifier
@@ -75,22 +87,63 @@ fun SettingsScreen(
             .background(TT.Background)
             .verticalScroll(rememberScrollState())
             .statusBarsPadding()
-            .padding(bottom = 150.dp),
+            .padding(bottom = 170.dp),
     ) {
-        Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.Rounded.ArrowBack, "Geri", tint = TT.TextPrimary) }
-            Text("Ayarlar", style = MaterialTheme.typography.titleLarge, color = TT.TextPrimary)
+        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+            CyberIconButton(Icons.Rounded.ArrowBack, "Geri", onBack, size = 40.dp)
+            Spacer(Modifier.width(14.dp))
+            Column {
+                HudLabel("◤ SYSTEM", color = TT.Accent)
+                Text("SETTINGS", style = MaterialTheme.typography.headlineLarge, color = TT.TextPrimary)
+            }
         }
 
-        Header("Kitaplık")
+        // ---- Tema
+        SectionHeader(1, "Theme")
+        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AccentTheme.entries.forEach { theme ->
+                val selected = theme == accent
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .panel(color = TT.Panel, border = if (selected) theme.color else TT.Line, shape = Chamfer(8.dp))
+                        .clickable { onAccentChange(theme) }
+                        .padding(6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Box(
+                        Modifier.fillMaxWidth().aspectRatio(1f).panel(color = theme.color, border = null, shape = Chamfer(6.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (selected) Icon(Icons.Rounded.Check, null, tint = Color.Black, modifier = Modifier.size(22.dp))
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    HudLabel(theme.label.substringAfterLast(' '), color = if (selected) theme.color else TT.TextSecondary)
+                }
+            }
+        }
+        HudLabel("ACTIVE // ${accent.label}", color = TT.TextDim, modifier = Modifier.padding(start = 16.dp, top = 10.dp))
+
+        // ---- Kitaplık
+        SectionHeader(2, "Library")
         SettingRow(Icons.Rounded.Refresh, "Müzikleri yeniden tara", "$songCount şarkı bulundu", onRescan)
 
-        Header("Kiosk modu (sadece müzik çalar)")
+        // ---- Telefon
+        SectionHeader(3, "Device")
+        SettingRow(Icons.Rounded.PhoneAndroid, "Telefon ayarlarını aç", "Wi-Fi, Bluetooth, ses, ekran parlaklığı") {
+            context.startActivity(
+                android.content.Intent(android.provider.Settings.ACTION_SETTINGS)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
+
+        // ---- Kiosk
+        SectionHeader(4, "Kiosk mode")
         when {
             !isDeviceOwner -> {
-                InfoCard(
-                    "Kiosk modu açıldığında telefon sadece TUNTUNE'u gösterir; başka uygulamaya geçilemez. " +
-                        "Bunun için telefonda hiçbir hesap (Google, Mi) yokken bilgisayardan bir kez şu komutu çalıştır:",
+                InfoText(
+                    "Kiosk modu açıldığında telefon sadece TUNTUNE'u gösterir. Bunun için telefonda hiçbir hesap yokken " +
+                        "bilgisayardan bir kez şu komutu çalıştır:",
                 )
                 SelectionContainer {
                     Text(
@@ -101,8 +154,7 @@ fun SettingsScreen(
                         modifier = Modifier
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(TT.SurfaceHigh)
+                            .panel(color = TT.Panel, border = TT.Line, shape = Chamfer(8.dp))
                             .padding(12.dp),
                     )
                 }
@@ -111,7 +163,7 @@ fun SettingsScreen(
                 SettingRow(Icons.Rounded.Lock, "Kiosk modunu aç", "Telefon sadece TUNTUNE olarak çalışır") { confirmEnable = true }
             }
             else -> {
-                InfoCard("Kiosk modu açık. Telefon sadece TUNTUNE'u gösteriyor.")
+                InfoText("Kiosk modu açık. Telefon sadece TUNTUNE'u gösteriyor.")
                 SettingRow(Icons.Rounded.LockOpen, "Kiosk modundan çık", "Telefon normal kullanıma döner (PIN gerekir)") {
                     pinError = null; pinDialogKey++; pinPurpose = PinPurpose.Disable
                 }
@@ -121,7 +173,7 @@ fun SettingsScreen(
             SettingRow(
                 Icons.Rounded.Password,
                 "PIN'i değiştir",
-                if (usingDefaultPin) "Şu an varsayılan PIN kullanılıyor: 0000 — değiştirmen önerilir" else "Kiosk modundan çıkmak için kullanılan PIN",
+                if (usingDefaultPin) "Varsayılan PIN kullanılıyor: 0000 — değiştirmen önerilir" else "Kiosk modundan çıkmak için kullanılan PIN",
             ) { pinError = null; pinDialogKey++; pinPurpose = PinPurpose.ChangeOld }
             SettingRow(
                 Icons.Rounded.PhonelinkErase,
@@ -130,37 +182,28 @@ fun SettingsScreen(
             ) { pinError = null; pinDialogKey++; pinPurpose = PinPurpose.Remove }
         }
 
-        Header("Telefon")
-        val context = androidx.compose.ui.platform.LocalContext.current
-        SettingRow(Icons.Rounded.PhoneAndroid, "Telefon ayarlarını aç", "Wi-Fi, Bluetooth, ses, ekran parlaklığı") {
-            context.startActivity(
-                android.content.Intent(android.provider.Settings.ACTION_SETTINGS)
-                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-            )
-        }
-
-        Header("Hakkında")
-        SettingRow(Icons.Rounded.Info, "TUNTUNE 1.0", "Çevrimdışı müzik çalar", null)
+        // ---- Hakkında
+        SectionHeader(5, "About")
+        SettingRow(Icons.Rounded.Info, "TUNTUNE 2.0", "Offline audio system // cyber edition", null)
     }
 
     if (confirmEnable) {
-        AlertDialog(
-            onDismissRequest = { confirmEnable = false },
-            containerColor = TT.SurfaceHigh,
-            title = { Text("Kiosk modu açılsın mı?") },
-            text = {
-                Text(
-                    "Telefon sadece TUNTUNE'u gösterecek. Çıkmak için Ayarlar → \"Kiosk modundan çık\" ve PIN gerekir." +
-                        if (usingDefaultPin) "\n\nPIN şu an 0000. Önce değiştirmen önerilir." else "",
-                )
-            },
-            confirmButton = { TextButton(onClick = { confirmEnable = false; onEnableKiosk() }) { Text("Aç", color = TT.Accent) } },
-            dismissButton = { TextButton(onClick = { confirmEnable = false }) { Text("Vazgeç", color = TT.TextSecondary) } },
-        )
+        CyberDialog(
+            title = "Kiosk modu açılsın mı?",
+            onDismiss = { confirmEnable = false },
+            confirmText = "Aç",
+            onConfirm = { confirmEnable = false; onEnableKiosk() },
+        ) {
+            Text(
+                "Telefon sadece TUNTUNE'u gösterecek. Çıkmak için Ayarlar → \"Kiosk modundan çık\" ve PIN gerekir." +
+                    if (usingDefaultPin) "\n\nPIN şu an 0000. Önce değiştirmen önerilir." else "",
+                color = TT.TextSecondary,
+            )
+        }
     }
 
     pinPurpose?.let { purpose ->
-        androidx.compose.runtime.key(pinDialogKey) {
+        key(pinDialogKey) {
             PinDialog(
                 title = when (purpose) {
                     PinPurpose.Disable -> "Kiosk modundan çık"
@@ -192,17 +235,7 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun Header(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleMedium,
-        color = TT.TextPrimary,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp),
-    )
-}
-
-@Composable
-private fun InfoCard(text: String) {
+private fun InfoText(text: String) {
     Text(
         text,
         style = MaterialTheme.typography.bodyMedium,
@@ -216,14 +249,16 @@ private fun SettingRow(icon: ImageVector, title: String, subtitle: String, onCli
     Row(
         Modifier
             .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .panel(color = TT.Panel, border = TT.Line, shape = Chamfer(10.dp))
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, null, tint = TT.TextSecondary, modifier = Modifier.size(24.dp))
-        Spacer(Modifier.width(16.dp))
+        Icon(icon, null, tint = TT.Accent, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = TT.TextPrimary)
+            Text(title, style = MaterialTheme.typography.titleSmall, color = TT.TextPrimary)
             Spacer(Modifier.height(2.dp))
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TT.TextSecondary)
         }

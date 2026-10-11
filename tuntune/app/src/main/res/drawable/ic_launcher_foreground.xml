@@ -4,12 +4,14 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- yeşil daire -->
-    <path
-        android:fillColor="#1ED760"
-        android:pathData="M54,24a30,30 0,1 1,0 60a30,30 0,1 1,0 -60z" />
-    <!-- nota -->
-    <path
-        android:fillColor="#121212"
-        android:pathData="M48,38 L66,34 L66,64 A6,6 0,1 1,62 58.4 L62,43 L52,45.2 L52,68 A6,6 0,1 1,48 62.4 Z" />
+    <!-- CD -->
+    <path android:fillColor="#DCDCDE" android:pathData="M54,24a30,30 0,1 1,0 60a30,30 0,1 1,0 -60z" />
+    <!-- çizgili halka -->
+    <path android:strokeColor="#000000" android:strokeWidth="5" android:fillColor="#00000000"
+        android:pathData="M54,41a13,13 0,1 1,0 26a13,13 0,1 1,0 -26z" />
+    <!-- göbek -->
+    <path android:fillColor="#000000" android:pathData="M54,47a7,7 0,1 1,0 14a7,7 0,1 1,0 -14z" />
+    <path android:fillColor="#DCDCDE" android:pathData="M54,52.5a1.5,1.5 0,1 1,0 3a1.5,1.5 0,1 1,0 -3z" />
+    <!-- neon vurgu -->
+    <path android:fillColor="#FCEE0A" android:pathData="M78,30 L84,30 L84,36 Z" />
 </vector>
