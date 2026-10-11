@@ -108,7 +108,7 @@ fun SongRow(
     Row(
         modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .cyberClickable(onClick = onClick)
             .padding(start = 16.dp, top = 6.dp, bottom = 6.dp, end = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -285,7 +285,7 @@ fun AddToPlaylistDialog(
         LazyColumn(Modifier.heightIn(max = 360.dp)) {
             item {
                 Row(
-                    Modifier.fillMaxWidth().clickable(onClick = onCreateNew).padding(vertical = 10.dp),
+                    Modifier.fillMaxWidth().cyberClickable(onClick = onCreateNew).padding(vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(Modifier.size(44.dp).panel(border = TT.LineBright, shape = ThumbShape), contentAlignment = Alignment.Center) {
@@ -297,7 +297,7 @@ fun AddToPlaylistDialog(
             }
             items(playlists, key = { it.id }) { p ->
                 Row(
-                    Modifier.fillMaxWidth().clickable { onPick(p) }.padding(vertical = 10.dp),
+                    Modifier.fillMaxWidth().cyberClickable { onPick(p) }.padding(vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     PlaylistCover(p, Modifier.size(44.dp))

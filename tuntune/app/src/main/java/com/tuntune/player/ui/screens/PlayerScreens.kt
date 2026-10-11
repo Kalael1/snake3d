@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import com.tuntune.player.PlayerUiState
 import com.tuntune.player.QueueEntry
+import com.tuntune.player.ui.components.cyberClickable
 import com.tuntune.player.ui.components.Artwork
 import com.tuntune.player.ui.components.CyberDialog
 import com.tuntune.player.ui.components.CyberIconButton
@@ -86,7 +87,7 @@ fun MiniPlayer(
             .padding(horizontal = 8.dp)
             .fillMaxWidth()
             .panel(color = TT.Panel, border = TT.Line, shape = Chamfer(12.dp))
-            .clickable(onClick = onOpen),
+            .cyberClickable(onClick = onOpen),
     ) {
         Row(Modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             SpinningDisc(state.albumId, state.isPlaying, Modifier.size(46.dp), detailed = false)
@@ -208,7 +209,7 @@ fun NowPlayingScreen(
                     color = TT.TextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.clickable(onClick = onOpenArtist),
+                    modifier = Modifier.cyberClickable(onClick = onOpenArtist),
                 )
             }
             IconButton(onClick = onToggleFavorite) {
@@ -299,7 +300,7 @@ private fun SleepTimerButton(endsAt: Long?, onClick: () -> Unit) {
     Row(
         Modifier
             .panel(color = Color.Transparent, border = if (endsAt != null) accent else TT.Line, shape = Chamfer(8.dp))
-            .clickable(onClick = onClick)
+            .cyberClickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -315,7 +316,7 @@ private fun SleepTimerDialog(active: Boolean, onDismiss: () -> Unit, onPick: (In
         Column {
             listOf(5, 15, 30, 45, 60, 90).forEach { min ->
                 Row(
-                    Modifier.fillMaxWidth().clickable { onPick(min) }.padding(vertical = 12.dp),
+                    Modifier.fillMaxWidth().cyberClickable { onPick(min) }.padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text("%02d".format(min), style = MaterialTheme.typography.titleMedium, color = TT.Accent, modifier = Modifier.width(36.dp))
@@ -327,7 +328,7 @@ private fun SleepTimerDialog(active: Boolean, onDismiss: () -> Unit, onPick: (In
                     "ZAMANLAYICIYI KAPAT",
                     color = TT.Accent,
                     style = MaterialTheme.typography.labelLarge,
-                    modifier = Modifier.fillMaxWidth().clickable { onPick(null) }.padding(vertical = 12.dp),
+                    modifier = Modifier.fillMaxWidth().cyberClickable { onPick(null) }.padding(vertical = 12.dp),
                 )
             }
         }
@@ -386,7 +387,7 @@ fun QueueScreen(
 private fun QueueRow(index: Int, title: String, artist: String, albumId: Long, highlight: Boolean, onClick: () -> Unit, onRemove: (() -> Unit)?) {
     val accent = TT.Accent
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+        Modifier.fillMaxWidth().cyberClickable(onClick = onClick).padding(start = 16.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(

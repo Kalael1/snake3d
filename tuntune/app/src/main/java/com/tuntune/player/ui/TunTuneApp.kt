@@ -51,6 +51,7 @@ import com.tuntune.player.MainViewModel
 import com.tuntune.player.data.Playlist
 import com.tuntune.player.data.Song
 import com.tuntune.player.data.LibraryStore
+import com.tuntune.player.ui.components.cyberClickable
 import com.tuntune.player.ui.components.AddToPlaylistDialog
 import com.tuntune.player.ui.components.ArtworkCache
 import com.tuntune.player.ui.components.EmptyState
@@ -435,7 +436,7 @@ private fun BottomBar(selected: Tab, onSelect: (Tab) -> Unit) {
                 Column(
                     Modifier
                         .weight(1f)
-                        .clickable { onSelect(t) }
+                        .cyberClickable { onSelect(t) }
                         .padding(bottom = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {

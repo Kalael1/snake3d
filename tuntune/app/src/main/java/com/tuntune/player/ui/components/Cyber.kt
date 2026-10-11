@@ -5,6 +5,14 @@ import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.composed
+import androidx.compose.ui.platform.LocalView
+import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -54,6 +62,37 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlinx.coroutines.isActive
+
+// ------------------------------------------------------------------ Dokunma hissi
+
+/** Basınca titreşim + içeri çökme animasyonu. Tüm TUNTUNE butonları bunu kullanır. */
+fun Modifier.cyberClickable(
+    enabled: Boolean = true,
+    interactionSource: MutableInteractionSource? = null,
+    pressedScale: Float = 0.95f,
+    onClick: () -> Unit,
+): Modifier = composed {
+    val view = LocalView.current
+    val source = interactionSource ?: remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) pressedScale else 1f,
+        animationSpec = spring(dampingRatio = 0.45f, stiffness = 900f),
+        label = "press",
+    )
+    this
+        .graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        }
+        .clickable(interactionSource = source, indication = LocalIndication.current, enabled = enabled) {
+            view.performHapticFeedback(
+                HapticFeedbackConstants.VIRTUAL_KEY,
+                @Suppress("DEPRECATION") HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING,
+            )
+            onClick()
+        }
+}
 
 // ------------------------------------------------------------------ Paneller ve etiketler
 
@@ -116,13 +155,17 @@ fun CyberIconButton(
     iconScale: Float = 0.5f,
 ) {
     val shape = Chamfer(cut)
+    val accent = TT.Accent
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val borderColor = if (pressed) accent else border
     Box(
         modifier
             .size(size)
+            .cyberClickable(interactionSource = source, pressedScale = 0.9f, onClick = onClick)
             .clip(shape)
-            .background(fill)
-            .then(if (border != null) Modifier.border(1.dp, border, shape) else Modifier)
-            .clickable(onClick = onClick),
+            .background(if (pressed && fill == Color.Transparent) accent.copy(alpha = 0.12f) else fill)
+            .then(if (borderColor != null) Modifier.border(if (pressed) 1.5.dp else 1.dp, borderColor, shape) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
         Icon(icon, contentDescription, tint = tint, modifier = Modifier.size(size * iconScale))
@@ -140,13 +183,15 @@ fun CyberButton(
 ) {
     val accent = TT.Accent
     val shape = Chamfer(8.dp)
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
     Row(
         modifier
             .height(44.dp)
+            .cyberClickable(interactionSource = source, pressedScale = 0.94f, onClick = onClick)
             .clip(shape)
-            .background(if (filled) accent else Color.Transparent)
-            .then(if (!filled) Modifier.border(1.dp, TT.LineBright, shape) else Modifier)
-            .clickable(onClick = onClick)
+            .background(if (filled) accent else if (pressed) accent.copy(alpha = 0.12f) else Color.Transparent)
+            .then(if (!filled) Modifier.border(1.dp, if (pressed) accent else TT.LineBright, shape) else Modifier)
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

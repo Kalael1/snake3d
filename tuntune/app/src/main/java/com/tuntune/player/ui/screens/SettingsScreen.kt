@@ -48,6 +48,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import com.tuntune.player.ui.components.cyberClickable
 import com.tuntune.player.ui.components.CyberDialog
 import com.tuntune.player.ui.components.CyberIconButton
 import com.tuntune.player.ui.components.HudLabel
@@ -115,7 +116,7 @@ fun SettingsScreen(
                     Modifier
                         .weight(1f)
                         .panel(color = TT.Panel, border = if (selected) theme.color else TT.Line, shape = Chamfer(8.dp))
-                        .clickable { onAccentChange(theme) }
+                        .cyberClickable { onAccentChange(theme) }
                         .padding(6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
@@ -274,7 +275,7 @@ private fun SettingRow(icon: ImageVector, title: String, subtitle: String, onCli
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .panel(color = TT.Panel, border = TT.Line, shape = Chamfer(10.dp))
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (onClick != null) Modifier.cyberClickable(onClick = onClick) else Modifier)
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -296,7 +297,7 @@ private fun ToggleRow(icon: ImageVector, title: String, subtitle: String, checke
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .panel(color = TT.Panel, border = if (checked) accent else TT.Line, shape = Chamfer(10.dp))
-            .clickable { onCheckedChange(!checked) }
+            .cyberClickable { onCheckedChange(!checked) }
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

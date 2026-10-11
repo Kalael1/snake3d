@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tuntune.player.PlayerUiState
+import com.tuntune.player.ui.components.cyberClickable
 import com.tuntune.player.ui.components.CornerTriangle
 import com.tuntune.player.ui.components.CyberIconButton
 import com.tuntune.player.ui.components.DotGrid
@@ -185,7 +186,7 @@ fun LockScreen(
                 Modifier
                     .fillMaxWidth()
                     .padding(top = 20.dp, bottom = 14.dp)
-                    .clickable { unlock() },
+                    .cyberClickable { unlock() },
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(Icons.Rounded.KeyboardArrowUp, null, tint = White, modifier = Modifier.size(26.dp))

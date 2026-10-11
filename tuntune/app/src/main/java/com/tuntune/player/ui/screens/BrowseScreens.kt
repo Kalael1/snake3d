@@ -70,6 +70,7 @@ import com.tuntune.player.data.Artist
 import com.tuntune.player.data.Library
 import com.tuntune.player.data.Playlist
 import com.tuntune.player.data.Song
+import com.tuntune.player.ui.components.cyberClickable
 import com.tuntune.player.ui.components.Artwork
 import com.tuntune.player.ui.components.CornerTriangle
 import com.tuntune.player.ui.components.CyberButton
@@ -255,7 +256,7 @@ private fun QuickTile(index: Int, title: String, onClick: () -> Unit, art: @Comp
             .fillMaxWidth()
             .height(60.dp)
             .panel(color = TT.Panel, border = TT.Line, shape = CardShape)
-            .clickable(onClick = onClick),
+            .cyberClickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(60.dp)) { art() }
@@ -274,7 +275,7 @@ private fun QuickTile(index: Int, title: String, onClick: () -> Unit, art: @Comp
 
 @Composable
 fun AlbumCard(album: Album, onClick: () -> Unit) {
-    Column(Modifier.width(140.dp).clickable(onClick = onClick)) {
+    Column(Modifier.width(140.dp).cyberClickable(onClick = onClick)) {
         Box {
             Artwork(album.id, Modifier.size(140.dp), shape = CardShape, fallbackIcon = Icons.Rounded.Album)
             CornerTriangle(Modifier.align(Alignment.BottomStart).padding(6.dp), color = TT.Accent, side = 8.dp)
@@ -287,7 +288,7 @@ fun AlbumCard(album: Album, onClick: () -> Unit) {
 
 @Composable
 fun ArtistCard(artist: Artist, onClick: () -> Unit) {
-    Column(Modifier.width(116.dp).clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(Modifier.width(116.dp).cyberClickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(116.dp).border(1.dp, TT.LineBright, CircleShape).padding(5.dp)) {
             Artwork(artist.songs.first().albumId, Modifier.fillMaxSize(), shape = CircleShape, fallbackIcon = Icons.Rounded.Person)
         }
@@ -427,7 +428,7 @@ fun LibraryScreen(
                                 border = if (selected) null else TT.LineBright,
                                 shape = Chamfer(6.dp),
                             )
-                            .clickable { filter = f }
+                            .cyberClickable { filter = f }
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -493,7 +494,7 @@ fun LibraryScreen(
 @Composable
 private fun LibraryRow(title: String, subtitle: String, onClick: () -> Unit, round: Boolean = false, art: @Composable () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 7.dp),
+        Modifier.fillMaxWidth().cyberClickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
