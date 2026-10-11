@@ -119,6 +119,7 @@ fun TunTuneApp(
     val accentName by vm.store.accent.collectAsStateWithLifecycle()
     val accentTheme = AccentTheme.entries.firstOrNull { it.name == accentName } ?: AccentTheme.Yellow
     val lockScreenEnabled by vm.store.lockScreen.collectAsStateWithLifecycle()
+    val pinEnabled by vm.store.pinApp.collectAsStateWithLifecycle()
 
     var tab by rememberSaveable { mutableStateOf(Tab.Home) }
     val stack = remember { mutableStateListOf<Route>() }
@@ -155,8 +156,9 @@ fun TunTuneApp(
         }
     }
 
-    BackHandler(enabled = stack.isNotEmpty() || tab != Tab.Home) {
-        if (stack.isNotEmpty()) stack.removeAt(stack.lastIndex) else tab = Tab.Home
+    // Geri tuşu uygulamayı asla kapatmaz: önce sayfalar, sonra ana sekme, sonra hiçbir şey.
+    BackHandler(enabled = true) {
+        if (stack.isNotEmpty()) stack.removeAt(stack.lastIndex) else if (tab != Tab.Home) tab = Tab.Home
     }
 
     val playSongs: (List<Song>, Int) -> Unit = { songs, index -> vm.play(songs, index) }
@@ -227,6 +229,8 @@ fun TunTuneApp(
                             onAccentChange = { vm.store.setAccent(it.name) },
                             lockScreenEnabled = lockScreenEnabled,
                             onLockScreenChange = { vm.store.setLockScreen(it) },
+                            pinEnabled = pinEnabled,
+                            onPinChange = { vm.store.setPinApp(it) },
                         )
                     }
 

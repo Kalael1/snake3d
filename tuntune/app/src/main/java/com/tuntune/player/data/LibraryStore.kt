@@ -167,6 +167,17 @@ class LibraryStore private constructor(context: Context) {
         prefs.edit().putBoolean(KEY_LOCK_SCREEN, enabled).apply()
     }
 
+    // ---- Ekran sabitleme ----
+
+    private val _pinApp = MutableStateFlow(prefs.getBoolean(KEY_PIN_APP, false))
+    /** TUNTUNE ekrana sabitlensin mi (çıkılamasın)? */
+    val pinApp: StateFlow<Boolean> = _pinApp.asStateFlow()
+
+    fun setPinApp(enabled: Boolean) {
+        _pinApp.value = enabled
+        prefs.edit().putBoolean(KEY_PIN_APP, enabled).apply()
+    }
+
     // ---- Kiosk PIN ----
 
     var kioskPin: String
@@ -206,6 +217,7 @@ class LibraryStore private constructor(context: Context) {
         private const val KEY_KIOSK = "kiosk_enabled"
         private const val KEY_ACCENT = "accent"
         private const val KEY_LOCK_SCREEN = "lock_screen"
+        private const val KEY_PIN_APP = "pin_app"
 
         @Volatile private var instance: LibraryStore? = null
 

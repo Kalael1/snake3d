@@ -81,6 +81,9 @@ class MainActivity : ComponentActivity() {
         )
         // Kilit ekranı ayarı değişince sistem kilidinin üzerinde görünme iznini güncelle.
         lifecycleScope.launch {
+            viewModel.store.pinApp.collect { enabled -> applyPin(enabled) }
+        }
+        lifecycleScope.launch {
             viewModel.store.lockScreen.collect { enabled ->
                 showOverSystemLock(enabled)
                 if (!enabled) lockVisible.value = false
@@ -113,6 +116,7 @@ class MainActivity : ComponentActivity() {
         // Sistem kilitliyken açıldıysak kilit ekranımızı göster (kilit atlatılamasın).
         if (viewModel.store.lockScreen.value && keyguard.isKeyguardLocked) lockVisible.value = true
         kiosk.lockIfNeeded(this)
+        applyPin(viewModel.store.pinApp.value)
         val had = hasPermission.value
         updatePermission()
         if (!had && hasPermission.value) viewModel.refresh()
@@ -137,6 +141,17 @@ class MainActivity : ComponentActivity() {
 
     private fun askPermissions() {
         permissionLauncher.launch(requiredPermissions())
+    }
+
+    /** Ekran sabitleme: açıksa TUNTUNE ekrana kilitlenir, kapalıysa serbest bırakılır. */
+    private fun applyPin(enabled: Boolean) {
+        val am = getSystemService(android.app.ActivityManager::class.java)
+        val pinned = am.lockTaskModeState != android.app.ActivityManager.LOCK_TASK_MODE_NONE
+        try {
+            if (enabled && !pinned) startLockTask()
+            if (!enabled && pinned && !kiosk.isEnabled) stopLockTask()
+        } catch (_: Exception) {
+        }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

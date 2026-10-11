@@ -27,6 +27,7 @@ import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.Password
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.PhonelinkErase
+import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.ScreenLockPortrait
 import androidx.compose.material3.Icon
@@ -71,6 +72,8 @@ fun SettingsScreen(
     onAccentChange: (AccentTheme) -> Unit,
     lockScreenEnabled: Boolean,
     onLockScreenChange: (Boolean) -> Unit,
+    pinEnabled: Boolean,
+    onPinChange: (Boolean) -> Unit,
     onBack: () -> Unit,
     onRescan: () -> Unit,
     onEnableKiosk: () -> Unit,
@@ -139,6 +142,13 @@ fun SettingsScreen(
             "Ekranı açınca siyah-beyaz CD ve saat görünür. Yukarı kaydırınca açılır.",
             checked = lockScreenEnabled,
             onCheckedChange = onLockScreenChange,
+        )
+        ToggleRow(
+            Icons.Rounded.PushPin,
+            "Ekran sabitleme (çıkış yok)",
+            "TUNTUNE ekrana kilitlenir. Çıkmak için Geri + Son uygulamalar tuşlarını birlikte basılı tut.",
+            checked = pinEnabled,
+            onCheckedChange = onPinChange,
         )
         SettingRow(Icons.Rounded.PhoneAndroid, "Telefon ayarlarını aç", "Wi-Fi, Bluetooth, ses, ekran parlaklığı") {
             context.startActivity(
