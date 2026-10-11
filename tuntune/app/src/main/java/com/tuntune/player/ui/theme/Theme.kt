@@ -1,5 +1,6 @@
 package com.tuntune.player.ui.theme
 
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
@@ -99,12 +100,15 @@ private val typography = Typography(
     labelSmall = style(10, FontWeight.Medium, 2.5f),
 )
 
+// Material bileşenleri (diyaloglar, menüler, yazı alanları) için aynı kesik köşe görünümü.
+private fun cut(size: Dp) = CutCornerShape(topStart = size, bottomEnd = size)
+
 private val shapes = Shapes(
-    extraSmall = Chamfer(6.dp),
-    small = Chamfer(8.dp),
-    medium = Chamfer(10.dp),
-    large = Chamfer(12.dp),
-    extraLarge = Chamfer(16.dp),
+    extraSmall = cut(6.dp),
+    small = cut(8.dp),
+    medium = cut(10.dp),
+    large = cut(12.dp),
+    extraLarge = cut(16.dp),
 )
 
 @Composable
