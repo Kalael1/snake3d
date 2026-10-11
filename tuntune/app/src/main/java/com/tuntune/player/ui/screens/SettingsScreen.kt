@@ -22,6 +22,7 @@ import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.Password
+import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.PhonelinkErase
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.AlertDialog
@@ -127,6 +128,15 @@ fun SettingsScreen(
                 "Kiosk yetkisini tamamen kaldır",
                 "TUNTUNE'un cihaz sahibi yetkisini bırakır (PIN gerekir)",
             ) { pinError = null; pinDialogKey++; pinPurpose = PinPurpose.Remove }
+        }
+
+        Header("Telefon")
+        val context = androidx.compose.ui.platform.LocalContext.current
+        SettingRow(Icons.Rounded.PhoneAndroid, "Telefon ayarlarını aç", "Wi-Fi, Bluetooth, ses, ekran parlaklığı") {
+            context.startActivity(
+                android.content.Intent(android.provider.Settings.ACTION_SETTINGS)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
         }
 
         Header("Hakkında")
