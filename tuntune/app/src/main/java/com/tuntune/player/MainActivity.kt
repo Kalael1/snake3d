@@ -1,6 +1,12 @@
 package com.tuntune.player
 
 import android.Manifest
+import android.app.KeyguardManager
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.view.WindowManager
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -14,6 +20,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import com.tuntune.player.kiosk.KioskManager
 import com.tuntune.player.ui.TunTuneApp
 import com.tuntune.player.ui.theme.AccentTheme
@@ -27,6 +35,17 @@ class MainActivity : ComponentActivity() {
     /** Arayüzün kiosk durumunu yeniden okuması için sayaç. */
     private val kioskVersion = mutableStateOf(0)
     private val hasPermission = mutableStateOf(false)
+
+    /** TUNTUNE kilit ekranı görünüyor mu? */
+    private val lockVisible = mutableStateOf(false)
+    private val keyguard by lazy { getSystemService(KeyguardManager::class.java) }
+
+    /** Ekran kapanınca bir sonraki açılışta kilit ekranımız gelsin. */
+    private val screenOffReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (viewModel.store.lockScreen.value) lockVisible.value = true
+        }
+    }
 
     private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
         updatePermission()
@@ -42,6 +61,17 @@ class MainActivity : ComponentActivity() {
         updatePermission()
         if (!hasPermission.value) askPermissions()
 
+        ContextCompat.registerReceiver(
+            this, screenOffReceiver, IntentFilter(Intent.ACTION_SCREEN_OFF), ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
+        // Kilit ekranı ayarı değişince sistem kilidinin üzerinde görünme iznini güncelle.
+        lifecycleScope.launch {
+            viewModel.store.lockScreen.collect { enabled ->
+                showOverSystemLock(enabled)
+                if (!enabled) lockVisible.value = false
+            }
+        }
+
         setContent {
             val accentName by viewModel.store.accent.collectAsState()
             val accent = AccentTheme.entries.firstOrNull { it.name == accentName } ?: AccentTheme.Yellow
@@ -56,6 +86,8 @@ class MainActivity : ComponentActivity() {
                     onEnableKiosk = { kiosk.enable(this); updatePermission(); kioskVersion.value++ },
                     onDisableKiosk = { kiosk.disable(this); kioskVersion.value++ },
                     onRemoveKiosk = { kiosk.removeCompletely(this); kioskVersion.value++ },
+                    lockVisible = lockVisible.value,
+                    onUnlock = ::unlockScreen,
                 )
             }
         }
@@ -63,6 +95,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Sistem kilitliyken açıldıysak kilit ekranımızı göster (kilit atlatılamasın).
+        if (viewModel.store.lockScreen.value && keyguard.isKeyguardLocked) lockVisible.value = true
         kiosk.lockIfNeeded(this)
         val had = hasPermission.value
         updatePermission()
@@ -88,5 +122,33 @@ class MainActivity : ComponentActivity() {
 
     private fun askPermissions() {
         permissionLauncher.launch(requiredPermissions())
+    }
+
+    override fun onDestroy() {
+        unregisterReceiver(screenOffReceiver)
+        super.onDestroy()
+    }
+
+    private fun showOverSystemLock(enabled: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(enabled)
+        } else {
+            @Suppress("DEPRECATION")
+            if (enabled) window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
+            else window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
+        }
+    }
+
+    /** Yukarı kaydırınca: telefonda şifre varsa önce şifre sorulur. */
+    private fun unlockScreen() {
+        if (keyguard.isKeyguardLocked) {
+            keyguard.requestDismissKeyguard(this, object : KeyguardManager.KeyguardDismissCallback() {
+                override fun onDismissSucceeded() {
+                    lockVisible.value = false
+                }
+            })
+        } else {
+            lockVisible.value = false
+        }
     }
 }

@@ -28,6 +28,7 @@ import androidx.compose.material.icons.rounded.Password
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.PhonelinkErase
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.ScreenLockPortrait
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -68,6 +69,8 @@ fun SettingsScreen(
     usingDefaultPin: Boolean,
     accent: AccentTheme,
     onAccentChange: (AccentTheme) -> Unit,
+    lockScreenEnabled: Boolean,
+    onLockScreenChange: (Boolean) -> Unit,
     onBack: () -> Unit,
     onRescan: () -> Unit,
     onEnableKiosk: () -> Unit,
@@ -130,6 +133,13 @@ fun SettingsScreen(
 
         // ---- Telefon
         SectionHeader(3, "Device")
+        ToggleRow(
+            Icons.Rounded.ScreenLockPortrait,
+            "TUNTUNE kilit ekranı",
+            "Ekranı açınca siyah-beyaz CD ve saat görünür. Yukarı kaydırınca açılır.",
+            checked = lockScreenEnabled,
+            onCheckedChange = onLockScreenChange,
+        )
         SettingRow(Icons.Rounded.PhoneAndroid, "Telefon ayarlarını aç", "Wi-Fi, Bluetooth, ses, ekran parlaklığı") {
             context.startActivity(
                 android.content.Intent(android.provider.Settings.ACTION_SETTINGS)
@@ -261,6 +271,41 @@ private fun SettingRow(icon: ImageVector, title: String, subtitle: String, onCli
             Text(title, style = MaterialTheme.typography.titleSmall, color = TT.TextPrimary)
             Spacer(Modifier.height(2.dp))
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TT.TextSecondary)
+        }
+    }
+}
+
+@Composable
+private fun ToggleRow(icon: ImageVector, title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    val accent = TT.Accent
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .panel(color = TT.Panel, border = if (checked) accent else TT.Line, shape = Chamfer(10.dp))
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, tint = accent, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, color = TT.TextPrimary)
+            Spacer(Modifier.height(2.dp))
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = TT.TextSecondary)
+        }
+        Spacer(Modifier.width(10.dp))
+        // ON/OFF anahtarı
+        Box(
+            Modifier
+                .panel(color = if (checked) accent else androidx.compose.ui.graphics.Color.Transparent, border = if (checked) null else TT.LineBright, shape = Chamfer(6.dp))
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+        ) {
+            Text(
+                if (checked) "ON" else "OFF",
+                style = MaterialTheme.typography.labelLarge,
+                color = if (checked) androidx.compose.ui.graphics.Color.Black else TT.TextSecondary,
+            )
         }
     }
 }

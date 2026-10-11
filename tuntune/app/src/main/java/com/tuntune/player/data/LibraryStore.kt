@@ -156,6 +156,17 @@ class LibraryStore private constructor(context: Context) {
         prefs.edit().putString(KEY_ACCENT, name).apply()
     }
 
+    // ---- Kilit ekranı ----
+
+    private val _lockScreen = MutableStateFlow(prefs.getBoolean(KEY_LOCK_SCREEN, true))
+    /** TUNTUNE'un kendi kilit ekranı açık mı? */
+    val lockScreen: StateFlow<Boolean> = _lockScreen.asStateFlow()
+
+    fun setLockScreen(enabled: Boolean) {
+        _lockScreen.value = enabled
+        prefs.edit().putBoolean(KEY_LOCK_SCREEN, enabled).apply()
+    }
+
     // ---- Kiosk PIN ----
 
     var kioskPin: String
@@ -194,6 +205,7 @@ class LibraryStore private constructor(context: Context) {
         private const val KEY_PIN = "kiosk_pin"
         private const val KEY_KIOSK = "kiosk_enabled"
         private const val KEY_ACCENT = "accent"
+        private const val KEY_LOCK_SCREEN = "lock_screen"
 
         @Volatile private var instance: LibraryStore? = null
 

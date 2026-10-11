@@ -3,6 +3,8 @@ package com.tuntune.player.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -64,6 +66,7 @@ import com.tuntune.player.ui.screens.CollectionKind
 import com.tuntune.player.ui.screens.CollectionScreen
 import com.tuntune.player.ui.screens.HomeScreen
 import com.tuntune.player.ui.screens.LibraryScreen
+import com.tuntune.player.ui.screens.LockScreen
 import com.tuntune.player.ui.screens.MiniPlayer
 import com.tuntune.player.ui.screens.NowPlayingScreen
 import com.tuntune.player.ui.screens.QueueScreen
@@ -97,6 +100,8 @@ fun TunTuneApp(
     onEnableKiosk: () -> Unit,
     onDisableKiosk: () -> Unit,
     onRemoveKiosk: () -> Unit,
+    lockVisible: Boolean,
+    onUnlock: () -> Unit,
 ) {
     if (!hasPermission) {
         PermissionScreen(onRequestPermission)
@@ -113,6 +118,7 @@ fun TunTuneApp(
     val sleepEndsAt by vm.sleepTimerEndsAt.collectAsStateWithLifecycle()
     val accentName by vm.store.accent.collectAsStateWithLifecycle()
     val accentTheme = AccentTheme.entries.firstOrNull { it.name == accentName } ?: AccentTheme.Yellow
+    val lockScreenEnabled by vm.store.lockScreen.collectAsStateWithLifecycle()
 
     var tab by rememberSaveable { mutableStateOf(Tab.Home) }
     val stack = remember { mutableStateListOf<Route>() }
@@ -219,6 +225,8 @@ fun TunTuneApp(
                             onChangePin = { vm.store.kioskPin = it; pinVersion++ },
                             accent = accentTheme,
                             onAccentChange = { vm.store.setAccent(it.name) },
+                            lockScreenEnabled = lockScreenEnabled,
+                            onLockScreenChange = { vm.store.setLockScreen(it) },
                         )
                     }
 
@@ -318,6 +326,23 @@ fun TunTuneApp(
                     onClose = { showQueue = false },
                     onPlay = { vm.playFromQueue(it.mediaIndex) },
                     onRemove = { vm.removeFromQueue(it.mediaIndex) },
+                )
+            }
+
+            // ---- TUNTUNE kilit ekranı (her şeyin üstünde) ----
+            AnimatedVisibility(
+                visible = lockVisible,
+                enter = fadeIn(tween(200)),
+                exit = fadeOut(tween(250)) + slideOutVertically(tween(300)) { -it / 3 },
+            ) {
+                val lockPosition by vm.position.collectAsStateWithLifecycle()
+                LockScreen(
+                    state = player,
+                    positionMs = { lockPosition },
+                    onPlayPause = vm::togglePlayPause,
+                    onNext = { vm.next() },
+                    onPrevious = { vm.previous() },
+                    onUnlock = onUnlock,
                 )
             }
         }

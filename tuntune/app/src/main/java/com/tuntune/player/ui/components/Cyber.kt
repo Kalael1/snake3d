@@ -1,6 +1,7 @@
 package com.tuntune.player.ui.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -260,7 +261,7 @@ private val EaseOutOfSpin = CubicBezierEasing(0.33f, 1f, 0.68f, 1f)
  * Dönüş sadece çizim katmanında yapılır; ekran yeniden hesaplanmaz.
  */
 @Composable
-fun SpinningDisc(albumId: Long, isPlaying: Boolean, modifier: Modifier = Modifier, detailed: Boolean = true) {
+fun rememberDiscRotation(isPlaying: Boolean): Animatable<Float, AnimationVector1D> {
     val rotation = remember { Animatable(0f) }
     LaunchedEffect(isPlaying) {
         if (isPlaying) {
@@ -274,6 +275,12 @@ fun SpinningDisc(albumId: Long, isPlaying: Boolean, modifier: Modifier = Modifie
             rotation.animateTo(rotation.value + 30f, tween(1500, easing = EaseOutOfSpin))
         }
     }
+    return rotation
+}
+
+@Composable
+fun SpinningDisc(albumId: Long, isPlaying: Boolean, modifier: Modifier = Modifier, detailed: Boolean = true) {
+    val rotation = rememberDiscRotation(isPlaying)
 
     Box(modifier.aspectRatio(1f)) {
         Box(
@@ -358,5 +365,44 @@ fun CornerTriangle(modifier: Modifier = Modifier, color: Color = TT.TextSecondar
             close()
         }
         drawPath(p, color)
+    }
+}
+
+/** Sadece çizgilerden oluşan (outline) CD. Kilit ekranı için. */
+@Composable
+fun OutlineDisc(isPlaying: Boolean, modifier: Modifier = Modifier, color: Color = TT.TextPrimary) {
+    val rotation = rememberDiscRotation(isPlaying)
+    Canvas(
+        modifier
+            .aspectRatio(1f)
+            .graphicsLayer { rotationZ = rotation.value },
+    ) {
+        val c = center
+        val r = size.minDimension / 2f
+        val sw = 1.5.dp.toPx()
+        // dış kenar ve oluklar
+        drawCircle(color, r - sw, c, style = Stroke(sw * 1.6f))
+        drawCircle(color.copy(alpha = 0.35f), r * 0.86f, c, style = Stroke(sw))
+        drawCircle(color.copy(alpha = 0.22f), r * 0.70f, c, style = Stroke(sw))
+        // dönüşü belli eden yay parçaları
+        val groove = r * 0.78f
+        val gTopLeft = Offset(c.x - groove, c.y - groove)
+        val gSize = androidx.compose.ui.geometry.Size(groove * 2, groove * 2)
+        drawArc(color.copy(alpha = 0.8f), 10f, 55f, false, gTopLeft, gSize, style = Stroke(sw * 1.4f))
+        drawArc(color.copy(alpha = 0.8f), 190f, 55f, false, gTopLeft, gSize, style = Stroke(sw * 1.4f))
+        // çizgili halka
+        val ticks = 72
+        val inner = r * 0.30f
+        val outer = r * 0.46f
+        for (i in 0 until ticks) {
+            val a = (2 * PI * i / ticks).toFloat()
+            val dx = cos(a)
+            val dy = sin(a)
+            drawLine(color, Offset(c.x + dx * inner, c.y + dy * inner), Offset(c.x + dx * outer, c.y + dy * outer), sw)
+        }
+        // göbek ve ibre
+        drawCircle(color, r * 0.18f, c, style = Stroke(sw * 1.6f))
+        drawLine(color, c, Offset(c.x - r * 0.13f, c.y - r * 0.13f), sw * 1.6f, StrokeCap.Round)
+        drawCircle(color, r * 0.03f, c)
     }
 }
