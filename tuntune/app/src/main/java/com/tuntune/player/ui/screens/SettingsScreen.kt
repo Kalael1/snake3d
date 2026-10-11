@@ -29,6 +29,7 @@ import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.PhonelinkErase
 import androidx.compose.material.icons.rounded.PushPin
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Wifi
 import androidx.compose.material.icons.rounded.ScreenLockPortrait
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -74,6 +75,7 @@ fun SettingsScreen(
     onLockScreenChange: (Boolean) -> Unit,
     pinEnabled: Boolean,
     onPinChange: (Boolean) -> Unit,
+    onOpenTransfer: () -> Unit,
     onBack: () -> Unit,
     onRescan: () -> Unit,
     onEnableKiosk: () -> Unit,
@@ -132,6 +134,7 @@ fun SettingsScreen(
 
         // ---- Kitaplık
         SectionHeader(2, "Library")
+        SettingRow(Icons.Rounded.Wifi, "Wi-Fi transfer", "Bilgisayardan kablosuz müzik al (TUNTUNE SYNC)", onOpenTransfer)
         SettingRow(Icons.Rounded.Refresh, "Müzikleri yeniden tara", "$songCount şarkı bulundu", onRescan)
 
         // ---- Telefon

@@ -72,6 +72,7 @@ import com.tuntune.player.ui.screens.NowPlayingScreen
 import com.tuntune.player.ui.screens.QueueScreen
 import com.tuntune.player.ui.screens.SearchScreen
 import com.tuntune.player.ui.screens.SettingsScreen
+import com.tuntune.player.ui.screens.TransferScreen
 import com.tuntune.player.ui.theme.TT
 
 enum class Tab(val label: String, val icon: ImageVector) {
@@ -87,6 +88,7 @@ sealed interface Route {
     data object FavoritesRoute : Route
     data object MostPlayedRoute : Route
     data object SettingsRoute : Route
+    data object TransferRoute : Route
 }
 
 @Composable
@@ -207,6 +209,8 @@ fun TunTuneApp(
                         )
                     }
 
+                    Route.TransferRoute -> TransferScreen(onBack = { stack.removeAt(stack.lastIndex) })
+
                     Route.SettingsRoute -> {
                         // kioskVersion değişince bu blok yeniden okunur
                         val owner = remember(kioskVersion) { isDeviceOwner() }
@@ -231,6 +235,7 @@ fun TunTuneApp(
                             onLockScreenChange = { vm.store.setLockScreen(it) },
                             pinEnabled = pinEnabled,
                             onPinChange = { vm.store.setPinApp(it) },
+                            onOpenTransfer = { push(Route.TransferRoute) },
                         )
                     }
 
@@ -243,7 +248,7 @@ fun TunTuneApp(
                             }
                             Route.FavoritesRoute -> CollectionKind.Favorites to favorites.mapNotNull { library.byId[it] }
                             Route.MostPlayedRoute -> CollectionKind.MostPlayed to mostPlayed
-                            Route.SettingsRoute, null -> null
+                            Route.SettingsRoute, Route.TransferRoute, null -> null
                         } ?: (null to emptyList())
 
                         if (kind == null) {
