@@ -84,6 +84,9 @@ class MainActivity : ComponentActivity() {
             viewModel.store.pinApp.collect { enabled -> applyPin(enabled) }
         }
         lifecycleScope.launch {
+            viewModel.store.hideNavBar.collect { hide -> applyNavigationBar(hide) }
+        }
+        lifecycleScope.launch {
             viewModel.store.lockScreen.collect { enabled ->
                 showOverSystemLock(enabled)
                 if (!enabled) lockVisible.value = false
@@ -156,17 +159,18 @@ class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) hideNavigationBar()
+        if (hasFocus) applyNavigationBar(viewModel.store.hideNavBar.value)
     }
 
     /**
      * Alttaki buton çubuğunu gizler: ekran tamamen TUNTUNE'un olur.
      * Gerekirse ekranın altından yukarı kaydırınca butonlar kısa süreliğine görünür.
      */
-    private fun hideNavigationBar() {
+    private fun applyNavigationBar(hide: Boolean) {
         val controller = WindowCompat.getInsetsController(window, window.decorView)
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        controller.hide(WindowInsetsCompat.Type.navigationBars())
+        if (hide) controller.hide(WindowInsetsCompat.Type.navigationBars())
+        else controller.show(WindowInsetsCompat.Type.navigationBars())
     }
 
     override fun onDestroy() {

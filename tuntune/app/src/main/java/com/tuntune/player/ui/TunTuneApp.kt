@@ -123,6 +123,7 @@ fun TunTuneApp(
     val accentTheme = AccentTheme.entries.firstOrNull { it.name == accentName } ?: AccentTheme.Yellow
     val lockScreenEnabled by vm.store.lockScreen.collectAsStateWithLifecycle()
     val pinEnabled by vm.store.pinApp.collectAsStateWithLifecycle()
+    val hideNavBar by vm.store.hideNavBar.collectAsStateWithLifecycle()
 
     var tab by rememberSaveable { mutableStateOf(Tab.Home) }
     val stack = remember { mutableStateListOf<Route>() }
@@ -237,6 +238,8 @@ fun TunTuneApp(
                             pinEnabled = pinEnabled,
                             onPinChange = { vm.store.setPinApp(it) },
                             onOpenTransfer = { push(Route.TransferRoute) },
+                            hideNavBar = hideNavBar,
+                            onHideNavBarChange = { vm.store.setHideNavBar(it) },
                         )
                     }
 

@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Fullscreen
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
@@ -77,6 +78,8 @@ fun SettingsScreen(
     pinEnabled: Boolean,
     onPinChange: (Boolean) -> Unit,
     onOpenTransfer: () -> Unit,
+    hideNavBar: Boolean,
+    onHideNavBarChange: (Boolean) -> Unit,
     onBack: () -> Unit,
     onRescan: () -> Unit,
     onEnableKiosk: () -> Unit,
@@ -146,6 +149,13 @@ fun SettingsScreen(
             "Ekranı açınca siyah-beyaz CD ve saat görünür. Yukarı kaydırınca açılır.",
             checked = lockScreenEnabled,
             onCheckedChange = onLockScreenChange,
+        )
+        ToggleRow(
+            Icons.Rounded.Fullscreen,
+            "Alttaki butonları gizle",
+            "TUNTUNE açıkken ekran tamamen uygulamanın olur. Altan yukarı kaydırınca butonlar görünür.",
+            checked = hideNavBar,
+            onCheckedChange = onHideNavBarChange,
         )
         ToggleRow(
             Icons.Rounded.PushPin,

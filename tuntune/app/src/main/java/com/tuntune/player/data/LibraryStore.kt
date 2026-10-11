@@ -158,13 +158,24 @@ class LibraryStore private constructor(context: Context) {
 
     // ---- Kilit ekranı ----
 
-    private val _lockScreen = MutableStateFlow(prefs.getBoolean(KEY_LOCK_SCREEN, true))
+    private val _lockScreen = MutableStateFlow(prefs.getBoolean(KEY_LOCK_SCREEN, false))
     /** TUNTUNE'un kendi kilit ekranı açık mı? */
     val lockScreen: StateFlow<Boolean> = _lockScreen.asStateFlow()
 
     fun setLockScreen(enabled: Boolean) {
         _lockScreen.value = enabled
         prefs.edit().putBoolean(KEY_LOCK_SCREEN, enabled).apply()
+    }
+
+    // ---- Alttaki butonları gizle ----
+
+    private val _hideNavBar = MutableStateFlow(prefs.getBoolean(KEY_HIDE_NAV, false))
+    /** TUNTUNE açıkken alttaki buton çubuğu gizlensin mi? */
+    val hideNavBar: StateFlow<Boolean> = _hideNavBar.asStateFlow()
+
+    fun setHideNavBar(enabled: Boolean) {
+        _hideNavBar.value = enabled
+        prefs.edit().putBoolean(KEY_HIDE_NAV, enabled).apply()
     }
 
     // ---- Ekran sabitleme ----
@@ -218,6 +229,7 @@ class LibraryStore private constructor(context: Context) {
         private const val KEY_ACCENT = "accent"
         private const val KEY_LOCK_SCREEN = "lock_screen"
         private const val KEY_PIN_APP = "pin_app"
+        private const val KEY_HIDE_NAV = "hide_nav"
 
         @Volatile private var instance: LibraryStore? = null
 
